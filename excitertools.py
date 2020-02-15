@@ -1,19 +1,22 @@
 from __future__ import annotations
 import itertools
-import operator
 import functools
+from typing import Iterable, Tuple, Any, TypeVar
+import collections.abc
 
 __all__ = [
     'Iter',
 ]
 
-from typing import Iterable, Tuple, Any, TypeVar
-
 T = TypeVar('T')
+
 
 class Iter:
     def __init__(self, x):
-        self.x = iter(x)
+        if isinstance(x, collections.abc.Iterator):
+            self.x = x
+        else:
+            self.x = iter(x)
 
     # def __getattr__(self, name):
     #     func = getattr(itertools, name)
@@ -45,11 +48,9 @@ class Iter:
     ###
 
     def map(self, *args) -> Iter:
-        print('map')
         return Iter(map(*args, self.x))
 
     def filter(self, *args):
-        print('filter')
         return Iter(filter(*args, self.x))
 
     def reduce(self, func, *args):
