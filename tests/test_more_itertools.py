@@ -15,7 +15,7 @@ def test_chunked():
 
 def test_ichunked():
     it = Iter(range(12))
-    chunks = it.ichunked(3)
+    chunks = it.ichunked(3).collect()
     assert list(chunks[3]) == [9, 10, 11]
     assert list(chunks[2]) == [6, 7, 8]
     assert list(chunks[1]) == [3, 4, 5]
@@ -164,3 +164,22 @@ def test_seekable():
     it.seek(10)
     assert next(it) == '10'
 
+
+def test_map_reduce_keyfunc():
+    x = Iter('abbccc').map_reduce(lambda x: x.upper())
+    assert sorted(x.items()) == [
+        ('A', ['a']), ('B', ['b', 'b']), ('C', ['c', 'c', 'c'])]
+
+
+def test_map_reduce_valuefunc():
+    x = Iter('abbccc').map_reduce(lambda x: x.upper(), lambda x: 1)
+    assert sorted(x.items()) == [('A', [1]), ('B', [1, 1]), ('C', [1, 1, 1])]
+
+
+def test_map_reduce_reducefunc():
+    x = Iter('abbccc').map_reduce(
+        lambda x: x.upper(),
+        lambda x: 1,
+        sum,
+    )
+    assert sorted(x.items()) == [('A', 1), ('B', 2), ('C', 3)]

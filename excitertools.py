@@ -1,7 +1,8 @@
 from __future__ import annotations
 import itertools
 import functools
-from typing import Iterable, Tuple, Any, TypeVar, List, Iterator, Sequence
+import operator
+from typing import Iterable, Tuple, Any, TypeVar, List, Iterator, Sequence, Dict
 import collections.abc
 from types import MethodType
 from more_itertools.more import bucket as bucket_class
@@ -38,6 +39,28 @@ class Iter:
 
     def collect(self) -> List:
         return list(self)
+
+    # File operations
+
+    @classmethod
+    def open(cls, file, mode='r', buffering=-1, encoding=None, errors=None,
+             newline=None, closefd=True, opener=None) -> Iter:
+        def inner():
+            with open(
+                    file=file,
+                    mode=mode,
+                    buffering=buffering,
+                    encoding=encoding,
+                    errors=errors,
+                    newline=newline,
+                    closefd=closefd,
+                    opener=opener,
+            ) as f:
+                yield from f
+
+        return cls(inner())
+
+    # Standard utilities
 
     @classmethod
     def range(cls, *args) -> Iter:
@@ -95,10 +118,10 @@ class Iter:
     def chunked(self, n: int) -> Iter:
         return Iter(more_itertools.chunked(self.x, n))
 
-    def ichunked(self, n: int) -> List[Iter]:
-        return [
+    def ichunked(self, n: int) -> Iter:
+        return Iter(
             Iter(it) for it in more_itertools.ichunked(self.x, n)
-        ]
+        )
 
     @classmethod
     def sliced(cls, seq: Sequence, n: int) -> Iter:
@@ -178,15 +201,62 @@ class Iter:
 
     # Windowing
 
-    '''
-    more_itertools.windowed
-    more_itertools.substrings
-    more_itertools.substrings_indexes
-    more_itertools.stagger
-    more_itertools.pairwise
-    '''
+    def windowed(self, n, fillvalue=None, step=1) -> Iter:
+        return Iter(more_itertools.windowed(self.x, n, fillvalue=fillvalue, step=step))
+
+    def substrings(self):
+        return Iter(more_itertools.substrings(self.x))
+
+    def substrings_indexes(self, reverse=False):
+        return Iter(more_itertools.substrings_indexes(self.x, reverse=reverse))
+
+    def stagger(self, offsets=(-1, 0, 1), longest=False, fillvalue=None):
+        return Iter(
+            more_itertools.stagger(
+                self.x,
+                offsets=offsets,
+                longest=longest,
+                fillvalue=fillvalue,
+            )
+        )
+
+    def pairwise(self):
+        raise NotImplementedError
+
+    @classmethod
+    def zip_offset(cls, *iterables, offsets, longest=False, fillvalue=None):
+        return cls(
+            more_itertools.zip_offset(
+                *iterables,
+                offsets=offsets,
+                longest=longest,
+                fillvalue=fillvalue,
+            )
+        )
+
+    @classmethod
+    def sort_together(cls, iterables, key_list=(0,), reverse=False):
+        return cls(
+            more_itertools.sort_together(
+                iterables,
+                key_list=key_list,
+                reverse=reverse,
+            )
+        )
+
+
 
     # Augmenting
+
+    @classmethod
+    def interleave(*iterables) -> Iter:
+        return Iter(more_itertools.interleave(*iterables))
+
+    @classmethod
+    def interleave_longest(*iterables) -> Iter:
+        return Iter(more_itertools.interleave_longest(*iterables))
+
+
 
 
 
@@ -194,3 +264,136 @@ class Iter:
 
     def nth(self, n, default=None):
         return next(self.islice(n, None), default)
+
+    # Blah
+
+    def collapse(self, base_type=None, levels=None):
+        return Iter(more_itertools.collapse(self.x, base_type=base_type, levels=None))
+
+    def side_effect(self, func, chunk_size=None, before=None, after=None):
+        return Iter(
+            more_itertools.side_effect(
+                func, self.x, chunk_size=chunk_size, before=before, after=after
+            )
+        )
+
+    def padded(self, fillvalue=None, n=None, next_multiple=False):
+        return Iter(
+            more_itertools.padded(
+                self.x,
+                fillvalue=fillvalue,
+                n=n,
+                next_multiple=next_multiple,
+            )
+        )
+
+    def repeat_last(self, default=None):
+        return Iter(more_itertools.repeat_last(self.x, default=default))
+
+    def adjacent(self, predicate, distance=1):
+        return Iter(more_itertools.adjacent(pred, self.x, distance=distance))
+
+    def groupby_transform(self, keyfunc=None, valuefunc=None) -> Iter:
+        return Iter(
+            more_itertools.groupby_transform(
+                self.x,
+                keyfunc=keyfunc,
+                valuefunc=valuefunc,
+            )
+        )
+
+    @classmethod
+    def numeric_range(cls, *args) -> Iter:
+        return Iter(
+            more_itertools.numeric_range(
+                *args
+            )
+        )
+
+    def count_cycle(self, n=None) -> Iter:
+        return Iter(more_itertools.count_cycle(self.x, n=n))
+
+    def locate(self, pred=bool, window_size=None) -> Iter:
+        return Iter(
+            more_itertools.locate(self.x, pred=pred, window_size=window_size)
+        )
+
+    def lstrip(self, pred):
+        return Iter(more_itertools.lstrip(self.x, pred))
+
+    def rstrip(self, pred):
+        return Iter(more_itertools.rstrip(self.x, pred))
+
+    def strip(self, pred):
+        return Iter(more_itertools.strip(self.x, pred))
+
+    def islice_extended(self, *args):
+        return Iter(more_itertools.islice_extended(self.x, *args))
+
+    def always_reversible(self):
+        return Iter(more_itertools.always_reversible(self.x))
+
+    def consecutive_groups(self, ordering=lambda x: x):
+        return Iter(more_itertools.consecutive_groups(self.x, ordering=ordering))
+
+    def difference(self, func=operator.sub, *, initial=None):
+        return Iter(
+            more_itertools.difference(
+                self.x,
+                func=func,
+                initial=initial,
+            )
+        )
+
+    def run_length_encode(self) -> Iter:
+        return Iter(more_itertools.run_length.encode(self.x))
+
+    def run_length_decode(self) -> Iter:
+        return Iter(more_itertools.run_length.decode(self.x))
+
+    def exactly_n(self, n, predicate=bool) -> Iter:
+        return Iter(more_itertools.exactly_n(self.x, n=n, predicate=predicate))
+
+    def circular_shifts(self) -> Iter:
+        return Iter(more_itertools.circular_shifts(self.x))
+
+    def map_reduce(self, keyfunc, valuefunc=None, reducefunc=None) -> Dict:
+        return more_itertools.map_reduce(
+            self.x,
+            keyfunc,
+            valuefunc,
+            reducefunc,
+        )
+
+    def rlocate(self, pred=bool, window_size=None) -> Iter:
+        return Iter(more_itertools.rlocate(self.x, pred, window_size))
+
+    def replace(self, pred, substitutes, count=None, window_size=1) -> Iter:
+        return Iter(more_itertools.replace(
+            self.x, pred, substitutes, count=count, window_size=window_size
+        ))
+
+    def partitions(self) -> Iter:
+        return Iter(more_itertools.partitions(self.x))
+
+    def set_partitions(self, k=None) -> Iter:
+        return Iter(more_itertools.set_partitions(self.x, k=k))
+
+    def time_limited(self, limit_seconds) -> Iter:
+        return Iter(more_itertools.time_limited(limit_seconds, self.x))
+
+    def only(self, default=None, too_long=None) -> Any:
+        return more_itertools.only(self.x, default=default, too_long=too_long)
+
+    def distinct_combinations(self, r):
+        return Iter(more_itertools.distinct_combinations(self.x, r))
+
+    def filter_except(self, validator, *exceptions):
+        return Iter(
+            more_itertools.filter_except(validator, self.x, *exceptions))
+
+    def map_except(self, function, *exceptions):
+        return Iter(more_itertools.map_except(function, self.x, *exceptions))
+
+    def sample(self, k, weights=None) -> Iter:
+        return Iter(more_itertools.sample(self.x, k, weights=weights))
