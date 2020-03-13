@@ -2,7 +2,7 @@ from __future__ import annotations
 import itertools
 import functools
 import operator
-from typing import Iterable, Tuple, Any, TypeVar, List, Iterator, Sequence, Dict
+from typing import Iterable, Tuple, Any, TypeVar, List, Iterator, Sequence, Dict, AnyStr
 import collections.abc
 from types import MethodType
 from more_itertools.more import bucket as bucket_class
@@ -14,6 +14,30 @@ __all__ = [
 ]
 
 T = TypeVar('T')
+
+
+def join_str(iterable: Iterable[AnyStr], glue: AnyStr = '') -> AnyStr:
+    if not isinstance(glue, (bytes, bytearray, str)):
+        raise ValueError('This join function is for string types only')
+    return glue.join(iterable)
+
+
+def join(iterable: Iterable[T], glue: T) -> Iterable[T]:
+    """ Similar functionality can be obtained with, e.g.,
+    interleave, as in
+
+    >>> result = Iter('caleb').interleave(Iter.repeat('x')).collect()
+    >>> result == list('cxaxlxexbx')
+    True
+
+    But you'll see a trailing "x" there, which join avoids. join
+    makes sure to only add the glue separator if another element
+    has arrived.
+    """
+    yield next(iterable)
+    for item in iterable:
+        yield glue
+        yield item
 
 
 class Iter:
@@ -37,7 +61,7 @@ class Iter:
     def __next__(self):
         return next(self.x)
 
-    def collect(self) -> List:
+    def collect(self, container=list) -> List:
         return list(self)
 
     # File operations
@@ -76,7 +100,7 @@ class Iter:
         return Iter(enumerate(self.x))
 
     def dict(self) -> Iter:
-        return Iter(dict(self.x).items)
+        return Iter(dict(self.x).items())
 
     ###
 
@@ -92,6 +116,12 @@ class Iter:
     def sum(self):
         return sum(self.x)
 
+    def join_str(self, glue: AnyStr = '') -> AnyStr:
+        return join_str(self, glue)
+
+    def join(self, glue: T = '') -> Iter:
+        return Iter(join(self, glue))
+
     ###
 
     @classmethod
@@ -102,16 +132,18 @@ class Iter:
         return Iter(itertools.cycle(self.x))
 
     @classmethod
-    def repeat(cls, elem, n=None) -> Iter:
-        return Iter(itertools.repeat(elem, n))
+    def repeat(cls, elem, times=None) -> Iter:
+        # TODO: does it really work like this? Wow.
+        if times:
+            return Iter(itertools.repeat(elem, times=times))
+        else:
+            return Iter(itertools.repeat(elem))
 
     def chain(self, *args):
         return Iter(itertools.chain(self.x, *args))
 
     def islice(self, *args) -> Iter:
         return Iter(itertools.islice(self.x, *args))
-
-
 
     # more-itertools
 
@@ -244,21 +276,13 @@ class Iter:
             )
         )
 
-
-
     # Augmenting
 
-    @classmethod
-    def interleave(*iterables) -> Iter:
-        return Iter(more_itertools.interleave(*iterables))
+    def interleave(self, *iterables) -> Iter:
+        return Iter(more_itertools.interleave(self, *iterables))
 
-    @classmethod
-    def interleave_longest(*iterables) -> Iter:
-        return Iter(more_itertools.interleave_longest(*iterables))
-
-
-
-
+    def interleave_longest(self, *iterables) -> Iter:
+        return Iter(more_itertools.interleave_longest(self, *iterables))
 
     # Other
 
@@ -397,3 +421,16 @@ class Iter:
 
     def sample(self, k, weights=None) -> Iter:
         return Iter(more_itertools.sample(self.x, k, weights=weights))
+
+    # New
+
+    def wrap(self, ends: Sequence[T, T] = '()'):
+        """ Other examples for ends: '"' * 2, or '`' * 2, or '[]' etc. """
+        if len(ends) != 2:
+            raise ValueError("The ends must be a 2-length sequence")
+
+        return Iter(
+            itertools.chain.from_iterable(
+                [ends[0], self, ends[1]]
+            )
+        )

@@ -183,3 +183,11 @@ def test_map_reduce_reducefunc():
         sum,
     )
     assert sorted(x.items()) == [('A', 1), ('B', 2), ('C', 3)]
+
+
+def test_interleave():
+    result = Iter('caleb').interleave(Iter.repeat('x')).collect()
+    assert result == list('cxaxlxexbx')
+
+    result = Iter('caleb').interleave(Iter.repeat('x')).join_str()
+    assert result == 'cxaxlxexbx'
