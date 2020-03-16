@@ -189,5 +189,5 @@ def test_interleave():
     result = Iter('caleb').interleave(Iter.repeat('x')).collect()
     assert result == list('cxaxlxexbx')
 
-    result = Iter('caleb').interleave(Iter.repeat('x')).join_str()
+    result = Iter('caleb').interleave(Iter.repeat('x')).concat('')
     assert result == 'cxaxlxexbx'

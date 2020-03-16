@@ -1,6 +1,6 @@
 import pytest
 
-from excitertools import Iter
+from excitertools import Iter, insert_separator, concat
 
 
 def test_basic():
@@ -102,3 +102,38 @@ def test_all(v, expected):
             .all()
     )
     assert result == expected
+
+def test_sum():
+    result = Iter.range(5).sum()
+    assert result == 10
+
+
+@pytest.mark.parametrize('input,glue,output', [
+    ('abc', '-', 'a-b-c'),
+    (iter('abc'), '-', 'a-b-c'),
+    (b'abc', b'-', b'a-b-c'),
+    (b'abc', b'--', b'a--b--c'),
+    (bytearray(b'abc'), b'--', b'a--b--c'),
+    (b'abc', bytearray(b'--'), b'a--b--c'),
+])
+def test_concat(input, glue, output):
+    assert concat(input, glue) == output
+
+
+def test_concat_error():
+    with pytest.raises(ValueError):
+        assert concat('caleb', None) == 'c-a-l-e-b'
+
+
+@pytest.mark.parametrize('input,glue,output', [
+    ([1, 2, 3], 0, [1, 0, 2, 0, 3]),
+    ([1, 2, 3], [8, 9], [1, [8, 9], 2, [8, 9], 3]),
+    ('abc', '-', list('a-b-c')),
+    pytest.param(b'abc', b'-', list(b'a-b-c'),
+                 marks=pytest.mark.xfail(reason='bytes are dumb')),
+    # (b'abc', b'--', list(b'a--b--c')),
+    # (bytearray(b'abc'), b'--', list(b'a--b--c')),
+    # (b'abc', bytearray(b'--'), list(b'a--b--c')),
+])
+def test_insert(input, glue, output):
+    assert list(insert_separator(input, glue)) == output

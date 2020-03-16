@@ -14,14 +14,14 @@ def test_basic():
     ('caleb', [], [','], '(,c,a,l,e,b,)'),
 ])
 def test_wrap(val, wargs, jargs, result):
-    assert Iter(val).wrap(*wargs).join_str(*jargs) == result
+    assert Iter(val).wrap(*wargs).concat(*(jargs or [''])) == result
 
 
 @pytest.mark.parametrize('val,wargs,jargs,result', [
-    (iter('caleb'), [(iter('abc'), iter('def'))], [], 'abccalebdef'),
+    (iter('caleb'), [(iter('abc'), iter('def'))], [''], 'abccalebdef'),
 ])
 def test_wrap_iterators(val, wargs, jargs, result):
-    assert Iter(val).wrap(*wargs).join_str(*jargs) == result
+    assert Iter(val).wrap(*wargs).concat(*jargs) == result
 
 
 @pytest.mark.parametrize('val,wargs,result', [

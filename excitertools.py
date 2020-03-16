@@ -11,18 +11,14 @@ import more_itertools
 
 __all__ = [
     'Iter',
+    'insert_separator',
+    'concat',
 ]
 
 T = TypeVar('T')
 
 
-def join_str(iterable: Iterable[AnyStr], glue: AnyStr = '') -> AnyStr:
-    if not isinstance(glue, (bytes, bytearray, str)):
-        raise ValueError('This join function is for string types only')
-    return glue.join(iterable)
-
-
-def join(iterable: Iterable[T], glue: T) -> Iterable[T]:
+def insert_separator(iterable: Iterable[Any], glue: Any) -> Iterable[Any]:
     """ Similar functionality can be obtained with, e.g.,
     interleave, as in
 
@@ -33,11 +29,33 @@ def join(iterable: Iterable[T], glue: T) -> Iterable[T]:
     But you'll see a trailing "x" there, which join avoids. join
     makes sure to only add the glue separator if another element
     has arrived.
+
+    It can handle strings without any special considerations, but it doesn't
+    do any special handling for bytes and bytearrays. For that, rather
+    look at `concat()`.
     """
+    if not isinstance(iterable, Iterator):
+        iterable = iter(iterable)
+
     yield next(iterable)
     for item in iterable:
-        yield glue
+        if glue is not None:
+            yield glue
         yield item
+
+
+def concat(iterable: Iterable[AnyStr], glue: AnyStr) -> AnyStr:
+    """Concatenate strings, bytes and bytearrays. It is careful to avoid the
+     problem with single bytes becoming integers, and it looks at the value
+     of `glue` to know whether to handle bytes or strings."""
+    if isinstance(glue, (bytes, bytearray)):
+        return glue.join(iterable[i:i + 1] for i, _ in enumerate(iterable))
+
+    elif isinstance(glue, str):
+        return glue.join(iterable)
+
+    else:
+        raise ValueError("Must be called with bytes, bytearray or str")
 
 
 class Iter:
@@ -116,11 +134,11 @@ class Iter:
     def sum(self):
         return sum(self.x)
 
-    def join_str(self, glue: AnyStr = '') -> AnyStr:
-        return join_str(self, glue)
+    def concat(self, glue: AnyStr) -> AnyStr:
+        return concat(self, glue)
 
-    def join(self, glue: T = '') -> Iter:
-        return Iter(join(self, glue))
+    def insert(self, glue: Any) -> Iter:
+        return Iter(insert_separator(self, glue))
 
     ###
 
