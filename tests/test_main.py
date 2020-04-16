@@ -8,9 +8,18 @@ def test_basic():
     assert list(it) == [0, 1, 2, 3, 4]
 
 
-def test_collect():
-    it = Iter(range(5))
-    assert it.collect() == [0, 1, 2, 3, 4]
+@pytest.mark.parametrize('container,it,expected', [
+    (list, range(5), [0, 1, 2, 3, 4]),
+    (set, range(5), {0, 1, 2, 3, 4}),
+    (dict, zip('abc', range(3)), dict(a=0, b=1, c=2)),
+    (dict.fromkeys, 'abc', dict(a=None, b=None, c=None)),
+    (frozenset, range(5), frozenset([0, 1, 2, 3, 4])),
+    (str, ['a', 'b', 'c'], 'abc'),
+    # (bytes, [b'a', b'b', b'c'], b'abc'),
+])
+def test_collect(container, it, expected):
+    it = Iter(it)
+    assert it.collect(container=container) == expected
 
 
 def test_islice():
