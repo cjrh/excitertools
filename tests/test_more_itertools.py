@@ -185,6 +185,24 @@ def test_map_reduce_reducefunc():
     assert sorted(x.items()) == [('A', 1), ('B', 2), ('C', 3)]
 
 
+@pytest.mark.parametrize('elem,times,expected', [
+    ('x', 3, ['x'] * 3),
+])
+def test_repeat_finite(elem, times, expected):
+    result = Iter.repeat(elem, times=times).collect()
+    assert result == expected
+
+
+@pytest.mark.parametrize('elem,taken,expected', [
+    ('x', 0, []),
+    ('x', 3, ['x'] * 3),
+    ('x', 10000, ['x'] * 10000),
+])
+def test_repeat_finite(elem, taken, expected):
+    result = Iter.repeat(elem).take(taken).collect()
+    assert result == expected
+
+
 def test_interleave():
     result = Iter('caleb').interleave(Iter.repeat('x')).collect()
     assert result == list('cxaxlxexbx')
