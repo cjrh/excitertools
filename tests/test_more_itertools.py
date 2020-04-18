@@ -215,3 +215,41 @@ def test_split_into():
 def test_split_when():
     result = Iter([1, 2, 3, 1, 4, 100, 4, 5, 1, 2]).split_when(lambda x, y: y < x).collect()
     assert result == [[1, 2, 3], [1, 4, 100], [4, 5], [1, 2]]
+
+
+@pytest.mark.parametrize('iterable,n,fillvalue,step,expected', [
+    ([1, 2, 3, 4, 5], 3, None, 1, [(1, 2, 3), (2, 3, 4), (3, 4, 5)]),
+    ([1, 2, 3], 4, None, 1, [(1, 2, 3, None)]),
+    ([1, 2, 3, 4, 5, 6], 3, '!', 2, [(1, 2, 3), (3, 4, 5), (5, 6, '!')]),
+])
+def test_windowed(iterable, n, fillvalue, step, expected):
+    result = Iter(iterable).windowed(n, fillvalue, step).collect()
+    assert result == expected
+
+
+@pytest.mark.parametrize('iterable,expected', [
+    ('more', ['m', 'o', 'r', 'e', 'mo', 'or', 're', 'mor', 'ore', 'more']),
+])
+def test_substrings(iterable, expected):
+    result = Iter(iterable).substrings().map(lambda s: ''.join(s)).collect()
+    assert result == expected
+
+
+@pytest.mark.parametrize('iterable,expected', [
+    (
+        'more',
+        [
+            ('m', 0, 1), ('o', 1, 2), ('r', 2, 3), ('e', 3, 4),
+            ('mo', 0, 2), ('or', 1, 3), ('re', 2, 4), ('mor', 0, 3),
+            ('ore', 1, 4), ('more', 0, 4),
+        ],
+    ),
+])
+def test_substrings_indexes(iterable, expected):
+    result = (
+        Iter(iterable)
+            .substrings_indexes()
+            .map(lambda tup: (''.join(tup[0]), *tup[1:]))
+            .collect()
+    )
+    assert result == expected

@@ -1,3 +1,16 @@
+"""
+
+This is the documentation.
+
+Here is a heading:
+
+Heading
+-------
+
+That was the heading.
+
+
+"""
 from __future__ import annotations
 import itertools
 import functools
@@ -81,12 +94,14 @@ class Iter:
 
     def collect(self, container: T = list) -> T:
         """
-        >>> Iter('abc').collect()
-        ['a', 'b', 'c']
-        >>> Iter('abc').collect(str)
-        'abc'
-        >>> Iter('abcaaaabbbbccc').collect(set) == {'a', 'b', 'c'}
-        True
+        .. code-block:: python
+
+            >>> Iter('abc').collect()
+            ['a', 'b', 'c']
+            >>> Iter('abc').collect(str)
+            'abc'
+            >>> Iter('abcaaaabbbbccc').collect(set) == {'a', 'b', 'c'}
+            True
 
         """
         if container == str:
@@ -326,7 +341,12 @@ class Iter:
         return Iter(more_itertools.substrings(self.x))
 
     def substrings_indexes(self, reverse=False):
-        return Iter(more_itertools.substrings_indexes(self.x, reverse=reverse))
+        return Iter(
+            more_itertools.substrings_indexes(
+                list(self.x),
+                reverse=reverse
+            )
+        )
 
     def stagger(self, offsets=(-1, 0, 1), longest=False, fillvalue=None):
         return Iter(
