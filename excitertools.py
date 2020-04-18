@@ -7,9 +7,6 @@ from typing import Iterable, Tuple, Any, TypeVar, List, Iterator, Sequence, Dict
     Union
 import collections.abc
 
-from types import MethodType
-from more_itertools.more import bucket as bucket_class
-
 import more_itertools
 
 __all__ = [
@@ -116,6 +113,9 @@ class Iter:
     def range(cls, *args) -> Iter:
         return cls(range(*args))
 
+    def zip(self, *iterables):
+        return Iter(zip(self.x, *iterables))
+
     def any(self) -> bool:
         return any(self.x)
 
@@ -158,7 +158,10 @@ class Iter:
     def insert(self, glue: Any) -> Iter:
         return Iter(insert_separator(self, glue))
 
-    ###
+    # standard library
+    #=================
+
+    # Infinite iterators
 
     @classmethod
     def count(cls, *args) -> Iter:
@@ -175,11 +178,46 @@ class Iter:
         else:
             return Iter(itertools.repeat(elem))
 
-    def chain(self, *args):
-        return Iter(itertools.chain(self.x, *args))
+    # Iterators terminating on the shortest input sequence
+    def accumulate(self, func):
+        return Iter(itertools.accumulate(self.x, func))
+
+    def chain(self):
+        # This doesn't work right, the `from_iterable` version is probably
+        # what we expect to happen most of the time.
+        # return Iter(itertools.chain(self.x))
+        return self.chain_from_iterable()
+
+    def chain_from_iterable(self):
+        return Iter(itertools.chain.from_iterable(self.x))
+
+    def compress(self, selectors):
+        return Iter(itertools.compress(self.x, selectors))
+
+    def dropwhile(self, pred):
+        return Iter(itertools.dropwhile(pred, self.x))
+
+    def filterfalse(self, pred):
+        return Iter(itertools.filterfalse(pred, self.x))
+
+    def groupby(self, key=None):
+        return Iter(itertools.groupby(self.x, key=key))
 
     def islice(self, *args) -> Iter:
         return Iter(itertools.islice(self.x, *args))
+
+    def starmap(self, func):
+        return Iter(itertools.starmap(func, self.x))
+
+    def takewhile(self, pred):
+        return Iter(itertools.takewhile(pred, self.x))
+
+    def tee(self, n=2):
+        # Pay attention
+        return Iter(Iter(_) for _ in itertools.tee(self.x, n))
+
+    def zip_longest(self, *iterables, fillvalue=None):
+        return Iter(itertools.zip_longest(self.x, *iterables, fillvalue=fillvalue))
 
     # more-itertools
     #===============

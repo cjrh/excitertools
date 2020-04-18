@@ -67,21 +67,35 @@ def test_split_after():
 
 def test_bucket():
     iterable = ['a1', 'b1', 'c1', 'a2', 'b2', 'c2', 'b3']
-    s = Iter(iterable).bucket(key=lambda x: x[0])
-    assert s['a'].collect() == ['a1', 'a2']
-    assert s['b'].collect() == ['b1', 'b2', 'b3']
+    bucket = Iter(iterable).bucket(key=lambda x: x[0])
+    assert bucket['a'].collect() == ['a1', 'a2']
+    assert bucket['b'].collect() == ['b1', 'b2', 'b3']
 
-    iterable = ['a1', 'b1', 'c1', 'a2', 'b2', 'c2', 'b3']
-    s = Iter(iterable).bucket(key=lambda x: x[0])
-    a_iterable = s['a']
+    bucket = Iter(iterable).bucket(key=lambda x: x[0])
+    a_iterable = bucket['a']
     for x in a_iterable:
         print(x)
 
-    iterable = ['a1', 'b1', 'c1', 'a2', 'b2', 'c2', 'b3']
-    s = Iter(iterable).bucket(key=lambda x: x[0])
-    a_iterable = s['a']
+    bucket = Iter(iterable).bucket(key=lambda x: x[0])
+    a_iterable = bucket['a']
     assert next(a_iterable) == 'a1'
     assert next(a_iterable) == 'a2'
+
+    bucket = Iter(iterable).bucket(key=lambda x: x[0])
+    a_iterable = bucket['a']
+    result = a_iterable.collect()
+    assert result == ['a1', 'a2']
+
+    bucket = Iter(iterable).bucket(key=lambda x: x[0])
+    result = Iter(bucket).collect()
+    assert result == ['a', 'b', 'c']
+
+    bucket = Iter(iterable).bucket(key=lambda x: x[0])
+    for k, expected in zip(bucket, ['a', 'b', 'c']):
+        assert k == expected
+
+    result = Iter(iterable).bucket(key=lambda x: x[0])['a'].collect()
+    assert result == ['a1', 'a2']
 
 
 def test_unzip():
@@ -185,27 +199,19 @@ def test_map_reduce_reducefunc():
     assert sorted(x.items()) == [('A', 1), ('B', 2), ('C', 3)]
 
 
-@pytest.mark.parametrize('elem,times,expected', [
-    ('x', 3, ['x'] * 3),
-])
-def test_repeat_finite(elem, times, expected):
-    result = Iter.repeat(elem, times=times).collect()
-    assert result == expected
-
-
-@pytest.mark.parametrize('elem,taken,expected', [
-    ('x', 0, []),
-    ('x', 3, ['x'] * 3),
-    ('x', 10000, ['x'] * 10000),
-])
-def test_repeat_finite(elem, taken, expected):
-    result = Iter.repeat(elem).take(taken).collect()
-    assert result == expected
-
-
 def test_interleave():
     result = Iter('caleb').interleave(Iter.repeat('x')).collect()
     assert result == list('cxaxlxexbx')
 
     result = Iter('caleb').interleave(Iter.repeat('x')).concat('')
     assert result == 'cxaxlxexbx'
+
+
+def test_split_into():
+    result = Iter('caleb').split_into([2, 1, 2]).collect()
+    assert result == [['c', 'a'], ['l'], ['e', 'b']]
+
+
+def test_split_when():
+    result = Iter([1, 2, 3, 1, 4, 100, 4, 5, 1, 2]).split_when(lambda x, y: y < x).collect()
+    assert result == [[1, 2, 3], [1, 4, 100], [4, 5], [1, 2]]

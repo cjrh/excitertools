@@ -54,10 +54,6 @@ def test_map():
     assert result == 14
 
 
-def func(x):
-    return x * 2
-
-
 def test_piecemeal_results():
     it = (
         Iter
@@ -146,5 +142,128 @@ def test_concat_error():
     # (bytearray(b'abc'), b'--', list(b'a--b--c')),
     # (b'abc', bytearray(b'--'), list(b'a--b--c')),
 ])
-def test_insert(input, glue, output):
+def test_insert_separator(input, glue, output):
     assert list(insert_separator(input, glue)) == output
+
+
+def test_insert():
+    result = Iter('caleb').insert('x').collect(container=str)
+    # Note the difference as compare to the output of interleave
+    assert result == 'cxaxlxexb'
+
+
+@pytest.mark.parametrize('elem,times,expected', [
+    ('x', 3, ['x'] * 3),
+])
+def test_repeat_finite(elem, times, expected):
+    result = Iter.repeat(elem, times=times).collect()
+    assert result == expected
+
+
+@pytest.mark.parametrize('elem,taken,expected', [
+    ('x', 0, []),
+    ('x', 3, ['x'] * 3),
+])
+def test_repeat_infinite(elem, taken, expected):
+    result = Iter.repeat(elem).take(taken).collect()
+    assert result == expected
+
+
+@pytest.mark.parametrize('arg,func,expected', [
+    ([1, 2, 3, 4, 5], None, [1, 3, 6, 10, 15]),
+    ([1, 2, 3, 4, 5], lambda x, y: x * y, [1, 2, 6, 24, 120]),
+])
+def test_accumulate(arg, func, expected):
+    result = Iter(arg).accumulate(func).collect()
+    assert result == expected
+
+
+@pytest.mark.parametrize('args,expected', [
+    (
+        ['ABC', 'DEF'], ['A', 'B', 'C', 'D', 'E', 'F']
+    ),
+])
+def test_chain(args, expected):
+    result = Iter(args).chain().collect()
+    assert result == expected
+
+
+@pytest.mark.parametrize('args,expected', [
+    (
+            ['ABC', 'DEF'], ['A', 'B', 'C', 'D', 'E', 'F']
+    ),
+])
+def test_from_iterable(args, expected):
+    result = Iter(args).chain_from_iterable().collect()
+    assert result == expected
+
+
+@pytest.mark.parametrize('arg,selectors,expected', [
+    ('ABCDEF', [1, 0, 1, 0, 1, 1], ['A', 'C', 'E', 'F']),
+])
+def test_compress(arg, selectors, expected):
+    result = Iter(arg).compress(selectors).collect()
+    assert result == expected
+
+
+@pytest.mark.parametrize('arg,pred,expected', [
+    ([1, 4, 6, 4, 1], lambda x: x<5, [6, 4, 1]),
+])
+def test_dropwhile(arg, pred, expected):
+    result = Iter(arg).dropwhile(pred).collect()
+    assert result == expected
+
+
+@pytest.mark.parametrize('arg,pred,expected', [
+    (range(10), lambda x: x%2, [0, 2, 4, 6, 8]),
+])
+def test_filterfalse(arg, pred, expected):
+    result = Iter(arg).filterfalse(pred).collect()
+    assert result == expected
+
+
+@pytest.mark.parametrize('arg,key,expected', [
+    ('AABCBA', None, [['A', 'A', 'A'], ['B', 'B'], ['C']]),
+])
+def test_groupby(arg, key, expected):
+    # NOTE: this doesn't work because the underlying iterator is shared,
+    # see the docs for more info. You have to do something with the groups
+    # while the iterator is in-flight.
+    result = Iter(sorted(arg)).groupby(key).map(lambda tup: list(tup[1])).collect()
+    assert result == expected
+
+
+@pytest.mark.parametrize('arg,func,expected', [
+    (
+        [('a', 1), ('b', 2), ('c', 3)],
+        lambda c, n: f'{c}={n}',
+        ['a=1', 'b=2', 'c=3'],
+    ),
+])
+def test_starmap(arg, func, expected):
+    result = Iter(arg).starmap(func).collect()
+    assert result == expected
+
+
+def test_takewhile():
+    result = Iter([1, 4, 6, 4, 1]).takewhile(lambda x: x<5).collect()
+    assert result == [1, 4]
+
+
+def test_tee():
+    x, y = Iter([1, 4, 6, 4, 1]).tee()
+    assert x.take(2).collect() == [1, 4]
+    assert y.take(3).collect() == [1, 4, 6]
+
+    result = Iter([1, 4, 6, 4, 1]).tee(3).nth(2).take(2).collect()
+    assert result == [1, 4]
+
+
+def test_zip():
+    result = Iter([1, 4, 6, 4, 1]).zip('abc').collect()
+    assert result == [(1, 'a'), (4, 'b'), (6, 'c')]
+
+
+def test_zip_longest():
+    result = Iter([1, 4, 6, 4, 1]).zip_longest('abc').collect()
+    assert result == [(1, 'a'), (4, 'b'), (6, 'c'), (4, None), (1, None)]
