@@ -17,7 +17,7 @@ import functools
 import operator
 from collections import UserDict
 from typing import Iterable, Tuple, Any, TypeVar, List, Iterator, Sequence, Dict, AnyStr, Set, FrozenSet, Callable, \
-    Union
+    Union, Generic, MutableSequence, Sized, Collection, Type
 import collections.abc
 
 import more_itertools
@@ -29,6 +29,7 @@ __all__ = [
 ]
 
 T = TypeVar('T')
+C = TypeVar('C')
 
 
 def insert_separator(iterable: Iterable[Any], glue: Any) -> Iterable[Any]:
@@ -71,8 +72,10 @@ def concat(iterable: Iterable[AnyStr], glue: AnyStr) -> AnyStr:
         raise ValueError("Must be called with bytes, bytearray or str")
 
 
-class Iter:
-    def __init__(self, x):
+class Iter(Generic[T]):
+    x: Iterator[T]
+
+    def __init__(self, x: Iterable[T]):
         if isinstance(x, collections.abc.Iterator):
             self.x = x
         else:
@@ -86,13 +89,13 @@ class Iter:
     # def __getattr__(self, name):
     #     return globals()[name]
 
-    def __iter__(self) -> Iterator:
+    def __iter__(self) -> Iterator[T]:
         return self.x
 
-    def __next__(self):
+    def __next__(self) -> T:
         return next(self.x)
 
-    def collect(self, container: T = list) -> T:
+    def collect(self, container: Type[C] = list) -> C[T]:
         """
         .. code-block:: python
 
@@ -134,10 +137,10 @@ class Iter:
     # Standard utilities
 
     @classmethod
-    def range(cls, *args) -> Iter:
+    def range(cls, *args) -> Iter[int]:
         return cls(range(*args))
 
-    def zip(self, *iterables):
+    def zip(self, *iterables: Any) -> Iter[Tuple[T, ...]]:
         return Iter(zip(self.x, *iterables))
 
     def any(self) -> bool:
@@ -146,7 +149,7 @@ class Iter:
     def all(self) -> bool:
         return all(self.x)
 
-    def enumerate(self) -> Iter:
+    def enumerate(self) -> Iter[Tuple[int, T]]:
         return Iter(enumerate(self.x))
 
     def dict(self) -> Dict:
@@ -154,7 +157,7 @@ class Iter:
 
     ###
 
-    def map(self, func: Union[Callable, str]) -> Iter:
+    def map(self, func: Union[Callable[..., C], str]) -> Iter[C]:
         """
         >>> result = Iter('caleb').map(lambda x: (x, ord(x))).dict()
         >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
@@ -167,10 +170,10 @@ class Iter:
         else:
             return Iter(map(func, self.x))
 
-    def filter(self, *args) -> Iter:
+    def filter(self, *args) -> Iter[T]:
         return Iter(filter(*args, self.x))
 
-    def reduce(self, func, *args):
+    def reduce(self, func: Callable[..., T], *args) -> T:
         return functools.reduce(func, self.x, *args)
 
     def sum(self):
@@ -179,7 +182,7 @@ class Iter:
     def concat(self, glue: AnyStr) -> AnyStr:
         return concat(self.x, glue)
 
-    def insert(self, glue: Any) -> Iter:
+    def insert(self, glue: C) -> Iter[Union[C, T]]:
         return Iter(insert_separator(self, glue))
 
     # standard library
@@ -188,14 +191,14 @@ class Iter:
     # Infinite iterators
 
     @classmethod
-    def count(cls, *args) -> Iter:
+    def count(cls, *args) -> Iter[int]:
         return cls(itertools.count(*args))
 
-    def cycle(self) -> Iter:
+    def cycle(self) -> Iter[T]:
         return Iter(itertools.cycle(self.x))
 
     @classmethod
-    def repeat(cls, elem, times=None) -> Iter:
+    def repeat(cls, elem: C, times=None) -> Iter[C]:
         # TODO: does it really work like this? Wow.
         if times:
             return Iter(itertools.repeat(elem, times=times))
@@ -206,10 +209,10 @@ class Iter:
     def accumulate(self, func):
         return Iter(itertools.accumulate(self.x, func))
 
-    def chain(self, *iterables):
+    def chain(self, *iterables: Iterable[T]) -> Iter[T]:
         return Iter(itertools.chain(self.x, *iterables))
 
-    def chain_from_iterable(self):
+    def chain_from_iterable(self) -> Iter[T]:
         return Iter(itertools.chain.from_iterable(self.x))
 
     def compress(self, selectors):
@@ -347,12 +350,14 @@ class Iter:
 
     def stagger(self, offsets=(-1, 0, 1), longest=False, fillvalue=None):
         """
-        >>> Iter([0, 1, 2, 3]).stagger().collect()
-        [(None, 0, 1), (0, 1, 2), (1, 2, 3)]
-        >>> Iter(range(8)).stagger(offsets=(0, 2, 4)).collect()
-        [(0, 2, 4), (1, 3, 5), (2, 4, 6), (3, 5, 7)]
-        >>> Iter([0, 1, 2, 3]).stagger(longest=True).collect()
-        [(None, 0, 1), (0, 1, 2), (1, 2, 3), (2, 3, None), (3, None, None)]
+        .. code-block:: python
+
+            >>> Iter([0, 1, 2, 3]).stagger().collect()
+            [(None, 0, 1), (0, 1, 2), (1, 2, 3)]
+            >>> Iter(range(8)).stagger(offsets=(0, 2, 4)).collect()
+            [(0, 2, 4), (1, 3, 5), (2, 4, 6), (3, 5, 7)]
+            >>> Iter([0, 1, 2, 3]).stagger(longest=True).collect()
+            [(None, 0, 1), (0, 1, 2), (1, 2, 3), (2, 3, None), (3, None, None)]
 
         """
         return Iter(
@@ -365,17 +370,59 @@ class Iter:
         )
 
     def pairwise(self):
-        raise NotImplementedError
+        """
+        See https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.pairwise
+
+        .. code-block:: python
+
+            >>> Iter.count().pairwise().take(4).collect()
+            [(0, 1), (1, 2), (2, 3), (3, 4)]
+        """
+        return Iter(more_itertools.pairwise(self.x))
 
     # Augmenting
 
     def count_cycle(self, n=None) -> Iter:
+        """
+
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.count_cycle
+
+        .. code-block:: python
+
+            >>> Iter('AB').count_cycle(3).collect()
+            [(0, 'A'), (0, 'B'), (1, 'A'), (1, 'B'), (2, 'A'), (2, 'B')]
+
+        """
         return Iter(more_itertools.count_cycle(self.x, n=n))
 
-    def intersperse(self):
-        raise NotImplementedError
+    def intersperse(self, e, n=1) -> Iter:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.intersperse
 
-    def padded(self, fillvalue=None, n=None, next_multiple=False):
+        .. code-block:: python
+
+            >>> Iter([1, 2, 3, 4, 5]).intersperse('!').collect()
+            [1, '!', 2, '!', 3, '!', 4, '!', 5]
+
+            >>> Iter([1, 2, 3, 4, 5]).intersperse(None, n=2).collect()
+            [1, 2, None, 3, 4, None, 5]
+
+        """
+        return Iter(more_itertools.intersperse(e, self.x, n=n))
+
+    def padded(self, fillvalue=None, n=None, next_multiple=False) -> Iter:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padded
+
+        .. code-block:: python
+
+            >>> Iter([1, 2, 3]).padded('?', 5).collect()
+            [1, 2, 3, '?', '?']
+
+            >>> Iter([1, 2, 3, 4]).padded(n=3, next_multiple=True).collect()
+            [1, 2, 3, 4, None, None]
+
+        """
         return Iter(
             more_itertools.padded(
                 self.x,
@@ -388,6 +435,18 @@ class Iter:
     # repeat from upstream
 
     def repeat_last(self, default=None):
+        """
+        https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.repeat_last
+
+        .. code-block:: python
+
+            >>> Iter(range(3)).repeat_last().islice(5).collect()
+            [0, 1, 2, 2, 2]
+
+            >>> Iter(range(0)).repeat_last(42).islice(5).collect()
+            [42, 42, 42, 42, 42]
+
+        """
         return Iter(more_itertools.repeat_last(self.x, default=default))
 
     def adjacent(self, predicate, distance=1):
