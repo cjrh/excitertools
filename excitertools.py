@@ -459,8 +459,8 @@ class Iter:
     def nth(self, n, default=None):
         return next(self.islice(n, None), default)
 
-    def take(self):
-        raise NotImplementedError
+    def take(self, n: int) -> Iter:
+        return Iter(more_itertools.take(n, self.x))
 
     def tail(self):
         raise NotImplementedError
