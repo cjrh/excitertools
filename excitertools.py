@@ -206,11 +206,8 @@ class Iter:
     def accumulate(self, func):
         return Iter(itertools.accumulate(self.x, func))
 
-    def chain(self):
-        # This doesn't work right, the `from_iterable` version is probably
-        # what we expect to happen most of the time.
-        # return Iter(itertools.chain(self.x))
-        return self.chain_from_iterable()
+    def chain(self, *iterables):
+        return Iter(itertools.chain(self.x, *iterables))
 
     def chain_from_iterable(self):
         return Iter(itertools.chain.from_iterable(self.x))
@@ -349,6 +346,15 @@ class Iter:
         )
 
     def stagger(self, offsets=(-1, 0, 1), longest=False, fillvalue=None):
+        """
+        >>> Iter([0, 1, 2, 3]).stagger().collect()
+        [(None, 0, 1), (0, 1, 2), (1, 2, 3)]
+        >>> Iter(range(8)).stagger(offsets=(0, 2, 4)).collect()
+        [(0, 2, 4), (1, 3, 5), (2, 4, 6), (3, 5, 7)]
+        >>> Iter([0, 1, 2, 3]).stagger(longest=True).collect()
+        [(None, 0, 1), (0, 1, 2), (1, 2, 3), (2, 3, None), (3, None, None)]
+
+        """
         return Iter(
             more_itertools.stagger(
                 self.x,

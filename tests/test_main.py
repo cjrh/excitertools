@@ -178,13 +178,13 @@ def test_accumulate(arg, func, expected):
     assert result == expected
 
 
-@pytest.mark.parametrize('args,expected', [
+@pytest.mark.parametrize('arg,iterables,expected', [
     (
-        ['ABC', 'DEF'], ['A', 'B', 'C', 'D', 'E', 'F']
+        'ABC', ['DEF'], ['A', 'B', 'C', 'D', 'E', 'F']
     ),
 ])
-def test_chain(args, expected):
-    result = Iter(args).chain().collect()
+def test_chain(arg, iterables, expected):
+    result = Iter(arg).chain(*iterables).collect()
     assert result == expected
 
 
