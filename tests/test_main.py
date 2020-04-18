@@ -135,7 +135,9 @@ def test_concat_error():
 
 
 @pytest.mark.parametrize('input,glue,output', [
+    ([1, 2, 3], None, [1, 2, 3]),
     ([1, 2, 3], 0, [1, 0, 2, 0, 3]),
+    (iter([1, 2, 3]), 0, [1, 0, 2, 0, 3]),
     ([1, 2, 3], [8, 9], [1, [8, 9], 2, [8, 9], 3]),
     ('abc', '-', list('a-b-c')),
     pytest.param(b'abc', b'-', list(b'a-b-c'),

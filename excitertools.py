@@ -21,7 +21,6 @@ __all__ = [
 T = TypeVar('T')
 
 
-
 def insert_separator(iterable: Iterable[Any], glue: Any) -> Iterable[Any]:
     """ Similar functionality can be obtained with, e.g.,
     interleave, as in
