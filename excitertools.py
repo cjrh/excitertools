@@ -80,6 +80,15 @@ class Iter:
         return next(self.x)
 
     def collect(self, container: T = list) -> T:
+        """
+        >>> Iter('abc').collect()
+        ['a', 'b', 'c']
+        >>> Iter('abc').collect(str)
+        'abc'
+        >>> Iter('abcaaaabbbbccc').collect(set) == {'a', 'b', 'c'}
+        True
+
+        """
         if container == str:
             return self.concat('')
         elif container == bytes:
