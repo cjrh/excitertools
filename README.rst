@@ -6,16 +6,16 @@ itertools in the form of function call chaining
 Others
 ======
 
-- My fork, upstream seems gone `chained-iterable <https://github.com/cjrh/chained-iterable>`_.
-- https://pypi.org/project/chiter/
+- My fork of a now-missing library: `chained-iterable <https://github.com/cjrh/chained-iterable>`_.
+- https://github.com/olirice/flupy
+- https://github.com/ddstte/chiter
 - https://github.com/neverendingqs/pyiterable
-- https://pypi.org/project/iterable-collections/
-- https://pypi.org/project/iterator-chain/
+- https://github.com/alliefitter/iterable_collections
 - https://github.com/halprin/iterator-chain
-- https://pypi.org/project/chainz/
 - https://github.com/jagill/python-chainz
-- https://pypi.org/project/IterPipe/
-- https://pypi.org/project/iterchain/
+- https://github.com/ZianVW/IterPipe
+- https://github.com/Evelyn-H/iterchain
+- https://github.com/EntilZha/PyFunctional
 
 Tangentially related:
 
