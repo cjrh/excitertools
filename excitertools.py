@@ -16,20 +16,49 @@ import itertools
 import functools
 import operator
 from collections import UserDict
-from typing import Iterable, Tuple, Any, TypeVar, List, Iterator, Sequence, Dict, AnyStr, Set, FrozenSet, Callable, \
-    Union, Generic, MutableSequence, Sized, Collection, Type
+from typing import (
+    Iterable,
+    Tuple,
+    Any,
+    TypeVar,
+    List,
+    Iterator,
+    Sequence,
+    Dict,
+    AnyStr,
+    Set,
+    FrozenSet,
+    Callable,
+    Union,
+    Generic,
+    MutableSequence,
+    Sized,
+    Collection,
+    Type,
+    Optional,
+)
 import collections.abc
 
 import more_itertools
 
 __all__ = [
-    'Iter',
-    'insert_separator',
-    'concat',
+    "Iter",
+    "insert_separator",
+    "concat",
 ]
 
-T = TypeVar('T')
-C = TypeVar('C')
+T = TypeVar("T")
+C = TypeVar("C")
+K = TypeVar("K")
+V = TypeVar("V")
+
+
+class class_or_instancemethod(classmethod):
+    """From: https://stackoverflow.com/a/28238047/170656"""
+
+    def __get__(self, instance, type_):
+        descr_get = super().__get__ if instance is None else self.__func__.__get__
+        return descr_get(instance, type_)
 
 
 def insert_separator(iterable: Iterable[Any], glue: Any) -> Iterable[Any]:
@@ -63,7 +92,7 @@ def concat(iterable: Iterable[AnyStr], glue: AnyStr) -> AnyStr:
      problem with single bytes becoming integers, and it looks at the value
      of `glue` to know whether to handle bytes or strings."""
     if isinstance(glue, (bytes, bytearray)):
-        return glue.join(iterable[i:i + 1] for i, _ in enumerate(iterable))
+        return glue.join(iterable[i : i + 1] for i, _ in enumerate(iterable))
 
     elif isinstance(glue, str):
         return glue.join(iterable)
@@ -95,7 +124,7 @@ class Iter(Generic[T]):
     def __next__(self) -> T:
         return next(self.x)
 
-    def collect(self, container: Type[C] = list) -> C[T]:
+    def collect(self, container=list) -> List[T]:
         """
         .. code-block:: python
 
@@ -108,27 +137,36 @@ class Iter(Generic[T]):
 
         """
         if container == str:
-            return self.concat('')
+            return self.concat("")
         elif container == bytes:
-            return self.concat(b'')
+            return self.concat(b"")
         else:
             return container(self)
 
     # File operations
 
     @classmethod
-    def open(cls, file, mode='r', buffering=-1, encoding=None, errors=None,
-             newline=None, closefd=True, opener=None) -> Iter:
+    def open(
+        cls,
+        file,
+        mode="r",
+        buffering=-1,
+        encoding=None,
+        errors=None,
+        newline=None,
+        closefd=True,
+        opener=None,
+    ) -> Iter:
         def inner():
             with open(
-                    file=file,
-                    mode=mode,
-                    buffering=buffering,
-                    encoding=encoding,
-                    errors=errors,
-                    newline=newline,
-                    closefd=closefd,
-                    opener=opener,
+                file=file,
+                mode=mode,
+                buffering=buffering,
+                encoding=encoding,
+                errors=errors,
+                newline=newline,
+                closefd=closefd,
+                opener=opener,
             ) as f:
                 yield from f
 
@@ -186,7 +224,7 @@ class Iter(Generic[T]):
         return Iter(insert_separator(self, glue))
 
     # standard library
-    #=================
+    # =================
 
     # Infinite iterators
 
@@ -244,7 +282,7 @@ class Iter(Generic[T]):
         return Iter(itertools.zip_longest(self.x, *iterables, fillvalue=fillvalue))
 
     # more-itertools
-    #===============
+    # ===============
 
     # Grouping
 
@@ -252,9 +290,7 @@ class Iter(Generic[T]):
         return Iter(more_itertools.chunked(self.x, n))
 
     def ichunked(self, n: int) -> Iter:
-        return Iter(
-            Iter(it) for it in more_itertools.ichunked(self.x, n)
-        )
+        return Iter(Iter(it) for it in more_itertools.ichunked(self.x, n))
 
     @classmethod
     def sliced(cls, seq: Sequence, n: int) -> Iter:
@@ -282,7 +318,6 @@ class Iter(Generic[T]):
         return Iter(more_itertools.split_when(self.x, pred))
 
     def bucket(self, key, validator=None):
-
         class _bucket(more_itertools.bucket):
             def __iter__(self):
                 return Iter(super().__iter__())
@@ -309,7 +344,6 @@ class Iter(Generic[T]):
         return Iter(head), Iter(iterable)
 
     def peekable(self) -> more_itertools.peekable:
-
         class _peekable(more_itertools.peekable):
             def __iter__(self):
                 return Iter(super().__iter__())
@@ -325,7 +359,6 @@ class Iter(Generic[T]):
         return _peekable(self.x)
 
     def seekable(self) -> more_itertools.seekable:
-
         class _seekable(more_itertools.seekable):
             def __iter__(self):
                 return Iter(super().__iter__())
@@ -341,12 +374,7 @@ class Iter(Generic[T]):
         return Iter(more_itertools.substrings(self.x))
 
     def substrings_indexes(self, reverse=False):
-        return Iter(
-            more_itertools.substrings_indexes(
-                list(self.x),
-                reverse=reverse
-            )
-        )
+        return Iter(more_itertools.substrings_indexes(list(self.x), reverse=reverse))
 
     def stagger(self, offsets=(-1, 0, 1), longest=False, fillvalue=None):
         """
@@ -362,10 +390,7 @@ class Iter(Generic[T]):
         """
         return Iter(
             more_itertools.stagger(
-                self.x,
-                offsets=offsets,
-                longest=longest,
-                fillvalue=fillvalue,
+                self.x, offsets=offsets, longest=longest, fillvalue=fillvalue,
             )
         )
 
@@ -410,7 +435,12 @@ class Iter(Generic[T]):
         """
         return Iter(more_itertools.intersperse(e, self.x, n=n))
 
-    def padded(self, fillvalue=None, n=None, next_multiple=False) -> Iter:
+    def padded(
+        self,
+        fillvalue: Optional[C] = None,
+        n: Optional[int] = None,
+        next_multiple: bool = False,
+    ) -> Iter[Union[T, C]]:
         """
         See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padded
 
@@ -425,16 +455,13 @@ class Iter(Generic[T]):
         """
         return Iter(
             more_itertools.padded(
-                self.x,
-                fillvalue=fillvalue,
-                n=n,
-                next_multiple=next_multiple,
+                self.x, fillvalue=fillvalue, n=n, next_multiple=next_multiple,
             )
         )
 
     # repeat from upstream
 
-    def repeat_last(self, default=None):
+    def repeat_last(self, default=None) -> Iter[T]:
         """
         https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.repeat_last
 
@@ -449,38 +476,167 @@ class Iter(Generic[T]):
         """
         return Iter(more_itertools.repeat_last(self.x, default=default))
 
-    def adjacent(self, predicate, distance=1):
-        return Iter(more_itertools.adjacent(predicate, self.x, distance=distance))
+    def adjacent(self, pred, distance=1) -> Iter[Tuple[bool, T]]:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.adjacent
 
-    def groupby_transform(self, keyfunc=None, valuefunc=None) -> Iter:
+        .. code-block:: python
+
+            >>> Iter(range(6)).adjacent(lambda x: x == 3).collect()
+            [(False, 0), (False, 1), (True, 2), (True, 3), (True, 4), (False, 5)]
+
+            >>> Iter(range(6)).adjacent(lambda x: x == 3, distance=2).collect()
+            [(False, 0), (True, 1), (True, 2), (True, 3), (True, 4), (True, 5)]
+
+
+        """
+        return Iter(more_itertools.adjacent(pred, self.x, distance=distance))
+
+    def groupby_transform(
+        self,
+        keyfunc: Optional[Callable[..., K]] = None,
+        valuefunc: Optional[Callable[..., V]] = None,
+    ) -> Iter[Tuple[K, Iterable[V]]]:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.groupby_transform
+
+        This example has been modified somewhat from the original. We're using
+        ``starmap`` here to "unzip" the tuples produced by the group
+        transform.
+
+        .. code-block:: python
+
+            >>> iterable = 'AaaABbBCcA'
+            >>> keyfunc = lambda x: x.upper()
+            >>> valuefunc = lambda x: x.lower()
+            >>> (
+            ...    Iter(iterable)
+            ...        .groupby_transform(keyfunc, valuefunc)
+            ...        .starmap(lambda k, g: (k, ''.join(g)))
+            ...        .collect()
+            ... )
+            [('A', 'aaaa'), ('B', 'bbb'), ('C', 'cc'), ('A', 'a')]
+
+            >>> from operator import itemgetter
+            >>> keys = [0, 0, 1, 1, 1, 2, 2, 2, 3]
+            >>> values = 'abcdefghi'
+            >>> iterable = zip(keys, values)
+            >>> (
+            ...     Iter(iterable)
+            ...        .groupby_transform(itemgetter(0), itemgetter(1))
+            ...        .starmap(lambda k, g: (k, ''.join(g)))
+            ...        .collect()
+            ... )
+            [(0, 'ab'), (1, 'cde'), (2, 'fgh'), (3, 'i')]
+
+        """
         return Iter(
             more_itertools.groupby_transform(
-                self.x,
-                keyfunc=keyfunc,
-                valuefunc=valuefunc,
+                self.x, keyfunc=keyfunc, valuefunc=valuefunc,
             )
         )
 
-    def padnone(self):
-        raise NotImplementedError
+    def padnone(self) -> Iter[Union[T, None]]:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padnone
 
-    def ncycles(self):
-        raise NotImplementedError
+        .. code-block:: python
+
+            >>> Iter(range(3)).padnone().take(5).collect()
+            [0, 1, 2, None, None]
+
+        """
+        return Iter(more_itertools.padnone(self.x))
+
+    def ncycles(self, n) -> Iter[T]:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ncycles
+
+        ..code-block:: python
+
+            >>> Iter(['a', 'b']).ncycles(3).collect()
+            ['a', 'b', 'a', 'b', 'a', 'b']
+
+        """
+        return Iter(more_itertools.ncycles(self.x, n))
 
     # Combining
 
-    def collapse(self, base_type=None, levels=None):
-        return Iter(more_itertools.collapse(self.x, base_type=base_type, levels=None))
+    def collapse(self, base_type=None, levels=None) -> Iter:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.collapse
 
-    @classmethod
-    def sort_together(cls, iterables, key_list=(0,), reverse=False):
-        return cls(
-            more_itertools.sort_together(
-                iterables,
-                key_list=key_list,
-                reverse=reverse,
+        ..code-block:: python
+
+            >>> iterable = [(1, 2), ([3, 4], [[5], [6]])]
+            >>> Iter(iterable).collapse().collect()
+            [1, 2, 3, 4, 5, 6]
+
+            >>> iterable = ['ab', ('cd', 'ef'), ['gh', 'ij']]
+            >>> Iter(iterable).collapse(base_type=tuple).collect()
+            ['ab', ('cd', 'ef'), 'gh', 'ij']
+
+            >>> iterable = [('a', ['b']), ('c', ['d'])]
+            >>> Iter(iterable).collapse().collect() # Fully flattened
+            ['a', 'b', 'c', 'd']
+            >>> Iter(iterable).collapse(levels=1).collect() # Only one level flattened
+            ['a', ['b'], 'c', ['d']]
+
+        """
+        return Iter(more_itertools.collapse(self.x, base_type=base_type, levels=levels))
+
+    @class_or_instancemethod
+    def sort_together(self_or_cls, iterables, key_list=(0,), reverse=False):
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sort_together
+
+        This can be called either as an instance method or a class method.
+        The classmethod form is more convenient if all the iterables are
+        already available. The instancemethod form is more convenient if
+        one of the iterables already goes through some transformation.
+
+        Here are examples from the classmethod form, which mirror the
+        examples in the *more-itertools* documentation:
+
+        ..code-block:: python
+
+            >>> iterables = [(4, 3, 2, 1), ('a', 'b', 'c', 'd')]
+            >>> Iter.sort_together(iterables).collect()
+            [(1, 2, 3, 4), ('d', 'c', 'b', 'a')]
+
+            >>> iterables = [(3, 1, 2), (0, 1, 0), ('c', 'b', 'a')]
+            >>> Iter.sort_together(iterables, key_list=(1, 2)).collect()
+            [(2, 3, 1), (0, 0, 1), ('a', 'c', 'b')]
+
+            >>> Iter.sort_together([(1, 2, 3), ('c', 'b', 'a')], reverse=True).collect()
+            [(3, 2, 1), ('a', 'b', 'c')]
+
+        Here is an examples using the instancemethod form:
+
+            >>> iterables = [('a', 'b', 'c', 'd')]
+            >>> Iter([4, 3, 2, 1]).sort_together(iterables).collect()
+            [(1, 2, 3, 4), ('d', 'c', 'b', 'a')]
+
+        """
+        if isinstance(self_or_cls, type):
+            return self_or_cls(
+                more_itertools.sort_together(
+                    iterables, key_list=key_list, reverse=reverse,
+                )
             )
-        )
+        else:
+
+            def _temp():
+                """Temporary generator function as a way of prepending the
+                iterator of this instance."""
+                yield self_or_cls.x
+                yield from iterables
+
+            return Iter(
+                more_itertools.sort_together(
+                    _temp(), key_list=key_list, reverse=reverse,
+                )
+            )
 
     def interleave(self, *iterables) -> Iter:
         return Iter(more_itertools.interleave(self, *iterables))
@@ -492,10 +648,7 @@ class Iter(Generic[T]):
     def zip_offset(cls, *iterables, offsets, longest=False, fillvalue=None):
         return cls(
             more_itertools.zip_offset(
-                *iterables,
-                offsets=offsets,
-                longest=longest,
-                fillvalue=fillvalue,
+                *iterables, offsets=offsets, longest=longest, fillvalue=fillvalue,
             )
         )
 
@@ -531,14 +684,8 @@ class Iter(Generic[T]):
     def run_length_decode(self) -> Iter:
         return Iter(more_itertools.run_length.decode(self.x))
 
-
     def map_reduce(self, keyfunc, valuefunc=None, reducefunc=None) -> Dict:
-        return more_itertools.map_reduce(
-            self.x,
-            keyfunc,
-            valuefunc,
-            reducefunc,
-        )
+        return more_itertools.map_reduce(self.x, keyfunc, valuefunc, reducefunc,)
 
     def exactly_n(self, n, predicate=bool) -> Iter:
         return Iter(more_itertools.exactly_n(self.x, n=n, predicate=predicate))
@@ -579,8 +726,7 @@ class Iter(Generic[T]):
         return Iter(more_itertools.rstrip(self.x, pred))
 
     def filter_except(self, validator, *exceptions):
-        return Iter(
-            more_itertools.filter_except(validator, self.x, *exceptions))
+        return Iter(more_itertools.filter_except(validator, self.x, *exceptions))
 
     def map_except(self, function, *exceptions):
         return Iter(more_itertools.map_except(function, self.x, *exceptions))
@@ -658,25 +804,21 @@ class Iter(Generic[T]):
     # Others
 
     def locate(self, pred=bool, window_size=None) -> Iter:
-        return Iter(
-            more_itertools.locate(self.x, pred=pred, window_size=window_size)
-        )
+        return Iter(more_itertools.locate(self.x, pred=pred, window_size=window_size))
 
     def rlocate(self, pred=bool, window_size=None) -> Iter:
         return Iter(more_itertools.rlocate(self.x, pred, window_size))
 
     def replace(self, pred, substitutes, count=None, window_size=1) -> Iter:
-        return Iter(more_itertools.replace(
-            self.x, pred, substitutes, count=count, window_size=window_size
-        ))
+        return Iter(
+            more_itertools.replace(
+                self.x, pred, substitutes, count=count, window_size=window_size
+            )
+        )
 
     @classmethod
     def numeric_range(cls, *args) -> Iter:
-        return Iter(
-            more_itertools.numeric_range(
-                *args
-            )
-        )
+        return Iter(more_itertools.numeric_range(*args))
 
     def side_effect(self, func, chunk_size=None, before=None, after=None):
         return Iter(
@@ -689,13 +831,7 @@ class Iter(Generic[T]):
         raise NotImplementedError
 
     def difference(self, func=operator.sub, *, initial=None):
-        return Iter(
-            more_itertools.difference(
-                self.x,
-                func=func,
-                initial=initial,
-            )
-        )
+        return Iter(more_itertools.difference(self.x, func=func, initial=initial,))
 
     def make_decorator(self):
         raise NotImplementedError
@@ -717,16 +853,12 @@ class Iter(Generic[T]):
 
     # New
 
-    def wrap(self, ends: Sequence[T, T] = '()'):
+    def wrap(self, ends: Sequence[T, T] = "()"):
         """ Other examples for ends: '"' * 2, or '`' * 2, or '[]' etc. """
         if len(ends) != 2:
             raise ValueError("The ends must be a 2-length sequence")
 
-        return Iter(
-            itertools.chain.from_iterable(
-                [ends[0], self, ends[1]]
-            )
-        )
+        return Iter(itertools.chain.from_iterable([ends[0], self, ends[1]]))
 
 
 class IterDict(UserDict):
