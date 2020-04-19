@@ -16,6 +16,7 @@ import itertools
 import functools
 import operator
 from collections import UserDict
+import typing
 from typing import (
     Iterable,
     Tuple,
@@ -51,6 +52,7 @@ T = TypeVar("T")
 C = TypeVar("C")
 K = TypeVar("K")
 V = TypeVar("V")
+R = TypeVar("R")
 
 
 class class_or_instancemethod(classmethod):
@@ -61,47 +63,10 @@ class class_or_instancemethod(classmethod):
         return descr_get(instance, type_)
 
 
-def insert_separator(iterable: Iterable[Any], glue: Any) -> Iterable[Any]:
-    """ Similar functionality can be obtained with, e.g.,
-    interleave, as in
-
-    >>> result = Iter('caleb').interleave(Iter.repeat('x')).collect()
-    >>> result == list('cxaxlxexbx')
-    True
-
-    But you'll see a trailing "x" there, which join avoids. join
-    makes sure to only add the glue separator if another element
-    has arrived.
-
-    It can handle strings without any special considerations, but it doesn't
-    do any special handling for bytes and bytearrays. For that, rather
-    look at `concat()`.
-    """
-    if not isinstance(iterable, Iterator):
-        iterable = iter(iterable)
-
-    yield next(iterable)
-    for item in iterable:
-        if glue is not None:
-            yield glue
-        yield item
-
-
-def concat(iterable: Iterable[AnyStr], glue: AnyStr) -> AnyStr:
-    """Concatenate strings, bytes and bytearrays. It is careful to avoid the
-     problem with single bytes becoming integers, and it looks at the value
-     of `glue` to know whether to handle bytes or strings."""
-    if isinstance(glue, (bytes, bytearray)):
-        return glue.join(iterable[i : i + 1] for i, _ in enumerate(iterable))
-
-    elif isinstance(glue, str):
-        return glue.join(iterable)
-
-    else:
-        raise ValueError("Must be called with bytes, bytearray or str")
-
-
 class Iter(Generic[T]):
+    """
+    This is the docstring for the ``Iter`` class.
+    """
     x: Iterator[T]
 
     def __init__(self, x: Iterable[T]):
@@ -638,54 +603,316 @@ class Iter(Generic[T]):
                 )
             )
 
-    def interleave(self, *iterables) -> Iter:
-        return Iter(more_itertools.interleave(self, *iterables))
+    @class_or_instancemethod
+    def interleave(self_or_cls, *iterables) -> Iter:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave
 
-    def interleave_longest(self, *iterables) -> Iter:
-        return Iter(more_itertools.interleave_longest(self, *iterables))
+        Classmethod form:
+
+        .. code-block:: python
+
+            >>> Iter.interleave([1, 2, 3], [4, 5], [6, 7, 8]).collect()
+            [1, 4, 6, 2, 5, 7]
+
+        Instancemethod form:
+
+        .. code-block:: python
+
+            >>> Iter([1, 2, 3]).interleave([4, 5], [6, 7, 8]).collect()
+            [1, 4, 6, 2, 5, 7]
+
+        """
+        if isinstance(self_or_cls, type):
+            return Iter(more_itertools.interleave(*iterables))
+        else:
+            return Iter(more_itertools.interleave(self_or_cls, *iterables))
+
+    @class_or_instancemethod
+    def interleave_longest(self_or_cls, *iterables) -> Iter:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave_longest
+
+        Classmethod form:
+
+        .. code-block:: python
+
+            >>> Iter.interleave_longest([1, 2, 3], [4, 5], [6, 7, 8]).collect()
+            [1, 4, 6, 2, 5, 7, 3, 8]
+
+        Instancemethod form:
+
+        .. code-block:: python
+
+            >>> Iter([1, 2, 3]).interleave_longest([4, 5], [6, 7, 8]).collect()
+            [1, 4, 6, 2, 5, 7, 3, 8]
+
+        """
+        if isinstance(self_or_cls, type):
+            return Iter(more_itertools.interleave_longest(*iterables))
+        else:
+            return Iter(more_itertools.interleave_longest(self_or_cls, *iterables))
 
     @classmethod
-    def zip_offset(cls, *iterables, offsets, longest=False, fillvalue=None):
+    def zip_offset(cls, *iterables, offsets, longest=False, fillvalue=None) -> Iter:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.zip_offset
+
+        .. code-block:: python
+
+            >>> Iter.zip_offset('0123', 'abcdef', offsets=(0, 1)).collect()
+            [('0', 'b'), ('1', 'c'), ('2', 'd'), ('3', 'e')]
+
+            >>> Iter.zip_offset('0123', 'abcdef', offsets=(0, 1), longest=True).collect()
+            [('0', 'b'), ('1', 'c'), ('2', 'd'), ('3', 'e'), (None, 'f')]
+        """
+        # TODO: also make an instancemethod
         return cls(
             more_itertools.zip_offset(
                 *iterables, offsets=offsets, longest=longest, fillvalue=fillvalue,
             )
         )
 
-    def dotproduct(self):
-        raise NotImplementedError
+    def dotproduct(self, vec2: Iterable):
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.dotproduct
 
-    def flatten(self):
-        raise NotImplementedError
+        .. code-block:: python
 
-    def roundrobin(self):
-        raise NotImplementedError
+            >>> Iter([10, 10]).dotproduct([20, 20])
+            400
+        """
+        return more_itertools.dotproduct(self.x, vec2)
 
-    def prepend(self):
-        raise NotImplementedError
+    def flatten(self) -> Iter[T]:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.flatten
+
+        .. code-block:: python
+
+            >>> Iter([[0, 1], [2, 3]]).flatten().collect()
+            [0, 1, 2, 3]
+
+        """
+        return Iter(more_itertools.flatten(self))
+
+    @class_or_instancemethod
+    def roundrobin(self_or_cls: Union[Type[T], T], *iterables: C) -> Iter[Union[T, C]]:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.roundrobin
+
+        Classmethod form:
+
+        .. code-block:: python
+
+            >>> Iter.roundrobin('ABC', 'D', 'EF').collect()
+            ['A', 'D', 'E', 'B', 'F', 'C']
+
+        Instancemethod form:
+
+        .. code-block:: python
+
+            >>> Iter('ABC').roundrobin('D', 'EF').collect()
+            ['A', 'D', 'E', 'B', 'F', 'C']
+
+        """
+        if isinstance(self_or_cls, type):
+            return self_or_cls(more_itertools.roundrobin(*iterables))
+        else:
+            return Iter(more_itertools.roundrobin(self_or_cls, *iterables))
+
+    def prepend(self, value: C) -> Iter[Union[T, C]]:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.prepend
+
+        .. code-block:: python
+
+            >>> value = '0'
+            >>> iterator = ['1', '2', '3']
+            >>> Iter(iterator).prepend(value).collect()
+            ['0', '1', '2', '3']
+
+        """
+        return Iter(more_itertools.prepend(value, self))
 
     # Summarizing
 
-    def ilen(self):
-        raise NotImplementedError
+    def ilen(self) -> int:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ilen
 
-    def unique_to_each(self):
-        raise NotImplementedError
+        .. code-block:: python
 
-    def sample(self, k, weights=None) -> Iter:
-        return Iter(more_itertools.sample(self.x, k, weights=weights))
+            >>> Iter(x for x in range(1000000) if x % 3 == 0).ilen()
+            333334
+
+        """
+        return more_itertools.ilen(self)
+
+    def unique_to_each(self) -> Iter[T]:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_to_each
+
+        .. code-block:: python
+
+            >>> Iter([{'A', 'B'}, {'B', 'C'}, {'B', 'D'}]).unique_to_each().collect()
+            [['A'], ['C'], ['D']]
+
+            >>> Iter(["mississippi", "missouri"]).unique_to_each().collect()
+            [['p', 'p'], ['o', 'u', 'r']]
+        """
+        # TODO: this operation is a little different to the others that take
+        #  a *iterables parameter. Not sure if this is what we want.
+        return Iter(more_itertools.unique_to_each(*self))
+
+    def sample(self, k=1, weights=None) -> Iter:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sample
+
+        .. code-block:: python
+
+            >>> iterable = range(100)
+            >>> Iter(iterable).sample(5).collect()  # doctest: +SKIP
+            [81, 60, 96, 16, 4]
+
+            >>> iterable = range(100)
+            >>> weights = (i * i + 1 for i in range(100))
+            >>> Iter(iterable).sample(5, weights=weights)  # doctest: +SKIP
+            [79, 67, 74, 66, 78]
+
+            >>> data = "abcdefgh"
+            >>> weights = range(1, len(data) + 1)
+            >>> Iter(data).sample(k=len(data), weights=weights)  # doctest: +SKIP
+            ['c', 'a', 'b', 'e', 'g', 'd', 'h', 'f']
+
+
+            >>> # This one just to let the doctest run
+            >>> iterable = range(100)
+            >>> Iter(iterable).sample(5).map(lambda x: 0 <= x < 100).all()
+            True
+
+        """
+        return Iter(more_itertools.sample(self.x, k=k, weights=weights))
 
     def consecutive_groups(self, ordering=lambda x: x):
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.consecutive_groups
+
+        .. code-block:: python
+
+            >>> iterable = [1, 10, 11, 12, 20, 30, 31, 32, 33, 40]
+            >>> Iter(iterable).consecutive_groups().map(lambda g: list(g)).print('{v}').consume()
+            [1]
+            [10, 11, 12]
+            [20]
+            [30, 31, 32, 33]
+            [40]
+
+        """
+
         return Iter(more_itertools.consecutive_groups(self.x, ordering=ordering))
 
-    def run_length_encode(self) -> Iter:
-        return Iter(more_itertools.run_length.encode(self.x))
+    def run_length_encode(self) -> Iter[Tuple[T, int]]:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run_length
+
+        .. code-block:: python
+
+            >>> uncompressed = 'abbcccdddd'
+            >>> Iter(uncompressed).run_length_encode().collect()
+            [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
+
+        """
+        return Iter(more_itertools.run_length.encode(self))
 
     def run_length_decode(self) -> Iter:
-        return Iter(more_itertools.run_length.decode(self.x))
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run_length
+
+        .. code-block:: python
+
+            >>> compressed = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
+            >>> Iter(compressed).run_length_decode().collect()
+            ['a', 'b', 'b', 'c', 'c', 'c', 'd', 'd', 'd', 'd']
+
+        """
+        return Iter(more_itertools.run_length.decode(self))
 
     def map_reduce(self, keyfunc, valuefunc=None, reducefunc=None) -> Dict:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce
+
+        This interface mirrors what *more-itertools* does in that it returns
+        a dict. See ``map_reduce_it()`` for a slightly-modified interface
+        that returns the dict items as another iterator.
+
+        .. code-block:: python
+
+            >>> keyfunc = lambda x: x.upper()
+            >>> d = Iter('abbccc').map_reduce(keyfunc)
+            >>> sorted(d.items())
+            [('A', ['a']), ('B', ['b', 'b']), ('C', ['c', 'c', 'c'])]
+
+            >>> keyfunc = lambda x: x.upper()
+            >>> valuefunc = lambda x: 1
+            >>> d = Iter('abbccc').map_reduce(keyfunc, valuefunc)
+            >>> sorted(d.items())
+            [('A', [1]), ('B', [1, 1]), ('C', [1, 1, 1])]
+
+            >>> keyfunc = lambda x: x.upper()
+            >>> valuefunc = lambda x: 1
+            >>> reducefunc = sum
+            >>> d = Iter('abbccc').map_reduce(keyfunc, valuefunc, reducefunc)
+            >>> sorted(d.items())
+            [('A', 1), ('B', 2), ('C', 3)]
+
+        Note the warning given in the *more-itertools* docs about how
+        lists are created before the reduce step. This means you always want
+        to filter *before* applying map_reduce, not after.
+
+        .. code-block:: python
+
+            >>> all_items = range(30)
+            >>> keyfunc = lambda x: x % 2  # Evens map to 0; odds to 1
+            >>> categories = Iter(all_items).filter(lambda x: 10<=x<=20).map_reduce(keyfunc=keyfunc)
+            >>> sorted(categories.items())
+            [(0, [10, 12, 14, 16, 18, 20]), (1, [11, 13, 15, 17, 19])]
+            >>> summaries = Iter(all_items).filter(lambda x: 10<=x<=20).map_reduce(keyfunc=keyfunc, reducefunc=sum)
+            >>> sorted(summaries.items())
+            [(0, 90), (1, 75)]
+
+        """
         return more_itertools.map_reduce(self.x, keyfunc, valuefunc, reducefunc,)
+
+    def map_reduce_it(
+        self,
+        keyfunc: Callable[..., K],
+        valuefunc: Optional[Callable[..., V]] = None,
+        reducefunc: Optional[Callable[..., R]] = None
+    ) -> Iter[Tuple[K, R]]:
+        """
+        See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce
+
+        .. code-block:: python
+
+            >>> keyfunc = lambda x: x.upper()
+            >>> Iter('abbccc').map_reduce_it(keyfunc).collect()
+            [('A', ['a']), ('B', ['b', 'b']), ('C', ['c', 'c', 'c'])]
+
+            >>> keyfunc = lambda x: x.upper()
+            >>> valuefunc = lambda x: 1
+            >>> Iter('abbccc').map_reduce_it(keyfunc, valuefunc).collect()
+            [('A', [1]), ('B', [1, 1]), ('C', [1, 1, 1])]
+
+            >>> keyfunc = lambda x: x.upper()
+            >>> valuefunc = lambda x: 1
+            >>> reducefunc = sum
+            >>> Iter('abbccc').map_reduce_it(keyfunc, valuefunc, reducefunc).collect()
+            [('A', 1), ('B', 2), ('C', 3)]
+
+        """
+        d = more_itertools.map_reduce(self.x, keyfunc, valuefunc, reducefunc,)
+        return Iter(d.items())
 
     def exactly_n(self, n, predicate=bool) -> Iter:
         return Iter(more_itertools.exactly_n(self.x, n=n, predicate=predicate))
@@ -842,8 +1069,14 @@ class Iter(Generic[T]):
     def time_limited(self, limit_seconds) -> Iter:
         return Iter(more_itertools.time_limited(limit_seconds, self.x))
 
-    def consume(self):
-        raise NotImplementedError
+    def consume(self, n: Optional[int] = None) -> Optional[Iter[T]]:
+        """ If n is not provided, the entire iterator is consumed and
+        ``None`` is returned. Otherwise, an iterator will always be
+        returned, even if n is greater than the number of items left in
+        the iterator."""
+        more_itertools.consume(self, n=n)
+        if n is not None:
+            return self
 
     def tabulate(self):
         raise NotImplementedError
@@ -859,6 +1092,45 @@ class Iter(Generic[T]):
             raise ValueError("The ends must be a 2-length sequence")
 
         return Iter(itertools.chain.from_iterable([ends[0], self, ends[1]]))
+
+    def print(self, template="{i}: {v}") -> Iter[T]:
+        """
+        Printing during the execution of an iterator. Mostly useful
+        for debugging. Returns another iterator instance through which
+        the original data is passed unchanged. This means you can include
+        a `print()` step as necessary to observe data during iteration.
+
+        .. code-block:: python
+
+            >>> Iter('abc').print().collect()
+            0: a
+            1: b
+            2: c
+            ['a', 'b', 'c']
+
+            >>> (
+            ...    Iter(range(5))
+            ...        .print('before filter {i}: {v}')
+            ...        .filter(lambda x: x > 2)
+            ...        .print('after filter {i}: {v}')
+            ...        .collect()
+            ... )
+            before filter 0: 0
+            before filter 1: 1
+            before filter 2: 2
+            before filter 3: 3
+            after filter 0: 3
+            before filter 4: 4
+            after filter 1: 4
+            [3, 4]
+
+        """
+
+        def _print(elem):
+            i, v = elem
+            print(template.format(**locals()))
+
+        return self.enumerate().side_effect(_print).starmap(lambda i, elem: elem)
 
 
 class IterDict(UserDict):
@@ -877,3 +1149,52 @@ class IterDict(UserDict):
     def update(self, *args, **kwargs) -> IterDict:
         self.data.update(*args, **kwargs)
         return self
+
+
+def insert_separator(iterable: Iterable[Any], glue: Any) -> Iterable[Any]:
+    """ Similar functionality can be obtained with, e.g.,
+    interleave, as in
+
+    >>> result = Iter('caleb').interleave(Iter.repeat('x')).collect()
+    >>> result == list('cxaxlxexbx')
+    True
+
+    But you'll see a trailing "x" there, which join avoids. join
+    makes sure to only add the glue separator if another element
+    has arrived.
+
+    It can handle strings without any special considerations, but it doesn't
+    do any special handling for bytes and bytearrays. For that, rather
+    look at `concat()`.
+    """
+    if not isinstance(iterable, Iterator):
+        iterable = iter(iterable)
+
+    yield next(iterable)
+    for item in iterable:
+        if glue is not None:
+            yield glue
+        yield item
+
+
+def concat(iterable: Iterable[AnyStr], glue: AnyStr) -> AnyStr:
+    """Concatenate strings, bytes and bytearrays. It is careful to avoid the
+     problem with single bytes becoming integers, and it looks at the value
+     of `glue` to know whether to handle bytes or strings."""
+    if isinstance(glue, (bytes, bytearray)):
+        return glue.join(iterable[i : i + 1] for i, _ in enumerate(iterable))
+
+    elif isinstance(glue, str):
+        return glue.join(iterable)
+
+    else:
+        raise ValueError("Must be called with bytes, bytearray or str")
+
+
+"""
+
+Blah blah blah here is some more text
+
+"""
+
+
