@@ -11,5 +11,5 @@ Documentation
    :members:
    :undoc-members:
    :show-inheritance:
-   :special-members: __iter__
+   :exclude-members: x
    :member-order: bysource

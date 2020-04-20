@@ -66,6 +66,8 @@ class class_or_instancemethod(classmethod):
 class Iter(Generic[T]):
     """
     This is the docstring for the ``Iter`` class.
+
+    Each of the following methods of ``Iter`` describe how they work.
     """
     x: Iterator[T]
 
@@ -74,14 +76,6 @@ class Iter(Generic[T]):
             self.x = x
         else:
             self.x = iter(x)
-
-    # def __getattr__(self, name):
-    #     func = getattr(itertools, name)
-    #     new_func = lambda *args, **kwargs: Iter(func(self.x, *args, **kwargs))
-    #     return new_func
-    #
-    # def __getattr__(self, name):
-    #     return globals()[name]
 
     def __iter__(self) -> Iterator[T]:
         return self.x
@@ -122,6 +116,7 @@ class Iter(Generic[T]):
         closefd=True,
         opener=None,
     ) -> Iter:
+        """ Docstring TBD """
         def inner():
             with open(
                 file=file,
@@ -141,21 +136,27 @@ class Iter(Generic[T]):
 
     @classmethod
     def range(cls, *args) -> Iter[int]:
+        """ Docstring TBD """
         return cls(range(*args))
 
     def zip(self, *iterables: Any) -> Iter[Tuple[T, ...]]:
+        """ Docstring TBD """
         return Iter(zip(self.x, *iterables))
 
     def any(self) -> bool:
+        """ Docstring TBD """
         return any(self.x)
 
     def all(self) -> bool:
+        """ Docstring TBD """
         return all(self.x)
 
     def enumerate(self) -> Iter[Tuple[int, T]]:
+        """ Docstring TBD """
         return Iter(enumerate(self.x))
 
     def dict(self) -> Dict:
+        """ Docstring TBD """
         return dict(self.x)
 
     ###
@@ -174,18 +175,23 @@ class Iter(Generic[T]):
             return Iter(map(func, self.x))
 
     def filter(self, *args) -> Iter[T]:
+        """ Docstring TBD """
         return Iter(filter(*args, self.x))
 
     def reduce(self, func: Callable[..., T], *args) -> T:
+        """ Docstring TBD """
         return functools.reduce(func, self.x, *args)
 
     def sum(self):
+        """ Docstring TBD """
         return sum(self.x)
 
     def concat(self, glue: AnyStr) -> AnyStr:
+        """ Docstring TBD """
         return concat(self.x, glue)
 
     def insert(self, glue: C) -> Iter[Union[C, T]]:
+        """ Docstring TBD """
         return Iter(insert_separator(self, glue))
 
     # standard library
@@ -195,13 +201,16 @@ class Iter(Generic[T]):
 
     @classmethod
     def count(cls, *args) -> Iter[int]:
+        """ Docstring TBD """
         return cls(itertools.count(*args))
 
     def cycle(self) -> Iter[T]:
+        """ Docstring TBD """
         return Iter(itertools.cycle(self.x))
 
     @classmethod
     def repeat(cls, elem: C, times=None) -> Iter[C]:
+        """ Docstring TBD """
         # TODO: does it really work like this? Wow.
         if times:
             return Iter(itertools.repeat(elem, times=times))
@@ -210,40 +219,52 @@ class Iter(Generic[T]):
 
     # Iterators terminating on the shortest input sequence
     def accumulate(self, func):
+        """ Docstring TBD """
         return Iter(itertools.accumulate(self.x, func))
 
     def chain(self, *iterables: Iterable[T]) -> Iter[T]:
+        """ Docstring TBD """
         return Iter(itertools.chain(self.x, *iterables))
 
     def chain_from_iterable(self) -> Iter[T]:
+        """ Docstring TBD """
         return Iter(itertools.chain.from_iterable(self.x))
 
     def compress(self, selectors):
+        """ Docstring TBD """
         return Iter(itertools.compress(self.x, selectors))
 
     def dropwhile(self, pred):
+        """ Docstring TBD """
         return Iter(itertools.dropwhile(pred, self.x))
 
     def filterfalse(self, pred):
+        """ Docstring TBD """
         return Iter(itertools.filterfalse(pred, self.x))
 
     def groupby(self, key=None):
+        """ Docstring TBD """
         return Iter(itertools.groupby(self.x, key=key))
 
     def islice(self, *args) -> Iter:
+        """ Docstring TBD """
         return Iter(itertools.islice(self.x, *args))
 
     def starmap(self, func):
+        """ Docstring TBD """
         return Iter(itertools.starmap(func, self.x))
 
     def takewhile(self, pred):
+        """ Docstring TBD """
         return Iter(itertools.takewhile(pred, self.x))
 
     def tee(self, n=2):
+        """ Docstring TBD """
         # Pay attention
         return Iter(Iter(_) for _ in itertools.tee(self.x, n))
 
     def zip_longest(self, *iterables, fillvalue=None):
+        """ Docstring TBD """
         return Iter(itertools.zip_longest(self.x, *iterables, fillvalue=fillvalue))
 
     # more-itertools
@@ -252,37 +273,48 @@ class Iter(Generic[T]):
     # Grouping
 
     def chunked(self, n: int) -> Iter:
+        """ Docstring TBD """
         return Iter(more_itertools.chunked(self.x, n))
 
     def ichunked(self, n: int) -> Iter:
+        """ Docstring TBD """
         return Iter(Iter(it) for it in more_itertools.ichunked(self.x, n))
 
     @classmethod
     def sliced(cls, seq: Sequence, n: int) -> Iter:
+        """ Docstring TBD """
         return Iter(more_itertools.sliced(seq, n))
 
     def distribute(self, n: int) -> Iter:
+        """ Docstring TBD """
         return Iter((Iter(x) for x in Iter(more_itertools.distribute(n, self.x))))
 
     def divide(self, n: int) -> Iter:
+        """ Docstring TBD """
         return Iter(Iter(x) for x in more_itertools.divide(n, self.x))
 
     def split_at(self, pred):
+        """ Docstring TBD """
         return Iter(more_itertools.split_at(self.x, pred))
 
     def split_before(self, pred):
+        """ Docstring TBD """
         return Iter(more_itertools.split_before(self.x, pred))
 
     def split_after(self, pred):
+        """ Docstring TBD """
         return Iter(more_itertools.split_after(self.x, pred))
 
     def split_into(self, sizes):
+        """ Docstring TBD """
         return Iter(more_itertools.split_into(self.x, sizes))
 
     def split_when(self, pred):
+        """ Docstring TBD """
         return Iter(more_itertools.split_when(self.x, pred))
 
     def bucket(self, key, validator=None):
+        """ Docstring TBD """
         class _bucket(more_itertools.bucket):
             def __iter__(self):
                 return Iter(super().__iter__())
@@ -293,22 +325,27 @@ class Iter(Generic[T]):
         return _bucket(self.x, key, validator=validator)
 
     def unzip(self):
+        """ Docstring TBD """
         return Iter(Iter(x) for x in more_itertools.unzip(self.x))
 
     def grouper(self, n: int, fillvalue=None) -> Iter:
+        """ Docstring TBD """
         return Iter(more_itertools.grouper(self.x, n, fillvalue=fillvalue))
 
     def partition(self, pred) -> Iter:
+        """ Docstring TBD """
         left, right = more_itertools.partition(pred, self.x)
         return Iter((Iter(left), Iter(right)))
 
     # Lookahead and lookback
 
     def spy(self, n=1) -> Tuple[Iter, Iter]:
+        """ Docstring TBD """
         head, iterable = more_itertools.spy(self.x, n)
         return Iter(head), Iter(iterable)
 
     def peekable(self) -> more_itertools.peekable:
+        """ Docstring TBD """
         class _peekable(more_itertools.peekable):
             def __iter__(self):
                 return Iter(super().__iter__())
@@ -324,6 +361,7 @@ class Iter(Generic[T]):
         return _peekable(self.x)
 
     def seekable(self) -> more_itertools.seekable:
+        """ Docstring TBD """
         class _seekable(more_itertools.seekable):
             def __iter__(self):
                 return Iter(super().__iter__())
@@ -333,12 +371,15 @@ class Iter(Generic[T]):
     # Windowing
 
     def windowed(self, n, fillvalue=None, step=1) -> Iter:
+        """ Docstring TBD """
         return Iter(more_itertools.windowed(self.x, n, fillvalue=fillvalue, step=step))
 
     def substrings(self):
+        """ Docstring TBD """
         return Iter(more_itertools.substrings(self.x))
 
     def substrings_indexes(self, reverse=False):
+        """ Docstring TBD """
         return Iter(more_itertools.substrings_indexes(list(self.x), reverse=reverse))
 
     def stagger(self, offsets=(-1, 0, 1), longest=False, fillvalue=None):
@@ -517,7 +558,7 @@ class Iter(Generic[T]):
         """
         See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ncycles
 
-        ..code-block:: python
+        .. code-block:: python
 
             >>> Iter(['a', 'b']).ncycles(3).collect()
             ['a', 'b', 'a', 'b', 'a', 'b']
@@ -531,7 +572,7 @@ class Iter(Generic[T]):
         """
         See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.collapse
 
-        ..code-block:: python
+        .. code-block:: python
 
             >>> iterable = [(1, 2), ([3, 4], [[5], [6]])]
             >>> Iter(iterable).collapse().collect()
@@ -563,7 +604,7 @@ class Iter(Generic[T]):
         Here are examples from the classmethod form, which mirror the
         examples in the *more-itertools* documentation:
 
-        ..code-block:: python
+        .. code-block:: python
 
             >>> iterables = [(4, 3, 2, 1), ('a', 'b', 'c', 'd')]
             >>> Iter.sort_together(iterables).collect()

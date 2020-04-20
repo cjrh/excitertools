@@ -30,10 +30,10 @@ author = 'Caleb Hattingh'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx_autodoc_typehints',
+    # 'sphinx_autodoc_typehints',
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
-    'sphinx.ext.napoleon',
+    # 'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
     'sphinx_rst_builder',
 ]
@@ -44,7 +44,14 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'venv', 'README.rst']
+exclude_patterns = [
+    '_build',
+    'Thumbs.db',
+    '.DS_Store',
+    'venv',
+    'README.rst',
+    'sphinx-rst-builder-master',
+]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -60,3 +67,5 @@ html_theme = 'alabaster'
 html_static_path = ['_static']
 
 autodoc_member_order = 'bysource'
+
+rst_indent = 0
