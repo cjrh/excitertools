@@ -1,0 +1,5 @@
+pip>=18
+setuptools>=40.5
+sphinx>=2
+twine
+wheel
