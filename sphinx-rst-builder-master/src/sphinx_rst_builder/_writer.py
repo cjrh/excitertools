@@ -181,6 +181,7 @@ class RstTranslator(TextTranslator):
 
     def visit_desc(self, node):
         self.new_state(0)
+        self.add_text('\n\n')
     def depart_desc(self, node):
         self.end_state()
 
@@ -189,7 +190,7 @@ class RstTranslator(TextTranslator):
             # self._title_char = self.sectionchars[self.sectionlevel]
             # self.sectionlevel += 1
             # self.add_text('\n------------\n\n')
-            self.add_text('``')
+            self.add_text('|\n\n``')
             # self.add_text(node.parent.rawsource)
             # self.add_text('``')
         else:
@@ -262,8 +263,8 @@ class RstTranslator(TextTranslator):
         pass
 
     def visit_desc_content(self, node):
-        # self.new_state(self.indent)
-        self.new_state(4)
+        self.new_state(self.indent)
+        # self.new_state(4)
 
     def depart_desc_content(self, node):
         self.end_state()

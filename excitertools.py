@@ -1,13 +1,6 @@
 """
 
-This is the documentation.
-
-Here is a heading:
-
-Heading
--------
-
-That was the heading.
+This documentation is generated from the source.
 
 
 """
