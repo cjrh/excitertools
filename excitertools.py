@@ -2,6 +2,16 @@
 
 This documentation is generated from the source.
 
+.. |warning| replace:: ⚠
+.. |cool| replace:: ✨
+.. |flux| replace:: 🛠
+
+API
+###
+
+.. contents::
+    :local:
+
 
 """
 from __future__ import annotations
@@ -61,6 +71,9 @@ class Iter(Generic[T]):
     This is the docstring for the ``Iter`` class.
 
     Each of the following methods of ``Iter`` describe how they work.
+
+    Test warning: |warning|
+
     """
     x: Iterator[T]
 
