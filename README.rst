@@ -1,15 +1,33 @@
 
+
+.. image:: https://travis-ci.org/cjrh/excitertools.svg?branch=master
+    :target: https://travis-ci.org/cjrh/excitertools
+
+.. image:: https://coveralls.io/repos/github/cjrh/excitertools/badge.svg?branch=master
+    :target: https://coveralls.io/github/cjrh/excitertools?branch=master
+
+.. image:: https://img.shields.io/pypi/pyversions/excitertools.svg
+    :target: https://pypi.python.org/pypi/excitertools
+
+.. image:: https://img.shields.io/github/tag/cjrh/excitertools.svg
+    :target: https://img.shields.io/github/tag/cjrh/excitertools.svg
+
+.. image:: https://img.shields.io/badge/install-pip%20install%20excitertools-ff69b4.svg
+    :target: https://img.shields.io/badge/install-pip%20install%20excitertools-ff69b4.svg
+
+.. image:: https://img.shields.io/pypi/v/excitertools.svg
+    :target: https://img.shields.io/pypi/v/excitertools.svg
+
+.. image:: https://img.shields.io/badge/calver-YYYY.MM.MINOR-22bfda.svg
+    :target: http://calver.org/
+
 excitertools
-************
+############
 
 itertools in the form of function call chaining
 
-TOC
-
-* `Documentation <excitertools.rst>`_
-
 Related projects
-================
+****************
 
 * My fork of a now-missing library: `chained-iterable <https://github.com/cjrh/chained-iterable>`_.
 
@@ -36,29 +54,55 @@ Tangentially related:
 * `https://github.com/jreese/aioitertools <https://github.com/jreese/aioitertools>`_
 
 
-Documentation
-=============
+.. |warning| replace:: ⚠
+.. |cool| replace:: ✨
+.. |flux| replace:: 🛠
 
-This documentation is generated from the source.
+Dev Instructions
+################
+
+For general dev:
+
+.. code-block:: shell
+
+    $ python -m venv venv
+    $ source venv/bin/activate
+    (venv) $ pip install -e .[dev,test]
+
+To run the tests:
+
+.. code-block:: shell
+
+    (venv) $ pytest
+
+To regenerate the file ``README.rst``:
+
+.. code-block:: shell
+
+    (venv) $ python regenerate_readme.py -m excitertools > README.rst
+
+API Documentation
+#################
+
+.. contents::
+    :local:
 
 
 
-|
+class class_or_instancemethod
+*****************************
+From: https://stackoverflow.com/a/28238047/170656
 
-``class excitertools.Iter(x: Iterable[T])``
-
-Bases: ``typing.Generic``
-
+class Iter
+**********
 This is the docstring for the ``Iter`` class.
 
 Each of the following methods of ``Iter`` describe how they work.
 
+Test warning: |warning|
 
-
-|
-
-``collect(container=<class 'list'>) -> List[T]``
-
+``Iter.collect(self, container=<class 'list'>) -> 'List[T]'``
+=============================================================
 .. code-block:: python
 
     >>> Iter('abc').collect()
@@ -68,400 +112,218 @@ Each of the following methods of ``Iter`` describe how they work.
     >>> Iter('abcaaaabbbbccc').collect(set) == {'a', 'b', 'c'}
     True
 
+|cool|    *classmethod* ``Iter.open(file, mode='r', buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None) -> 'Iter'``
+==================================================================================================================================================
 
 
-|
+Wrap the ``open()`` builtin precisely, but return an ``Iter``
+instance to allow function chaining on the result.
 
-``classmethod open(file, mode='r', buffering=- 1, encoding=None, errors=None, newline=None, closefd=True, opener=None) -> excitertools.Iter``
+>>> import tempfile
+>>> with tempfile.TemporaryDirectory() as td:
+...     open('text.txt', 'w').writelines(['abc\n', 'def\n', 'ghi\n'])
+...     Iter.open('text.txt').filter(lambda line: 'def' in line).collect()
+['def\n']
 
-Docstring TBD
+Note that this is a convenience method for *reading* from a file,
+not for writing. The function signature includes the ``mode``
+parameter for parity with the builtin ``open()`` function, but
+only reading is supported.
 
+*classmethod* ``Iter.range(*args) -> 'Iter[int]'``
+==================================================
+Docstring TBD 
 
+``Iter.zip(self, *iterables: 'Any') -> 'Iter[Tuple[T, ...]]'``
+==============================================================
+Docstring TBD 
 
-|
+``Iter.any(self) -> 'bool'``
+============================
+Docstring TBD 
 
-``classmethod range(*args) -> excitertools.Iter[int][int]``
+``Iter.all(self) -> 'bool'``
+============================
+Docstring TBD 
 
-Docstring TBD
+``Iter.enumerate(self) -> 'Iter[Tuple[int, T]]'``
+=================================================
+Docstring TBD 
 
+``Iter.dict(self) -> 'Dict'``
+=============================
+Docstring TBD 
 
-
-|
-
-``zip(*iterables: Any) -> excitertools.Iter[typing.Tuple[~T, …]][Tuple[T, …]]``
-
-Docstring TBD
-
-
-
-|
-
-``any() -> bool``
-
-Docstring TBD
-
-
-
-|
-
-``all() -> bool``
-
-Docstring TBD
-
-
-
-|
-
-``enumerate() -> excitertools.Iter[typing.Tuple[int, ~T]][Tuple[int, T]]``
-
-Docstring TBD
-
-
-
-|
-
-``dict() -> Dict``
-
-Docstring TBD
-
-
-
-|
-
-``map(func: Union[Callable[[…], C], str]) -> excitertools.Iter[~C][C]``
-
+``Iter.map(self, func: 'Union[Callable[..., C], str]') -> 'Iter[C]'``
+=====================================================================
 >>> result = Iter('caleb').map(lambda x: (x, ord(x))).dict()
 >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
 
 >>> result = Iter('caleb').map('x, ord(x)').dict()
 >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
 
-
-
-|
-
-``filter(*args) -> excitertools.Iter[~T][T]``
-
-Docstring TBD
-
-
-
-|
-
-``reduce(func: Callable[[…], T], *args) -> T``
-
-Docstring TBD
-
-
-
-|
-
-``sum()``
-
-Docstring TBD
-
-
-
-|
-
-``concat(glue: AnyStr) -> AnyStr``
-
-Docstring TBD
-
-
-
-|
-
-``insert(glue: C) -> excitertools.Iter[typing.Union[~C, ~T]][Union[C, T]]``
-
-Docstring TBD
-
-
-
-|
-
-``classmethod count(*args) -> excitertools.Iter[int][int]``
-
-Docstring TBD
-
-
-
-|
-
-``cycle() -> excitertools.Iter[~T][T]``
-
-Docstring TBD
-
-
-
-|
-
-``classmethod repeat(elem: C, times=None) -> excitertools.Iter[~C][C]``
-
-Docstring TBD
-
-
-
-|
-
-``accumulate(func)``
-
-Docstring TBD
-
-
-
-|
-
-``chain(*iterables: Iterable[T]) -> excitertools.Iter[~T][T]``
-
-Docstring TBD
-
-
-
-|
-
-``chain_from_iterable() -> excitertools.Iter[~T][T]``
-
-Docstring TBD
-
-
-
-|
-
-``compress(selectors)``
-
-Docstring TBD
-
-
-
-|
-
-``dropwhile(pred)``
-
-Docstring TBD
-
-
-
-|
-
-``filterfalse(pred)``
-
-Docstring TBD
-
-
-
-|
-
-``groupby(key=None)``
-
-Docstring TBD
-
-
-
-|
-
-``islice(*args) -> excitertools.Iter``
-
-Docstring TBD
-
-
-
-|
-
-``starmap(func)``
-
-Docstring TBD
-
-
-
-|
-
-``takewhile(pred)``
-
-Docstring TBD
-
-
-
-|
-
-``tee(n=2)``
-
-Docstring TBD
-
-
-
-|
-
-``zip_longest(*iterables, fillvalue=None)``
-
-Docstring TBD
-
-
-
-|
-
-``chunked(n: int) -> excitertools.Iter``
-
-Docstring TBD
-
-
-
-|
-
-``ichunked(n: int) -> excitertools.Iter``
-
-Docstring TBD
-
-
-
-|
-
-``classmethod sliced(seq: Sequence, n: int) -> excitertools.Iter``
-
-Docstring TBD
-
-
-
-|
-
-``distribute(n: int) -> excitertools.Iter``
-
-Docstring TBD
-
-
-
-|
-
-``divide(n: int) -> excitertools.Iter``
-
-Docstring TBD
-
-
-
-|
-
-``split_at(pred)``
-
-Docstring TBD
-
-
-
-|
-
-``split_before(pred)``
-
-Docstring TBD
-
-
-
-|
-
-``split_after(pred)``
-
-Docstring TBD
-
-
-
-|
-
-``split_into(sizes)``
-
-Docstring TBD
-
-
-
-|
-
-``split_when(pred)``
-
-Docstring TBD
-
-
-
-|
-
-``bucket(key, validator=None)``
-
-Docstring TBD
-
-
-
-|
-
-``unzip()``
-
-Docstring TBD
-
-
-
-|
-
-``grouper(n: int, fillvalue=None) -> excitertools.Iter``
-
-Docstring TBD
-
-
-
-|
-
-``partition(pred) -> excitertools.Iter``
-
-Docstring TBD
-
-
-
-|
-
-``spy(n=1) -> Tuple[excitertools.Iter, excitertools.Iter]``
-
-Docstring TBD
-
-
-
-|
-
-``peekable() -> more_itertools.more.peekable``
-
-Docstring TBD
-
-
-
-|
-
-``seekable() -> more_itertools.more.seekable``
-
-Docstring TBD
-
-
-
-|
-
-``windowed(n, fillvalue=None, step=1) -> excitertools.Iter``
-
-Docstring TBD
-
-
-
-|
-
-``substrings()``
-
-Docstring TBD
-
-
-
-|
-
-``substrings_indexes(reverse=False)``
-
-Docstring TBD
-
-
-
-|
-
-``stagger(offsets=- 1, 0, 1, longest=False, fillvalue=None)``
-
+``Iter.filter(self, *args) -> 'Iter[T]'``
+=========================================
+Docstring TBD 
+
+``Iter.reduce(self, func: 'Callable[..., T]', *args) -> 'T'``
+=============================================================
+Docstring TBD 
+
+``Iter.sum(self)``
+==================
+Docstring TBD 
+
+``Iter.concat(self, glue: 'AnyStr') -> 'AnyStr'``
+=================================================
+Docstring TBD 
+
+``Iter.insert(self, glue: 'C') -> 'Iter[Union[C, T]]'``
+=======================================================
+Docstring TBD 
+
+*classmethod* ``Iter.count(*args) -> 'Iter[int]'``
+==================================================
+Docstring TBD 
+
+``Iter.cycle(self) -> 'Iter[T]'``
+=================================
+Docstring TBD 
+
+*classmethod* ``Iter.repeat(elem: 'C', times=None) -> 'Iter[C]'``
+=================================================================
+Docstring TBD 
+
+``Iter.accumulate(self, func)``
+===============================
+Docstring TBD 
+
+``Iter.chain(self, *iterables: 'Iterable[T]') -> 'Iter[T]'``
+============================================================
+Docstring TBD 
+
+``Iter.chain_from_iterable(self) -> 'Iter[T]'``
+===============================================
+Docstring TBD 
+
+``Iter.compress(self, selectors)``
+==================================
+Docstring TBD 
+
+``Iter.dropwhile(self, pred)``
+==============================
+Docstring TBD 
+
+``Iter.filterfalse(self, pred)``
+================================
+Docstring TBD 
+
+``Iter.groupby(self, key=None)``
+================================
+Docstring TBD 
+
+``Iter.islice(self, *args) -> 'Iter'``
+======================================
+Docstring TBD 
+
+``Iter.starmap(self, func)``
+============================
+Docstring TBD 
+
+``Iter.takewhile(self, pred)``
+==============================
+Docstring TBD 
+
+``Iter.tee(self, n=2)``
+=======================
+Docstring TBD 
+
+``Iter.zip_longest(self, *iterables, fillvalue=None)``
+======================================================
+Docstring TBD 
+
+``Iter.chunked(self, n: 'int') -> 'Iter'``
+==========================================
+Docstring TBD 
+
+``Iter.ichunked(self, n: 'int') -> 'Iter'``
+===========================================
+Docstring TBD 
+
+*classmethod* ``Iter.sliced(seq: 'Sequence', n: 'int') -> 'Iter'``
+==================================================================
+Docstring TBD 
+
+``Iter.distribute(self, n: 'int') -> 'Iter'``
+=============================================
+Docstring TBD 
+
+``Iter.divide(self, n: 'int') -> 'Iter'``
+=========================================
+Docstring TBD 
+
+``Iter.split_at(self, pred)``
+=============================
+Docstring TBD 
+
+``Iter.split_before(self, pred)``
+=================================
+Docstring TBD 
+
+``Iter.split_after(self, pred)``
+================================
+Docstring TBD 
+
+``Iter.split_into(self, sizes)``
+================================
+Docstring TBD 
+
+``Iter.split_when(self, pred)``
+===============================
+Docstring TBD 
+
+``Iter.bucket(self, key, validator=None)``
+==========================================
+Docstring TBD 
+
+``Iter.unzip(self)``
+====================
+Docstring TBD 
+
+``Iter.grouper(self, n: 'int', fillvalue=None) -> 'Iter'``
+==========================================================
+Docstring TBD 
+
+``Iter.partition(self, pred) -> 'Iter'``
+========================================
+Docstring TBD 
+
+``Iter.spy(self, n=1) -> 'Tuple[Iter, Iter]'``
+==============================================
+Docstring TBD 
+
+``Iter.peekable(self) -> 'more_itertools.peekable'``
+====================================================
+Docstring TBD 
+
+``Iter.seekable(self) -> 'more_itertools.seekable'``
+====================================================
+Docstring TBD 
+
+``Iter.windowed(self, n, fillvalue=None, step=1) -> 'Iter'``
+============================================================
+Docstring TBD 
+
+``Iter.substrings(self)``
+=========================
+Docstring TBD 
+
+``Iter.substrings_indexes(self, reverse=False)``
+================================================
+Docstring TBD 
+
+``Iter.stagger(self, offsets=(-1, 0, 1), longest=False, fillvalue=None)``
+=========================================================================
 .. code-block:: python
 
     >>> Iter([0, 1, 2, 3]).stagger().collect()
@@ -471,39 +333,27 @@ Docstring TBD
     >>> Iter([0, 1, 2, 3]).stagger(longest=True).collect()
     [(None, 0, 1), (0, 1, 2), (1, 2, 3), (2, 3, None), (3, None, None)]
 
-
-
-|
-
-``pairwise()``
-
-See `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.pairwise <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.pairwise>`_
+``Iter.pairwise(self)``
+=======================
+See https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.pairwise
 
 .. code-block:: python
 
     >>> Iter.count().pairwise().take(4).collect()
     [(0, 1), (1, 2), (2, 3), (3, 4)]
 
-
-
-|
-
-``count_cycle(n=None) -> excitertools.Iter``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.count_cycle <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.count_cycle>`_
+``Iter.count_cycle(self, n=None) -> 'Iter'``
+============================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.count_cycle
 
 .. code-block:: python
 
     >>> Iter('AB').count_cycle(3).collect()
     [(0, 'A'), (0, 'B'), (1, 'A'), (1, 'B'), (2, 'A'), (2, 'B')]
 
-
-
-|
-
-``intersperse(e, n=1) -> excitertools.Iter``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.intersperse <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.intersperse>`_
+``Iter.intersperse(self, e, n=1) -> 'Iter'``
+============================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.intersperse
 
 .. code-block:: python
 
@@ -513,13 +363,9 @@ See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.in
     >>> Iter([1, 2, 3, 4, 5]).intersperse(None, n=2).collect()
     [1, 2, None, 3, 4, None, 5]
 
-
-
-|
-
-``padded(fillvalue: Optional[C] = None, n: Optional[int] = None, next_multiple: bool = False) -> excitertools.Iter[typing.Union[~C, ~T]][Union[C, T]]``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padded <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padded>`_
+``Iter.padded(self, fillvalue: 'Optional[C]' = None, n: 'Optional[int]' = None, next_multiple: 'bool' = False) -> 'Iter[Union[T, C]]'``
+=======================================================================================================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padded
 
 .. code-block:: python
 
@@ -529,13 +375,9 @@ See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.pa
     >>> Iter([1, 2, 3, 4]).padded(n=3, next_multiple=True).collect()
     [1, 2, 3, 4, None, None]
 
-
-
-|
-
-``repeat_last(default=None) -> excitertools.Iter[~T][T]``
-
-`https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.repeat_last <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.repeat_last>`_
+``Iter.repeat_last(self, default=None) -> 'Iter[T]'``
+=====================================================
+https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.repeat_last
 
 .. code-block:: python
 
@@ -545,13 +387,9 @@ See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.pa
     >>> Iter(range(0)).repeat_last(42).islice(5).collect()
     [42, 42, 42, 42, 42]
 
-
-
-|
-
-``adjacent(pred, distance=1) -> excitertools.Iter[typing.Tuple[bool, ~T]][Tuple[bool, T]]``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.adjacent <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.adjacent>`_
+``Iter.adjacent(self, pred, distance=1) -> 'Iter[Tuple[bool, T]]'``
+===================================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.adjacent
 
 .. code-block:: python
 
@@ -561,16 +399,12 @@ See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ad
     >>> Iter(range(6)).adjacent(lambda x: x == 3, distance=2).collect()
     [(False, 0), (True, 1), (True, 2), (True, 3), (True, 4), (True, 5)]
 
+``Iter.groupby_transform(self, keyfunc: 'Optional[Callable[..., K]]' = None, valuefunc: 'Optional[Callable[..., V]]' = None) -> 'Iter[Tuple[K, Iterable[V]]]'``
+===============================================================================================================================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.groupby_transform
 
-
-|
-
-``groupby_transform(keyfunc: Optional[Callable[[…], K]] = None, valuefunc: Optional[Callable[[…], V]] = None) -> excitertools.Iter[typing.Tuple[~K, typing.Iterable[~V]]][Tuple[K, Iterable[V]]]``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.groupby_transform <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.groupby_transform>`_
-
-This example has been modified somewhat from the original. We’re using
-``starmap`` here to “unzip” the tuples produced by the group
+This example has been modified somewhat from the original. We're using
+``starmap`` here to "unzip" the tuples produced by the group
 transform.
 
 .. code-block:: python
@@ -598,39 +432,27 @@ transform.
     ... )
     [(0, 'ab'), (1, 'cde'), (2, 'fgh'), (3, 'i')]
 
-
-
-|
-
-``padnone() -> excitertools.Iter[typing.Union[~T, NoneType]][Optional[T]]``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padnone <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padnone>`_
+``Iter.padnone(self) -> 'Iter[Union[T, None]]'``
+================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padnone
 
 .. code-block:: python
 
     >>> Iter(range(3)).padnone().take(5).collect()
     [0, 1, 2, None, None]
 
-
-
-|
-
-``ncycles(n) -> excitertools.Iter[~T][T]``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ncycles <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ncycles>`_
+``Iter.ncycles(self, n) -> 'Iter[T]'``
+======================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ncycles
 
 .. code-block:: python
 
     >>> Iter(['a', 'b']).ncycles(3).collect()
     ['a', 'b', 'a', 'b', 'a', 'b']
 
-
-
-|
-
-``collapse(base_type=None, levels=None) -> excitertools.Iter``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.collapse <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.collapse>`_
+``Iter.collapse(self, base_type=None, levels=None) -> 'Iter'``
+==============================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.collapse
 
 .. code-block:: python
 
@@ -648,13 +470,9 @@ See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.co
     >>> Iter(iterable).collapse(levels=1).collect() # Only one level flattened
     ['a', ['b'], 'c', ['d']]
 
-
-
-|
-
-``classmethod sort_together(iterables, key_list=0, reverse=False)``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sort_together <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sort_together>`_
+*classmethod* ``Iter.sort_together(iterables, key_list=(0,), reverse=False)``
+=============================================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sort_together
 
 This can be called either as an instance method or a class method.
 The classmethod form is more convenient if all the iterables are
@@ -679,17 +497,13 @@ examples in the *more-itertools* documentation:
 
 Here is an examples using the instancemethod form:
 
->>> iterables = [('a', 'b', 'c', 'd')]
->>> Iter([4, 3, 2, 1]).sort_together(iterables).collect()
-[(1, 2, 3, 4), ('d', 'c', 'b', 'a')]
+    >>> iterables = [('a', 'b', 'c', 'd')]
+    >>> Iter([4, 3, 2, 1]).sort_together(iterables).collect()
+    [(1, 2, 3, 4), ('d', 'c', 'b', 'a')]
 
-
-
-|
-
-``classmethod interleave(*iterables) -> excitertools.Iter``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave>`_
+*classmethod* ``Iter.interleave(*iterables) -> 'Iter'``
+=======================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave
 
 Classmethod form:
 
@@ -705,13 +519,9 @@ Instancemethod form:
     >>> Iter([1, 2, 3]).interleave([4, 5], [6, 7, 8]).collect()
     [1, 4, 6, 2, 5, 7]
 
-
-
-|
-
-``classmethod interleave_longest(*iterables) -> excitertools.Iter``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave_longest <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave_longest>`_
+*classmethod* ``Iter.interleave_longest(*iterables) -> 'Iter'``
+===============================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave_longest
 
 Classmethod form:
 
@@ -727,13 +537,9 @@ Instancemethod form:
     >>> Iter([1, 2, 3]).interleave_longest([4, 5], [6, 7, 8]).collect()
     [1, 4, 6, 2, 5, 7, 3, 8]
 
-
-
-|
-
-``classmethod zip_offset(*iterables, offsets=None, longest=False, fillvalue=None) -> excitertools.Iter``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.zip_offset <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.zip_offset>`_
+*classmethod* ``Iter.zip_offset(*iterables, offsets, longest=False, fillvalue=None) -> 'Iter'``
+===============================================================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.zip_offset
 
 .. code-block:: python
 
@@ -743,39 +549,27 @@ See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.zi
     >>> Iter.zip_offset('0123', 'abcdef', offsets=(0, 1), longest=True).collect()
     [('0', 'b'), ('1', 'c'), ('2', 'd'), ('3', 'e'), (None, 'f')]
 
-
-
-|
-
-``dotproduct(vec2: Iterable)``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.dotproduct <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.dotproduct>`_
+``Iter.dotproduct(self, vec2: 'Iterable')``
+===========================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.dotproduct
 
 .. code-block:: python
 
     >>> Iter([10, 10]).dotproduct([20, 20])
     400
 
-
-
-|
-
-``flatten() -> excitertools.Iter[~T][T]``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.flatten <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.flatten>`_
+``Iter.flatten(self) -> 'Iter[T]'``
+===================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.flatten
 
 .. code-block:: python
 
     >>> Iter([[0, 1], [2, 3]]).flatten().collect()
     [0, 1, 2, 3]
 
-
-
-|
-
-``classmethod roundrobin(*iterables: C) -> excitertools.Iter[typing.Union[~C, ~T]][Union[C, T]]``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.roundrobin <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.roundrobin>`_
+*classmethod* ``Iter.roundrobin(*iterables: 'C') -> 'Iter[Union[T, C]]'``
+=========================================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.roundrobin
 
 Classmethod form:
 
@@ -791,13 +585,9 @@ Instancemethod form:
     >>> Iter('ABC').roundrobin('D', 'EF').collect()
     ['A', 'D', 'E', 'B', 'F', 'C']
 
-
-
-|
-
-``prepend(value: C) -> excitertools.Iter[typing.Union[~C, ~T]][Union[C, T]]``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.prepend <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.prepend>`_
+``Iter.prepend(self, value: 'C') -> 'Iter[Union[T, C]]'``
+=========================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.prepend
 
 .. code-block:: python
 
@@ -806,26 +596,18 @@ See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.pr
     >>> Iter(iterator).prepend(value).collect()
     ['0', '1', '2', '3']
 
-
-
-|
-
-``ilen() -> int``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ilen <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ilen>`_
+``Iter.ilen(self) -> 'int'``
+============================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ilen
 
 .. code-block:: python
 
     >>> Iter(x for x in range(1000000) if x % 3 == 0).ilen()
     333334
 
-
-
-|
-
-``unique_to_each() -> excitertools.Iter[~T][T]``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_to_each <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_to_each>`_
+``Iter.unique_to_each(self) -> 'Iter[T]'``
+==========================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_to_each
 
 .. code-block:: python
 
@@ -835,28 +617,24 @@ See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.un
     >>> Iter(["mississippi", "missouri"]).unique_to_each().collect()
     [['p', 'p'], ['o', 'u', 'r']]
 
-
-
-|
-
-``sample(k=1, weights=None) -> excitertools.Iter``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sample <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sample>`_
+``Iter.sample(self, k=1, weights=None) -> 'Iter'``
+==================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sample
 
 .. code-block:: python
 
     >>> iterable = range(100)
-    >>> Iter(iterable).sample(5).collect()  
+    >>> Iter(iterable).sample(5).collect()  # doctest: +SKIP
     [81, 60, 96, 16, 4]
 
     >>> iterable = range(100)
     >>> weights = (i * i + 1 for i in range(100))
-    >>> Iter(iterable).sample(5, weights=weights)  
+    >>> Iter(iterable).sample(5, weights=weights)  # doctest: +SKIP
     [79, 67, 74, 66, 78]
 
     >>> data = "abcdefgh"
     >>> weights = range(1, len(data) + 1)
-    >>> Iter(data).sample(k=len(data), weights=weights)  
+    >>> Iter(data).sample(k=len(data), weights=weights)  # doctest: +SKIP
     ['c', 'a', 'b', 'e', 'g', 'd', 'h', 'f']
 
 
@@ -865,13 +643,9 @@ See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sa
     >>> Iter(iterable).sample(5).map(lambda x: 0 <= x < 100).all()
     True
 
-
-
-|
-
-``consecutive_groups(ordering=<function Iter.<lambda>>)``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.consecutive_groups <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.consecutive_groups>`_
+``Iter.consecutive_groups(self, ordering=<function Iter.<lambda> at 0x000001D57FB9A1F0>)``
+==========================================================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.consecutive_groups
 
 .. code-block:: python
 
@@ -883,13 +657,9 @@ See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.co
     [30, 31, 32, 33]
     [40]
 
-
-
-|
-
-``run_length_encode() -> excitertools.Iter[typing.Tuple[~T, int]][Tuple[T, int]]``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run_length <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run_length>`_
+``Iter.run_length_encode(self) -> 'Iter[Tuple[T, int]]'``
+=========================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run_length
 
 .. code-block:: python
 
@@ -897,13 +667,9 @@ See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ru
     >>> Iter(uncompressed).run_length_encode().collect()
     [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
 
-
-
-|
-
-``run_length_decode() -> excitertools.Iter``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run_length <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run_length>`_
+``Iter.run_length_decode(self) -> 'Iter'``
+==========================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run_length
 
 .. code-block:: python
 
@@ -911,13 +677,9 @@ See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ru
     >>> Iter(compressed).run_length_decode().collect()
     ['a', 'b', 'b', 'c', 'c', 'c', 'd', 'd', 'd', 'd']
 
-
-
-|
-
-``map_reduce(keyfunc, valuefunc=None, reducefunc=None) -> Dict``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce>`_
+``Iter.map_reduce(self, keyfunc, valuefunc=None, reducefunc=None) -> 'Dict'``
+=============================================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce
 
 This interface mirrors what *more-itertools* does in that it returns
 a dict. See ``map_reduce_it()`` for a slightly-modified interface
@@ -958,13 +720,9 @@ to filter *before* applying map_reduce, not after.
     >>> sorted(summaries.items())
     [(0, 90), (1, 75)]
 
-
-
-|
-
-``map_reduce_it(keyfunc: Callable[[…], K], valuefunc: Optional[Callable[[…], V]] = None, reducefunc: Optional[Callable[[…], R]] = None) -> excitertools.Iter[typing.Tuple[~K, ~R]][Tuple[K, R]]``
-
-See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce>`_
+``Iter.map_reduce_it(self, keyfunc: 'Callable[..., K]', valuefunc: 'Optional[Callable[..., V]]' = None, reducefunc: 'Optional[Callable[..., R]]' = None) -> 'Iter[Tuple[K, R]]'``
+=================================================================================================================================================================================
+See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce
 
 .. code-block:: python
 
@@ -983,323 +741,167 @@ See: `https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ma
     >>> Iter('abbccc').map_reduce_it(keyfunc, valuefunc, reducefunc).collect()
     [('A', 1), ('B', 2), ('C', 3)]
 
+``Iter.exactly_n(self, n, predicate=<class 'bool'>) -> 'Iter'``
+===============================================================
 
+``Iter.all_equal(self)``
+========================
 
-|
+``Iter.first_true(self)``
+=========================
 
-``exactly_n(n, predicate=<class 'bool'>) -> excitertools.Iter``
+``Iter.quantify(self)``
+=======================
 
+``Iter.islice_extended(self, *args)``
+=====================================
 
+``Iter.first(self)``
+====================
 
-|
+``Iter.last(self)``
+===================
 
-``all_equal()``
+``Iter.one(self)``
+==================
 
+``Iter.only(self, default=None, too_long=None) -> 'Any'``
+=========================================================
 
+``Iter.strip(self, pred)``
+==========================
 
-|
+``Iter.lstrip(self, pred)``
+===========================
 
-``first_true()``
+``Iter.rstrip(self, pred)``
+===========================
 
+``Iter.filter_except(self, validator, *exceptions)``
+====================================================
 
+``Iter.map_except(self, function, *exceptions)``
+================================================
 
-|
+``Iter.nth_or_last(self)``
+==========================
 
-``quantify()``
+``Iter.nth(self, n, default=None)``
+===================================
 
+``Iter.take(self, n: 'int') -> 'Iter'``
+=======================================
 
+``Iter.tail(self)``
+===================
 
-|
+``Iter.unique_everseen(self)``
+==============================
 
-``islice_extended(*args)``
+``Iter.unique_justseen(self)``
+==============================
 
+``Iter.distinct_permutations(self)``
+====================================
 
+``Iter.distinct_combinations(self, r)``
+=======================================
 
-|
+``Iter.circular_shifts(self) -> 'Iter'``
+========================================
 
-``first()``
+``Iter.partitions(self) -> 'Iter'``
+===================================
 
+``Iter.set_partitions(self, k=None) -> 'Iter'``
+===============================================
 
+``Iter.powerset(self)``
+=======================
 
-|
+``Iter.random_product(self)``
+=============================
 
-``last()``
+``Iter.random_permutation(self)``
+=================================
 
+``Iter.random_combination(self)``
+=================================
 
+``Iter.random_combination_with_replacement(self)``
+==================================================
 
-|
+``Iter.nth_combination(self)``
+==============================
 
-``one()``
+``Iter.always_iterable(self)``
+==============================
 
+``Iter.always_reversible(self)``
+================================
 
+``Iter.consumer(self)``
+=======================
 
-|
+``Iter.with_iter(self)``
+========================
 
-``only(default=None, too_long=None) -> Any``
+``Iter.iter_except(self)``
+==========================
 
+``Iter.locate(self, pred=<class 'bool'>, window_size=None) -> 'Iter'``
+======================================================================
 
+``Iter.rlocate(self, pred=<class 'bool'>, window_size=None) -> 'Iter'``
+=======================================================================
 
-|
+``Iter.replace(self, pred, substitutes, count=None, window_size=1) -> 'Iter'``
+==============================================================================
 
-``strip(pred)``
+*classmethod* ``Iter.numeric_range(*args) -> 'Iter'``
+=====================================================
 
+``Iter.side_effect(self, func, chunk_size=None, before=None, after=None)``
+==========================================================================
 
+``Iter.iterate(self)``
+======================
 
-|
+``Iter.difference(self, func=<built-in function sub>, *, initial=None)``
+========================================================================
 
-``lstrip(pred)``
+``Iter.make_decorator(self)``
+=============================
 
+``Iter.SequenceView(self)``
+===========================
 
+``Iter.time_limited(self, limit_seconds) -> 'Iter'``
+====================================================
 
-|
-
-``rstrip(pred)``
-
-
-
-|
-
-``filter_except(validator, *exceptions)``
-
-
-
-|
-
-``map_except(function, *exceptions)``
-
-
-
-|
-
-``nth_or_last()``
-
-
-
-|
-
-``nth(n, default=None)``
-
-
-
-|
-
-``take(n: int) -> excitertools.Iter``
-
-
-
-|
-
-``tail()``
-
-
-
-|
-
-``unique_everseen()``
-
-
-
-|
-
-``unique_justseen()``
-
-
-
-|
-
-``distinct_permutations()``
-
-
-
-|
-
-``distinct_combinations(r)``
-
-
-
-|
-
-``circular_shifts() -> excitertools.Iter``
-
-
-
-|
-
-``partitions() -> excitertools.Iter``
-
-
-
-|
-
-``set_partitions(k=None) -> excitertools.Iter``
-
-
-
-|
-
-``powerset()``
-
-
-
-|
-
-``random_product()``
-
-
-
-|
-
-``random_permutation()``
-
-
-
-|
-
-``random_combination()``
-
-
-
-|
-
-``random_combination_with_replacement()``
-
-
-
-|
-
-``nth_combination()``
-
-
-
-|
-
-``always_iterable()``
-
-
-
-|
-
-``always_reversible()``
-
-
-
-|
-
-``consumer()``
-
-
-
-|
-
-``with_iter()``
-
-
-
-|
-
-``iter_except()``
-
-
-
-|
-
-``locate(pred=<class 'bool'>, window_size=None) -> excitertools.Iter``
-
-
-
-|
-
-``rlocate(pred=<class 'bool'>, window_size=None) -> excitertools.Iter``
-
-
-
-|
-
-``replace(pred, substitutes, count=None, window_size=1) -> excitertools.Iter``
-
-
-
-|
-
-``classmethod numeric_range(*args) -> excitertools.Iter``
-
-
-
-|
-
-``side_effect(func, chunk_size=None, before=None, after=None)``
-
-
-
-|
-
-``iterate()``
-
-
-
-|
-
-``difference(func=<built-in function sub>, *, initial=None)``
-
-
-
-|
-
-``make_decorator()``
-
-
-
-|
-
-``SequenceView()``
-
-
-
-|
-
-``time_limited(limit_seconds) -> excitertools.Iter``
-
-
-
-|
-
-``consume(n: Optional[int] = None) -> Optional[excitertools.Iter[~T][T]]``
-
+``Iter.consume(self, n: 'Optional[int]' = None) -> 'Optional[Iter[T]]'``
+========================================================================
 If n is not provided, the entire iterator is consumed and
 ``None`` is returned. Otherwise, an iterator will always be
 returned, even if n is greater than the number of items left in
 the iterator.
 
+``Iter.tabulate(self)``
+=======================
 
+``Iter.repeatfunc(self)``
+=========================
 
-|
+``Iter.wrap(self, ends: 'Sequence[T, T]' = '()')``
+==================================================
+Other examples for ends: '"' * 2, or '`' * 2, or '[]' etc. 
 
-``tabulate()``
-
-
-
-|
-
-``repeatfunc()``
-
-
-
-|
-
-``wrap(ends: Sequence[T, T] = '()')``
-
-Other examples for ends: ‘”’ * 2, or ‘`’ * 2, or ‘[]’ etc.
-
-
-
-|
-
-``print(template='{i}: {v}') -> excitertools.Iter[~T][T]``
-
+``Iter.print(self, template='{i}: {v}') -> 'Iter[T]'``
+======================================================
 Printing during the execution of an iterator. Mostly useful
 for debugging. Returns another iterator instance through which
 the original data is passed unchanged. This means you can include
-a *print()* step as necessary to observe data during iteration.
+a `print()` step as necessary to observe data during iteration.
 
 .. code-block:: python
 
@@ -1325,12 +927,30 @@ a *print()* step as necessary to observe data during iteration.
     after filter 1: 4
     [3, 4]
 
+class IterDict
+**************
 
+``IterDict.keys(self) -> 'Iter'``
+=================================
+D.keys() -> a set-like object providing a view on D's keys
 
-|
+``IterDict.values(self) -> 'Iter'``
+===================================
+D.values() -> an object providing a view on D's values
 
-``excitertools.insert_separator(iterable: Iterable[Any], glue: Any) -> Iterable[Any]``
+``IterDict.items(self) -> 'Iter'``
+==================================
+D.items() -> a set-like object providing a view on D's items
 
+``IterDict.update(self, *args, **kwargs) -> 'IterDict'``
+========================================================
+D.update([E, ]**F) -> None.  Update D from mapping/iterable E and F.
+If E present and has a .keys() method, does:     for k in E: D[k] = E[k]
+If E present and lacks .keys() method, does:     for (k, v) in E: D[k] = v
+In either case, this is followed by: for k, v in F.items(): D[k] = v
+
+``insert_separator(iterable: 'Iterable[Any]', glue: 'Any') -> 'Iterable[Any]'``
+*******************************************************************************
 Similar functionality can be obtained with, e.g.,
 interleave, as in
 
@@ -1338,20 +958,16 @@ interleave, as in
 >>> result == list('cxaxlxexbx')
 True
 
-But you’ll see a trailing “x” there, which join avoids. join
+But you'll see a trailing "x" there, which join avoids. join
 makes sure to only add the glue separator if another element
 has arrived.
 
-It can handle strings without any special considerations, but it doesn’t
+It can handle strings without any special considerations, but it doesn't
 do any special handling for bytes and bytearrays. For that, rather
-look at *concat()*.
+look at `concat()`.
 
-
-
-|
-
-``excitertools.concat(iterable: Iterable[AnyStr], glue: AnyStr) -> AnyStr``
-
+``concat(iterable: 'Iterable[AnyStr]', glue: 'AnyStr') -> 'AnyStr'``
+********************************************************************
 Concatenate strings, bytes and bytearrays. It is careful to avoid the
 problem with single bytes becoming integers, and it looks at the value
-of *glue* to know whether to handle bytes or strings.
+of `glue` to know whether to handle bytes or strings.

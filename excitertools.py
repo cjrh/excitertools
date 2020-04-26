@@ -1,17 +1,91 @@
 """
 
-This documentation is generated from the source.
+.. image:: https://travis-ci.org/cjrh/excitertools.svg?branch=master
+    :target: https://travis-ci.org/cjrh/excitertools
+
+.. image:: https://coveralls.io/repos/github/cjrh/excitertools/badge.svg?branch=master
+    :target: https://coveralls.io/github/cjrh/excitertools?branch=master
+
+.. image:: https://img.shields.io/pypi/pyversions/excitertools.svg
+    :target: https://pypi.python.org/pypi/excitertools
+
+.. image:: https://img.shields.io/github/tag/cjrh/excitertools.svg
+    :target: https://img.shields.io/github/tag/cjrh/excitertools.svg
+
+.. image:: https://img.shields.io/badge/install-pip%20install%20excitertools-ff69b4.svg
+    :target: https://img.shields.io/badge/install-pip%20install%20excitertools-ff69b4.svg
+
+.. image:: https://img.shields.io/pypi/v/excitertools.svg
+    :target: https://img.shields.io/pypi/v/excitertools.svg
+
+.. image:: https://img.shields.io/badge/calver-YYYY.MM.MINOR-22bfda.svg
+    :target: http://calver.org/
+
+excitertools
+############
+
+itertools in the form of function call chaining
+
+Related projects
+****************
+
+* My fork of a now-missing library: `chained-iterable <https://github.com/cjrh/chained-iterable>`_.
+
+* `https://github.com/olirice/flupy <https://github.com/olirice/flupy>`_
+
+* `https://github.com/ddstte/chiter <https://github.com/ddstte/chiter>`_
+
+* `https://github.com/neverendingqs/pyiterable <https://github.com/neverendingqs/pyiterable>`_
+
+* `https://github.com/alliefitter/iterable_collections <https://github.com/alliefitter/iterable_collections>`_
+
+* `https://github.com/halprin/iterator-chain <https://github.com/halprin/iterator-chain>`_
+
+* `https://github.com/jagill/python-chainz <https://github.com/jagill/python-chainz>`_
+
+* `https://github.com/ZianVW/IterPipe <https://github.com/ZianVW/IterPipe>`_
+
+* `https://github.com/Evelyn-H/iterchain <https://github.com/Evelyn-H/iterchain>`_
+
+* `https://github.com/EntilZha/PyFunctional <https://github.com/EntilZha/PyFunctional>`_
+
+Tangentially related:
+
+* `https://github.com/jreese/aioitertools <https://github.com/jreese/aioitertools>`_
+
 
 .. |warning| replace:: ⚠
 .. |cool| replace:: ✨
 .. |flux| replace:: 🛠
 
-API
-###
+Dev Instructions
+################
+
+For general dev:
+
+.. code-block:: shell
+
+    $ python -m venv venv
+    $ source venv/bin/activate
+    (venv) $ pip install -e .[dev,test]
+
+To run the tests:
+
+.. code-block:: shell
+
+    (venv) $ pytest
+
+To regenerate the file ``README.rst``:
+
+.. code-block:: shell
+
+    (venv) $ python regenerate_readme.py -m excitertools > README.rst
+
+API Documentation
+#################
 
 .. contents::
     :local:
-
 
 """
 from __future__ import annotations
@@ -47,6 +121,7 @@ import more_itertools
 
 __all__ = [
     "Iter",
+    "IterDict",
     "insert_separator",
     "concat",
 ]
@@ -122,7 +197,25 @@ class Iter(Generic[T]):
         closefd=True,
         opener=None,
     ) -> Iter:
-        """ Docstring TBD """
+        """
+        |cool|
+
+        Wrap the ``open()`` builtin precisely, but return an ``Iter``
+        instance to allow function chaining on the result.
+
+        >>> import tempfile
+        >>> with tempfile.TemporaryDirectory() as td:
+        ...     open('text.txt', 'w').writelines(['abc\\n', 'def\\n', 'ghi\\n'])
+        ...     Iter.open('text.txt').filter(lambda line: 'def' in line).collect()
+        ['def\\n']
+
+        Note that this is a convenience method for *reading* from a file,
+        not for writing. The function signature includes the ``mode``
+        parameter for parity with the builtin ``open()`` function, but
+        only reading is supported.
+
+        """
+
         def inner():
             with open(
                 file=file,

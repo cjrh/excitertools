@@ -29,9 +29,20 @@ def main(args):
         # )
 
         if name != 'mro':
-            title_text = make_titletext(name, element, level)
-            sections.append(title_text)
             section_doc = inspect.getdoc(element)
+            tag_prefix = ''
+            if section_doc:
+                import re
+                pat = r'^\|[a-zA-Z_-]+\|$'
+                tags = re.findall(pat, section_doc, flags=re.MULTILINE)
+                section_doc = re.sub(pat, '', section_doc, flags=re.MULTILINE)
+                if tags:
+                    tag_prefix = ' '.join(t for t in tags) + '    '
+                    # import sys
+                    # sys.stderr.write(tag_prefix + '\n')
+
+            title_text = make_titletext(name, element, level, prefix=tag_prefix)
+            sections.append(title_text)
             if section_doc:
                 sections.append(section_doc)
 
@@ -39,10 +50,8 @@ def main(args):
     print('\n'.join(sections))
 
 
-def make_titletext(name, element, level):
+def make_titletext(name, element, level, prefix=''):
     section_chars = '#*=-^"'
-
-    text = name
 
     if inspect.isclass(element):
         text = f'class {name}'
@@ -58,7 +67,12 @@ def make_titletext(name, element, level):
         sig = inspect.signature(element)
         text = f'``{element.__qualname__}{sig}``'
 
-    return '\n' + text + '\n' + section_chars[level] * len(text)
+    if prefix:
+        text = prefix + text
+
+    underline_len = len(text.encode())
+
+    return '\n' + text + '\n' + section_chars[level] * underline_len
 
 
 def parse(node, level=0):
@@ -99,5 +113,6 @@ def parse(node, level=0):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--module', help='Module name to document')
+    parser.add_argument('-a', '--all', help='Only document entries in __all__')
     args = parser.parse_args()
     main(args)
