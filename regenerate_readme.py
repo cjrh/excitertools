@@ -9,6 +9,10 @@ def main(args):
     sections = [mod.__doc__]
 
     for name, element, level in parse(mod, level=1):
+        # print(level, name)
+        # if hasattr(mod, '__all__') and name not in mod.__all__:
+        #     continue
+
         if name.startswith('__'):
             continue
 
@@ -28,23 +32,27 @@ def main(args):
         #     getattr(element, '__module__', '(no module)')
         # )
 
-        if name != 'mro':
-            section_doc = inspect.getdoc(element)
-            tag_prefix = ''
-            if section_doc:
-                import re
-                pat = r'^\|[a-zA-Z_-]+\|$'
-                tags = re.findall(pat, section_doc, flags=re.MULTILINE)
-                section_doc = re.sub(pat, '', section_doc, flags=re.MULTILINE)
-                if tags:
-                    tag_prefix = ' '.join(t for t in tags) + '    '
-                    # import sys
-                    # sys.stderr.write(tag_prefix + '\n')
+        if name == 'mro':
+            continue
 
-            title_text = make_titletext(name, element, level, prefix=tag_prefix)
-            sections.append(title_text)
-            if section_doc:
-                sections.append(section_doc)
+        section_doc = inspect.getdoc(element)
+        tag_prefix = ''
+        if section_doc:
+            import re
+            pat = r'^\|[a-zA-Z_-]+\|$'
+            tags = re.findall(pat, section_doc, flags=re.MULTILINE)
+            section_doc = re.sub(pat, '', section_doc, flags=re.MULTILINE)
+            if tags:
+                tag_prefix = ' '.join(t for t in tags) + '    '
+
+        title_text = make_titletext(name, element, level, prefix=tag_prefix)
+        sections.append(title_text)
+        # print(name, section_doc)
+        if section_doc:
+            sections.append(section_doc)
+
+        else:
+            sections.append('Docstring TBD')
 
     # print('***')
     print('\n'.join(sections))
@@ -64,8 +72,11 @@ def make_titletext(name, element, level, prefix=''):
         sig = inspect.signature(element)
         text = f'``{element.__qualname__}{sig}``'
     else:
-        sig = inspect.signature(element)
-        text = f'``{element.__qualname__}{sig}``'
+        try:
+            sig = inspect.signature(element)
+            text = f'``{element.__qualname__}{sig}``'
+        except (ValueError, TypeError):
+            text = name
 
     if prefix:
         text = prefix + text

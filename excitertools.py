@@ -140,6 +140,138 @@ class class_or_instancemethod(classmethod):
         descr_get = super().__get__ if instance is None else self.__func__.__get__
         return descr_get(instance, type_)
 
+# Standalone functions that return ``Iter``
+
+# First save the builtins
+# _range = __builtins__['range']
+_zip = __builtins__['zip']
+_enumerate = __builtins__['enumerate']
+_map = __builtins__['map']
+_filter = __builtins__['filter']
+
+# def range(*args) -> Iter[int]:
+#     """ Docstring TBD """
+#     return Iter(__builtins__['range'](*args))
+#
+#
+# def zip(*iterables: Any) -> Iter[Tuple[T, ...]]:
+#     """ Docstring TBD """
+#     return Iter(__builtins__['zip'](*iterables))
+#
+#
+# def enumerate(iterable) -> Iter[Tuple[int, T]]:
+#     """ Docstring TBD """
+#     return Iter(__builtins__['enumerate'](iterable))
+
+
+###
+
+
+def map(func: Union[Callable[..., C], str], iterable) -> Iter[C]:
+    """
+    .. code-block:: python
+
+        >>> result = Iter('caleb').map(lambda x: (x, ord(x))).dict()
+        >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
+
+        >>> result = Iter('caleb').map('x, ord(x)').dict()
+        >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
+    """
+    if isinstance(func, str):
+        return Iter(_map(lambda x: eval(func), iterable))
+    else:
+        return Iter(_map(func, iterable))
+
+def filter(*args, iterable) -> Iter[T]:
+    """ Docstring TBD """
+    return Iter(_filter(*args, iterable))
+
+
+# standard library
+# =================
+
+# Infinite iterators
+
+def count(*args) -> Iter[int]:
+    """ Docstring TBD """
+    return Iter(itertools.count(*args))
+
+
+def cycle(iterable) -> Iter[T]:
+    """ Docstring TBD """
+    return Iter(itertools.cycle(iterable))
+
+
+def repeat(elem: C, times=None) -> Iter[C]:
+    """ Docstring TBD """
+    # TODO: does it really work like this? Wow.
+    if times:
+        return Iter(itertools.repeat(elem, times=times))
+    else:
+        return Iter(itertools.repeat(elem))
+
+
+# Iterators terminating on the shortest input sequence
+def accumulate(func, iterable):
+    """ |flux| """
+    return Iter(itertools.accumulate(iterable, func))
+
+
+def chain(*iterables: Iterable[T]) -> Iter[T]:
+    """ |flux| """
+    return Iter(itertools.chain(*iterables))
+
+
+def chain_from_iterable(iterable) -> Iter[T]:
+    """ Docstring TBD """
+    return Iter(itertools.chain.from_iterable(iterable))
+
+
+def compress(selectors, iterable):
+    """ Docstring TBD """
+    return Iter(itertools.compress(iterable, selectors))
+
+
+def dropwhile(pred, iterable):
+    """ Docstring TBD """
+    return Iter(itertools.dropwhile(pred, iterable))
+
+
+def filterfalse(pred, iterable):
+    """ Docstring TBD """
+    return Iter(itertools.filterfalse(pred, iterable))
+
+
+def groupby(iterable, key=None):
+    """ Docstring TBD """
+    return Iter(itertools.groupby(iterable, key=key))
+
+
+def islice(*args, iterable) -> Iter:
+    """ Docstring TBD """
+    return Iter(itertools.islice(iterable, *args))
+
+
+def starmap(func, iterable):
+    """ Docstring TBD """
+    return Iter(itertools.starmap(func, iterable))
+
+
+def takewhile(pred, iterable):
+    """ Docstring TBD """
+    return Iter(itertools.takewhile(pred, iterable))
+
+
+def tee(iterable, n=2):
+    """ Docstring TBD """
+    # Pay attention
+    return Iter(Iter(_) for _ in itertools.tee(iterable, n))
+
+
+def zip_longest(*iterables, fillvalue=None):
+    """ Docstring TBD """
+    return Iter(itertools.zip_longest(*iterables, fillvalue=fillvalue))
+
 
 class Iter(Generic[T]):
     """
@@ -240,7 +372,7 @@ class Iter(Generic[T]):
 
     def zip(self, *iterables: Any) -> Iter[Tuple[T, ...]]:
         """ Docstring TBD """
-        return Iter(zip(self.x, *iterables))
+        return Iter(_zip(self.x, *iterables))
 
     def any(self) -> bool:
         """ Docstring TBD """
@@ -252,7 +384,7 @@ class Iter(Generic[T]):
 
     def enumerate(self) -> Iter[Tuple[int, T]]:
         """ Docstring TBD """
-        return Iter(enumerate(self.x))
+        return Iter(_enumerate(self.x))
 
     def dict(self) -> Dict:
         """ Docstring TBD """
@@ -269,13 +401,13 @@ class Iter(Generic[T]):
         >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
         """
         if isinstance(func, str):
-            return Iter(map(lambda x: eval(func), self.x))
+            return Iter(_map(lambda x: eval(func), self.x))
         else:
-            return Iter(map(func, self.x))
+            return Iter(_map(func, self.x))
 
     def filter(self, *args) -> Iter[T]:
         """ Docstring TBD """
-        return Iter(filter(*args, self.x))
+        return Iter(_filter(*args, self.x))
 
     def reduce(self, func: Callable[..., T], *args) -> T:
         """ Docstring TBD """
@@ -1012,7 +1144,7 @@ class Iter(Generic[T]):
 
         .. code-block:: python
 
-            >>> all_items = range(30)
+            >>> all_items = _range(30)
             >>> keyfunc = lambda x: x % 2  # Evens map to 0; odds to 1
             >>> categories = Iter(all_items).filter(lambda x: 10<=x<=20).map_reduce(keyfunc=keyfunc)
             >>> sorted(categories.items())
@@ -1322,7 +1454,7 @@ def concat(iterable: Iterable[AnyStr], glue: AnyStr) -> AnyStr:
      problem with single bytes becoming integers, and it looks at the value
      of `glue` to know whether to handle bytes or strings."""
     if isinstance(glue, (bytes, bytearray)):
-        return glue.join(iterable[i : i + 1] for i, _ in enumerate(iterable))
+        return glue.join(iterable[i : i + 1] for i, _ in _enumerate(iterable))
 
     elif isinstance(glue, str):
         return glue.join(iterable)

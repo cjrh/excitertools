@@ -93,6 +93,80 @@ class class_or_instancemethod
 *****************************
 From: https://stackoverflow.com/a/28238047/170656
 
+``map(func: 'Union[Callable[..., C], str]', iterable) -> 'Iter[C]'``
+********************************************************************
+.. code-block:: python
+
+    >>> result = Iter('caleb').map(lambda x: (x, ord(x))).dict()
+    >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
+
+    >>> result = Iter('caleb').map('x, ord(x)').dict()
+    >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
+
+``filter(*args, iterable) -> 'Iter[T]'``
+****************************************
+Docstring TBD 
+
+``count(*args) -> 'Iter[int]'``
+*******************************
+Docstring TBD 
+
+``cycle(iterable) -> 'Iter[T]'``
+********************************
+Docstring TBD 
+
+``repeat(elem: 'C', times=None) -> 'Iter[C]'``
+**********************************************
+Docstring TBD 
+
+``accumulate(func, iterable)``
+******************************
+|flux| 
+
+``chain(*iterables: 'Iterable[T]') -> 'Iter[T]'``
+*************************************************
+|flux| 
+
+``chain_from_iterable(iterable) -> 'Iter[T]'``
+**********************************************
+Docstring TBD 
+
+``compress(selectors, iterable)``
+*********************************
+Docstring TBD 
+
+``dropwhile(pred, iterable)``
+*****************************
+Docstring TBD 
+
+``filterfalse(pred, iterable)``
+*******************************
+Docstring TBD 
+
+``groupby(iterable, key=None)``
+*******************************
+Docstring TBD 
+
+``islice(*args, iterable) -> 'Iter'``
+*************************************
+Docstring TBD 
+
+``starmap(func, iterable)``
+***************************
+Docstring TBD 
+
+``takewhile(pred, iterable)``
+*****************************
+Docstring TBD 
+
+``tee(iterable, n=2)``
+**********************
+Docstring TBD 
+
+``zip_longest(*iterables, fillvalue=None)``
+*******************************************
+Docstring TBD 
+
 class Iter
 **********
 This is the docstring for the ``Iter`` class.
@@ -643,7 +717,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sam
     >>> Iter(iterable).sample(5).map(lambda x: 0 <= x < 100).all()
     True
 
-``Iter.consecutive_groups(self, ordering=<function Iter.<lambda> at 0x000001D57FB9A1F0>)``
+``Iter.consecutive_groups(self, ordering=<function Iter.<lambda> at 0x000001B411EBBC10>)``
 ==========================================================================================
 See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.consecutive_groups
 
@@ -711,7 +785,7 @@ to filter *before* applying map_reduce, not after.
 
 .. code-block:: python
 
-    >>> all_items = range(30)
+    >>> all_items = _range(30)
     >>> keyfunc = lambda x: x % 2  # Evens map to 0; odds to 1
     >>> categories = Iter(all_items).filter(lambda x: 10<=x<=20).map_reduce(keyfunc=keyfunc)
     >>> sorted(categories.items())
@@ -743,141 +817,187 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map
 
 ``Iter.exactly_n(self, n, predicate=<class 'bool'>) -> 'Iter'``
 ===============================================================
+Docstring TBD
 
 ``Iter.all_equal(self)``
 ========================
+Docstring TBD
 
 ``Iter.first_true(self)``
 =========================
+Docstring TBD
 
 ``Iter.quantify(self)``
 =======================
+Docstring TBD
 
 ``Iter.islice_extended(self, *args)``
 =====================================
+Docstring TBD
 
 ``Iter.first(self)``
 ====================
+Docstring TBD
 
 ``Iter.last(self)``
 ===================
+Docstring TBD
 
 ``Iter.one(self)``
 ==================
+Docstring TBD
 
 ``Iter.only(self, default=None, too_long=None) -> 'Any'``
 =========================================================
+Docstring TBD
 
 ``Iter.strip(self, pred)``
 ==========================
+Docstring TBD
 
 ``Iter.lstrip(self, pred)``
 ===========================
+Docstring TBD
 
 ``Iter.rstrip(self, pred)``
 ===========================
+Docstring TBD
 
 ``Iter.filter_except(self, validator, *exceptions)``
 ====================================================
+Docstring TBD
 
 ``Iter.map_except(self, function, *exceptions)``
 ================================================
+Docstring TBD
 
 ``Iter.nth_or_last(self)``
 ==========================
+Docstring TBD
 
 ``Iter.nth(self, n, default=None)``
 ===================================
+Docstring TBD
 
 ``Iter.take(self, n: 'int') -> 'Iter'``
 =======================================
+Docstring TBD
 
 ``Iter.tail(self)``
 ===================
+Docstring TBD
 
 ``Iter.unique_everseen(self)``
 ==============================
+Docstring TBD
 
 ``Iter.unique_justseen(self)``
 ==============================
+Docstring TBD
 
 ``Iter.distinct_permutations(self)``
 ====================================
+Docstring TBD
 
 ``Iter.distinct_combinations(self, r)``
 =======================================
+Docstring TBD
 
 ``Iter.circular_shifts(self) -> 'Iter'``
 ========================================
+Docstring TBD
 
 ``Iter.partitions(self) -> 'Iter'``
 ===================================
+Docstring TBD
 
 ``Iter.set_partitions(self, k=None) -> 'Iter'``
 ===============================================
+Docstring TBD
 
 ``Iter.powerset(self)``
 =======================
+Docstring TBD
 
 ``Iter.random_product(self)``
 =============================
+Docstring TBD
 
 ``Iter.random_permutation(self)``
 =================================
+Docstring TBD
 
 ``Iter.random_combination(self)``
 =================================
+Docstring TBD
 
 ``Iter.random_combination_with_replacement(self)``
 ==================================================
+Docstring TBD
 
 ``Iter.nth_combination(self)``
 ==============================
+Docstring TBD
 
 ``Iter.always_iterable(self)``
 ==============================
+Docstring TBD
 
 ``Iter.always_reversible(self)``
 ================================
+Docstring TBD
 
 ``Iter.consumer(self)``
 =======================
+Docstring TBD
 
 ``Iter.with_iter(self)``
 ========================
+Docstring TBD
 
 ``Iter.iter_except(self)``
 ==========================
+Docstring TBD
 
 ``Iter.locate(self, pred=<class 'bool'>, window_size=None) -> 'Iter'``
 ======================================================================
+Docstring TBD
 
 ``Iter.rlocate(self, pred=<class 'bool'>, window_size=None) -> 'Iter'``
 =======================================================================
+Docstring TBD
 
 ``Iter.replace(self, pred, substitutes, count=None, window_size=1) -> 'Iter'``
 ==============================================================================
+Docstring TBD
 
 *classmethod* ``Iter.numeric_range(*args) -> 'Iter'``
 =====================================================
+Docstring TBD
 
 ``Iter.side_effect(self, func, chunk_size=None, before=None, after=None)``
 ==========================================================================
+Docstring TBD
 
 ``Iter.iterate(self)``
 ======================
+Docstring TBD
 
 ``Iter.difference(self, func=<built-in function sub>, *, initial=None)``
 ========================================================================
+Docstring TBD
 
 ``Iter.make_decorator(self)``
 =============================
+Docstring TBD
 
 ``Iter.SequenceView(self)``
 ===========================
+Docstring TBD
 
 ``Iter.time_limited(self, limit_seconds) -> 'Iter'``
 ====================================================
+Docstring TBD
 
 ``Iter.consume(self, n: 'Optional[int]' = None) -> 'Optional[Iter[T]]'``
 ========================================================================
@@ -888,9 +1008,11 @@ the iterator.
 
 ``Iter.tabulate(self)``
 =======================
+Docstring TBD
 
 ``Iter.repeatfunc(self)``
 =========================
+Docstring TBD
 
 ``Iter.wrap(self, ends: 'Sequence[T, T]' = '()')``
 ==================================================
@@ -929,6 +1051,7 @@ a `print()` step as necessary to observe data during iteration.
 
 class IterDict
 **************
+Docstring TBD
 
 ``IterDict.keys(self) -> 'Iter'``
 =================================
