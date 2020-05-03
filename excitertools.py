@@ -147,6 +147,7 @@ __all__ = [
     'zip_longest',
     "insert_separator",
     "concat",
+    "from_queue",
     "IterDict",
 ]
 
