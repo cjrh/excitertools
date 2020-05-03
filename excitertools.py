@@ -71,6 +71,27 @@ Tangentially related:
 API Documentation
 #################
 
+Several emoji are used to indicate things about parts of the API:
+
+- |source| This API method is a *source*, meaning that it produces data
+  that will be processed in an iterator chain.
+- |sink| This API method is a *sink*, meaning that it consumes data that
+  was processed in an iterator chain.
+- |warning| Warning - pay attention
+- |flux| This API is still in flux, and might be changed or
+  removed in the future
+- |cool| Noteworthy; could be especially useful in many situations.
+
+The API is arranged roughly with the module-level functions first, and
+thereafter the Iter_ class itself. It is the Iter_ class that does
+the work to allow these iterators to be chained together. However, the
+module-level functions are more likely to be used directly and that's
+why they're presented first.
+
+The API includes wrappers for the stdlib *itertools* module, including
+the "recipes" given in the *itertools* docs, as well as wrappers for
+the iterators from the *more-itertools* 3rd-party package.
+
 .. contents::
     :local:
 
@@ -165,7 +186,9 @@ replacements.
 """
 
 def range(*args) -> Iter[int]:
-    """ Replacement for the builtin ``range`` function.  This version returns
+    """
+    |source|
+    Replacement for the builtin ``range`` function.  This version returns
     an instance of ``excitertools.Iter`` to allow further iterable chaining.
 
     All the same calling variations work because this function merely wraps
@@ -286,7 +309,9 @@ def filter(function: Callable[[Any], ...], iterable: Iterable) -> Iter[T]:
 # Infinite iterators
 
 def count(start, step: int = 1) -> Iter[int]:
-    """ Replacement for the itertools ``count`` function.  This version returns
+    """
+    |source|
+    Replacement for the itertools ``count`` function.  This version returns
     an instance of ``excitertools.Iter`` to allow further iterable chaining.
 
     .. code-block:: python
@@ -324,7 +349,9 @@ def cycle(iterable) -> Iter[T]:
 
 
 def repeat(object: C, times=None) -> Iter[C]:
-    """ Replacement for the itertools ``count`` function.  This version returns
+    """
+    |source|
+    Replacement for the itertools ``count`` function.  This version returns
     an instance of ``excitertools.Iter`` to allow further iterable chaining.
 
     .. code-block:: python
@@ -346,7 +373,6 @@ def repeat(object: C, times=None) -> Iter[C]:
         return Iter(itertools.repeat(object, times=times))
     else:
         return Iter(itertools.repeat(object))
-
 
 """
 
@@ -604,6 +630,8 @@ class Iter(Generic[T]):
 
     def collect(self, container=list) -> List[T]:
         """
+        |sink|
+
         .. code-block:: python
 
             >>> Iter('abc').collect()
@@ -637,6 +665,7 @@ class Iter(Generic[T]):
     ) -> Iter:
         """
         |cool|
+        |source|
 
         Wrap the ``open()`` builtin precisely, but return an ``Iter``
         instance to allow function chaining on the result.
@@ -673,7 +702,10 @@ class Iter(Generic[T]):
 
     @classmethod
     def range(cls, *args) -> Iter[int]:
-        """ Docstring TBD """
+        """
+        |source|
+        Docstring TBD
+        """
         return cls(range(*args))
 
     def zip(self, *iterables: Any) -> Iter[Tuple[T, ...]]:
@@ -681,11 +713,17 @@ class Iter(Generic[T]):
         return Iter(_zip(self.x, *iterables))
 
     def any(self) -> bool:
-        """ Docstring TBD """
+        """
+        |sink|
+        Docstring TBD
+        """
         return any(self.x)
 
     def all(self) -> bool:
-        """ Docstring TBD """
+        """
+        |sink|
+        Docstring TBD
+        """
         return all(self.x)
 
     def enumerate(self) -> Iter[Tuple[int, T]]:
@@ -720,11 +758,16 @@ class Iter(Generic[T]):
         return functools.reduce(func, self.x, *args)
 
     def sum(self):
-        """ Docstring TBD """
+        """
+        |sink|
+        Docstring TBD """
         return sum(self.x)
 
     def concat(self, glue: AnyStr) -> AnyStr:
-        """ Docstring TBD """
+        """
+        |sink|
+        Docstring TBD
+        """
         return concat(self.x, glue)
 
     def insert(self, glue: C) -> Iter[Union[C, T]]:
@@ -738,7 +781,9 @@ class Iter(Generic[T]):
 
     @classmethod
     def count(cls, *args) -> Iter[int]:
-        """ Docstring TBD """
+        """
+        |source|
+        Docstring TBD """
         return cls(itertools.count(*args))
 
     def cycle(self) -> Iter[T]:
@@ -747,7 +792,9 @@ class Iter(Generic[T]):
 
     @classmethod
     def repeat(cls, elem: C, times=None) -> Iter[C]:
-        """ Docstring TBD """
+        """
+        |source|
+        Docstring TBD """
         # TODO: does it really work like this? Wow.
         if times:
             return Iter(itertools.repeat(elem, times=times))
@@ -1352,6 +1399,8 @@ class Iter(Generic[T]):
 
     def ilen(self) -> int:
         """
+        |sink|
+
         See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ilen
 
         .. code-block:: python
@@ -1528,7 +1577,10 @@ class Iter(Generic[T]):
         return Iter(d.items())
 
     def exactly_n(self, n, predicate=bool) -> bool:
-        """Docstring TBD
+        """
+        |sink|
+
+        Docstring TBD
 
         .. code-block:: python
 
@@ -1691,7 +1743,9 @@ class Iter(Generic[T]):
         return Iter(more_itertools.time_limited(limit_seconds, self.x))
 
     def consume(self, n: Optional[int] = None) -> Optional[Iter[T]]:
-        """ If n is not provided, the entire iterator is consumed and
+        """
+        |sink|
+        If n is not provided, the entire iterator is consumed and
         ``None`` is returned. Otherwise, an iterator will always be
         returned, even if n is greater than the number of items left in
         the iterator."""
@@ -1704,7 +1758,9 @@ class Iter(Generic[T]):
 
     @classmethod
     def repeatfunc(cls, func, *args, times=None):
-        """Docstring TBD
+        """
+        |source|
+        Docstring TBD
 
         .. code-block:: python
 

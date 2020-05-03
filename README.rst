@@ -71,6 +71,27 @@ Tangentially related:
 API Documentation
 #################
 
+Several emoji are used to indicate things about parts of the API:
+
+- |source| This API method is a *source*, meaning that it produces data
+  that will be processed in an iterator chain.
+- |sink| This API method is a *sink*, meaning that it consumes data that
+  was processed in an iterator chain.
+- |warning| Warning - pay attention
+- |flux| This API is still in flux, and might be changed or
+  removed in the future
+- |cool| Noteworthy; could be especially useful in many situations.
+
+The API is arranged roughly with the module-level functions first, and
+thereafter the Iter_ class itself. It is the Iter_ class that does
+the work to allow these iterators to be chained together. However, the
+module-level functions are more likely to be used directly and that's
+why they're presented first.
+
+The API includes wrappers for the stdlib *itertools* module, including
+the "recipes" given in the *itertools* docs, as well as wrappers for
+the iterators from the *more-itertools* 3rd-party package.
+
 .. contents::
     :local:
 
@@ -91,8 +112,10 @@ replacements.
 .. _range:
 
 
-``range(*args) -> Iter[int]``
-*****************************
+|source| ``range(*args) -> Iter[int]``
+**************************************
+
+
 Replacement for the builtin ``range`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
 
@@ -214,8 +237,10 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 .. _count:
 
 
-``count(start, step: int = 1) -> Iter[int]``
-********************************************
+|source| ``count(start, step: int = 1) -> Iter[int]``
+*****************************************************
+
+
 Replacement for the itertools ``count`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
 
@@ -256,8 +281,10 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 .. _repeat:
 
 
-``repeat(object: C, times=None) -> Iter[C]``
-********************************************
+|source| ``repeat(object: C, times=None) -> Iter[C]``
+*****************************************************
+
+
 Replacement for the itertools ``count`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
 
@@ -546,8 +573,10 @@ Test warning: |warning|
 .. _Iter.collect:
 
 
-``Iter.collect(self, container=list) -> List[T]``
-=================================================
+|sink| ``Iter.collect(self, container=list) -> List[T]``
+========================================================
+
+
 
 .. code-block:: python
 
@@ -563,8 +592,9 @@ Test warning: |warning|
 .. _Iter.open:
 
 
-|cool| ``@classmethod Iter.open(cls, file, mode="r", buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, ) -> Iter``
-===================================================================================================================================================
+|cool| |source| ``@classmethod Iter.open(cls, file, mode="r", buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, ) -> Iter``
+============================================================================================================================================================
+
 
 
 
@@ -587,8 +617,10 @@ only reading is supported.
 .. _Iter.range:
 
 
-``@classmethod Iter.range(cls, *args) -> Iter[int]``
-====================================================
+|source| ``@classmethod Iter.range(cls, *args) -> Iter[int]``
+=============================================================
+
+
 Docstring TBD
 
 
@@ -603,16 +635,20 @@ Docstring TBD
 .. _Iter.any:
 
 
-``Iter.any(self) -> bool``
-==========================
+|sink| ``Iter.any(self) -> bool``
+=================================
+
+
 Docstring TBD
 
 
 .. _Iter.all:
 
 
-``Iter.all(self) -> bool``
-==========================
+|sink| ``Iter.all(self) -> bool``
+=================================
+
+
 Docstring TBD
 
 
@@ -664,16 +700,19 @@ Docstring TBD
 .. _Iter.sum:
 
 
-``Iter.sum(self)``
-==================
-Docstring TBD
+|sink| ``Iter.sum(self)``
+=========================
 
+
+Docstring TBD 
 
 .. _Iter.concat:
 
 
-``Iter.concat(self, glue: AnyStr) -> AnyStr``
-=============================================
+|sink| ``Iter.concat(self, glue: AnyStr) -> AnyStr``
+====================================================
+
+
 Docstring TBD
 
 
@@ -688,10 +727,11 @@ Docstring TBD
 .. _Iter.count:
 
 
-``@classmethod Iter.count(cls, *args) -> Iter[int]``
-====================================================
-Docstring TBD
+|source| ``@classmethod Iter.count(cls, *args) -> Iter[int]``
+=============================================================
 
+
+Docstring TBD 
 
 .. _Iter.cycle:
 
@@ -704,10 +744,11 @@ Docstring TBD
 .. _Iter.repeat:
 
 
-``@classmethod Iter.repeat(cls, elem: C, times=None) -> Iter[C]``
-=================================================================
-Docstring TBD
+|source| ``@classmethod Iter.repeat(cls, elem: C, times=None) -> Iter[C]``
+==========================================================================
 
+
+Docstring TBD 
 
 .. _Iter.accumulate:
 
@@ -1386,8 +1427,10 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.pre
 .. _Iter.ilen:
 
 
-``Iter.ilen(self) -> int``
-==========================
+|sink| ``Iter.ilen(self) -> int``
+=================================
+
+
 
 See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ilen
 
@@ -1578,8 +1621,11 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map
 .. _Iter.exactly_n:
 
 
-``Iter.exactly_n(self, n, predicate=bool) -> bool``
-===================================================
+|sink| ``Iter.exactly_n(self, n, predicate=bool) -> bool``
+==========================================================
+
+
+
 Docstring TBD
 
 .. code-block:: python
@@ -1862,8 +1908,10 @@ Docstring TBD
 .. _Iter.consume:
 
 
-``Iter.consume(self, n: Optional[int] = None) -> Optional[Iter[T]]``
-====================================================================
+|sink| ``Iter.consume(self, n: Optional[int] = None) -> Optional[Iter[T]]``
+===========================================================================
+
+
 If n is not provided, the entire iterator is consumed and
 ``None`` is returned. Otherwise, an iterator will always be
 returned, even if n is greater than the number of items left in
@@ -1878,8 +1926,10 @@ the iterator.
 .. _Iter.repeatfunc:
 
 
-``@classmethod Iter.repeatfunc(cls, func, *args, times=None)``
-==============================================================
+|source| ``@classmethod Iter.repeatfunc(cls, func, *args, times=None)``
+=======================================================================
+
+
 Docstring TBD
 
 .. code-block:: python
