@@ -1,7 +1,10 @@
 """
 
-.. image:: https://travis-ci.org/cjrh/excitertools.svg?branch=master
-    :target: https://travis-ci.org/cjrh/excitertools
+.. image:: https://github.com/cjrh/excitertools/workflows/Python%20application/badge.svg
+    :target: https://github.com/cjrh/excitertools/actions
+
+.. image:: https://img.shields.io/badge/stdlib--only-yes-green.svg
+    :target: https://img.shields.io/badge/stdlib--only-yes-green.svg
 
 .. image:: https://coveralls.io/repos/github/cjrh/excitertools/badge.svg?branch=master
     :target: https://coveralls.io/github/cjrh/excitertools?branch=master
@@ -20,6 +23,10 @@
 
 .. image:: https://img.shields.io/badge/calver-YYYY.MM.MINOR-22bfda.svg
     :target: http://calver.org/
+
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+    :target: https://github.com/ambv/black
+
 
 excitertools
 ############
