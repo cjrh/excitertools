@@ -184,64 +184,6 @@ def main(args):
     visitor.visit(mod)
 
 
-def main2(args):
-    mod = importlib.import_module(args.module)
-    sections = [mod.__doc__]
-
-    include_names = None
-    if hasattr(mod, '__all__'):
-        include_names = mod.__all__
-
-    for name, element, level in parse(mod, level=1, include_names=include_names):
-        # print(level, name)
-        # if hasattr(mod, '__all__') and name not in mod.__all__:
-        #     continue
-
-        if name.startswith('__'):
-            continue
-
-        if type(element).__name__ == 'module':
-            continue
-
-        if type(element).__name__.startswith('TypeVar'):
-            continue
-
-        if hasattr(element, '__module__') and element.__module__ != mod.__name__:
-            continue
-
-        # print(
-        #     name,
-        #     type(element).__name__,
-        #     type(element), element,
-        #     getattr(element, '__module__', '(no module)')
-        # )
-
-        if name == 'mro':
-            continue
-
-        section_doc = inspect.getdoc(element)
-        tag_prefix = ''
-        if section_doc:
-            import re
-            pat = r'^\|[a-zA-Z_-]+\|$'
-            tags = re.findall(pat, section_doc, flags=re.MULTILINE)
-            section_doc = re.sub(pat, '', section_doc, flags=re.MULTILINE)
-            if tags:
-                tag_prefix = ' '.join(t for t in tags) + '    '
-
-        title_text = make_titletext(name, element, level, prefix=tag_prefix)
-        sections.append(title_text)
-        # print(name, section_doc)
-        if section_doc:
-            sections.append(section_doc)
-
-        else:
-            sections.append('Docstring TBD')
-
-    # print('***')
-    print('\n'.join(sections))
-
-
 def make_titletext(name, element, level, prefix=''):
     section_chars = '#*=-^"'
 
