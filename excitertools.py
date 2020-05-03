@@ -421,8 +421,8 @@ class Iter(Generic[T]):
 
         >>> import tempfile
         >>> with tempfile.TemporaryDirectory() as td:
-        ...     open('text.txt', 'w').writelines(['abc\\n', 'def\\n', 'ghi\\n'])
-        ...     Iter.open('text.txt').filter(lambda line: 'def' in line).collect()
+        ...     open(td + 'text.txt', 'w').writelines(['abc\\n', 'def\\n', 'ghi\\n'])
+        ...     Iter.open(td + 'text.txt').filter(lambda line: 'def' in line).collect()
         ['def\\n']
 
         Note that this is a convenience method for *reading* from a file,
