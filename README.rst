@@ -2111,6 +2111,31 @@ of `glue` to know whether to handle bytes or strings.
 This function can raise ``ValueError`` if called with something
 other than ``bytes``, ``bytearray`` or ``str``.
 
+.. _from_queue:
+
+
+|source| ``from_queue(q: queue.Queue, timeout=None, sentinel=None) -> Iter``
+****************************************************************************
+
+
+Wrap a queue with an iterator interface. This allows it to participate
+in chaining operations. The iterator will block while waiting for
+new values to appear on the queue. This is useful: it allows you
+to easily and safely pass data between threads or processes, and
+feed the incoming data into a pipeline.
+
+The sentinel value, default ``None``, will terminate the iterator.
+
+.. code-block:: python
+
+    >>> q = queue.Queue()
+    >>> # This line puts stuff onto a queue
+    >>> range(10).chain([None]).map(q.put).consume()
+    >>> from_queue(q).filter(lambda x: 2 < x < 9).collect()
+    [3, 4, 5, 6, 7, 8]
+
+
+
 
 Dev Instructions
 ################
