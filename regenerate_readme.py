@@ -139,6 +139,7 @@ class MyVisitor(ast.NodeVisitor):
             return
 
         anchor_text = node.name
+        print()
         print(f'.. _{anchor_text}:')
         print()
 

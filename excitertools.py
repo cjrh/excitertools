@@ -154,6 +154,18 @@ _enumerate = __builtins__['enumerate']
 _map = __builtins__['map']
 _filter = __builtins__['filter']
 
+"""
+
+-----
+
+The following module-level functions, like range_, zip_ and so on, are 
+intended to be used as replacements for their homonymous builtins. The
+only difference between these and the builtin versions is that these 
+return instances of the Iter_ class. Note that because Iter_ is itself
+iterable, it means that the functions here can be used as drop-in 
+replacements.
+
+"""
 
 def range(*args) -> Iter[int]:
     """ Replacement for the builtin ``range`` function.  This version returns

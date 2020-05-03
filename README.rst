@@ -3,9 +3,6 @@
 .. image:: https://github.com/cjrh/excitertools/workflows/Python%20application/badge.svg
     :target: https://github.com/cjrh/excitertools/actions
 
-.. image:: https://img.shields.io/badge/stdlib--only-yes-green.svg
-    :target: https://img.shields.io/badge/stdlib--only-yes-green.svg
-
 .. image:: https://coveralls.io/repos/github/cjrh/excitertools/badge.svg?branch=master
     :target: https://coveralls.io/github/cjrh/excitertools?branch=master
 
@@ -74,6 +71,18 @@ API Documentation
 
 .. contents::
     :local:
+
+
+
+
+-----
+
+The following module-level functions, like range_, zip_ and so on, are 
+intended to be used as replacements for their homonymous builtins. The
+only difference between these and the builtin versions is that these 
+return instances of the Iter_ class. Note that because Iter_ is itself
+iterable, it means that the functions here can be used as drop-in 
+replacements.
 
 
 
@@ -302,6 +311,7 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 *******************************************
 Replacement for the itertools ``zip_longest`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
+
 .. _Iter:
 
 
@@ -346,8 +356,8 @@ instance to allow function chaining on the result.
 
 >>> import tempfile
 >>> with tempfile.TemporaryDirectory() as td:
-...     open('text.txt', 'w').writelines(['abc\n', 'def\n', 'ghi\n'])
-...     Iter.open('text.txt').filter(lambda line: 'def' in line).collect()
+...     open(td + 'text.txt', 'w').writelines(['abc\n', 'def\n', 'ghi\n'])
+...     Iter.open(td + 'text.txt').filter(lambda line: 'def' in line).collect()
 ['def\n']
 
 Note that this is a convenience method for *reading* from a file,
@@ -1657,6 +1667,7 @@ a `print()` step as necessary to observe data during iteration.
     before filter 4: 4
     after filter 1: 4
     [3, 4]
+
 
 
 .. _IterDict:
