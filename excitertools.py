@@ -26,6 +26,9 @@ excitertools
 
 itertools in the form of function call chaining
 
+.. contents::
+    :depth: 1
+
 Related projects
 ****************
 
@@ -54,32 +57,10 @@ Tangentially related:
 * `https://github.com/jreese/aioitertools <https://github.com/jreese/aioitertools>`_
 
 
-.. |warning| replace:: ⚠
-.. |cool| replace:: ✨
-.. |flux| replace:: 🛠
+.. |warning| unicode:: U+26A0
+.. |cool| unicode:: U+2728
+.. |flux| unicode:: U+1F6E0
 
-Dev Instructions
-################
-
-For general dev:
-
-.. code-block:: shell
-
-    $ python -m venv venv
-    $ source venv/bin/activate
-    (venv) $ pip install -e .[dev,test]
-
-To run the tests:
-
-.. code-block:: shell
-
-    (venv) $ pytest
-
-To regenerate the file ``README.rst``:
-
-.. code-block:: shell
-
-    (venv) $ python regenerate_readme.py -m excitertools > README.rst
 
 API Documentation
 #################
@@ -121,9 +102,29 @@ import more_itertools
 
 __all__ = [
     "Iter",
-    "IterDict",
+    'range',
+    'zip',
+    'enumerate',
+    'map',
+    'filter',
+    'count',
+    'cycle',
+    'repeat',
+    'accumulate',
+    'chain',
+    'chain_from_iterable',
+    'compress',
+    'dropwhile',
+    'filterfalse',
+    'groupby',
+    'islice',
+    'starmap',
+    'takewhile',
+    'tee',
+    'zip_longest',
     "insert_separator",
     "concat",
+    "IterDict",
 ]
 
 T = TypeVar("T")
@@ -143,28 +144,87 @@ class class_or_instancemethod(classmethod):
 # Standalone functions that return ``Iter``
 
 # First save the builtins
-# _range = __builtins__['range']
+_range = __builtins__['range']
 _zip = __builtins__['zip']
 _enumerate = __builtins__['enumerate']
 _map = __builtins__['map']
 _filter = __builtins__['filter']
 
-# def range(*args) -> Iter[int]:
-#     """ Docstring TBD """
-#     return Iter(__builtins__['range'](*args))
-#
-#
-# def zip(*iterables: Any) -> Iter[Tuple[T, ...]]:
-#     """ Docstring TBD """
-#     return Iter(__builtins__['zip'](*iterables))
-#
-#
-# def enumerate(iterable) -> Iter[Tuple[int, T]]:
-#     """ Docstring TBD """
-#     return Iter(__builtins__['enumerate'](iterable))
+
+def range(*args) -> Iter[int]:
+    """ Replacement for the builtin ``range`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining.
+
+    All the same calling variations work because this function merely wraps
+    the original function.
+
+    .. code-block:: python
+
+        >>> range(3).collect()
+        [0, 1, 2]
+        >>> range(1, 4).collect()
+        [1, 2, 3]
+        >>> range(1, 6, 2).collect()
+        [1, 3, 5]
+        >>> range(1, 101, 3).filter(lambda x: x % 7 == 0).collect()
+        [7, 28, 49, 70, 91]
+
+    This example multiples, element by element, the series [0:5] with the
+    series [1:6]. Two things to note: Firstly, Iter.zip_ is used to emit
+    the tuples from each series. Secondly, Iter.starmap_ is used to receive
+    those tuples into separate arguments in the lambda.
+
+    .. code-block:: python
+
+        >>> range(5).zip(range(1, 6)).starmap(lambda x, y: x * y).collect()
+        [0, 2, 6, 12, 20]
+
+    When written in a single line as above, it can get difficult to follow
+    the chain of logic if there are many processing steps. Parentheses in
+    Python allow grouping such that expressions can be spread over multiple
+    lines.
+
+    This is the same example as the prior one, but formatted to be spread
+    over several lines. This is much clearer:
+
+    .. code-block:: python
+
+        >>> # Written out differently
+        >>> (
+        ...     range(5)
+        ...         .zip(range(1, 6))
+        ...         .starmap(lambda x, y: x * y)
+        ...         .collect()
+        ... )
+        [0, 2, 6, 12, 20]
+
+    If you wanted the sum instead, it isn't necessary to do the collection
+    at all:
+
+    .. code-block:: python
+
+        >>> (
+        ...     range(5)
+        ...         .zip(range(1, 6))
+        ...         .starmap(lambda x, y: x * y)
+        ...         .sum()
+        ... )
+        40
+
+    """
+    return Iter(_range(*args))
 
 
-###
+def zip(*iterables: Any) -> Iter[Tuple[T, ...]]:
+    """ Replacement for the builtin ``zip`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
+    return Iter(__builtins__['zip'](*iterables))
+
+
+def enumerate(iterable) -> Iter[Tuple[int, T]]:
+    """ Replacement for the builtin ``enumerate`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
+    return Iter(__builtins__['enumerate'](iterable))
 
 
 def map(func: Union[Callable[..., C], str], iterable) -> Iter[C]:
@@ -183,7 +243,8 @@ def map(func: Union[Callable[..., C], str], iterable) -> Iter[C]:
         return Iter(_map(func, iterable))
 
 def filter(*args, iterable) -> Iter[T]:
-    """ Docstring TBD """
+    """ Replacement for the builtin ``filter`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     return Iter(_filter(*args, iterable))
 
 
@@ -193,17 +254,20 @@ def filter(*args, iterable) -> Iter[T]:
 # Infinite iterators
 
 def count(*args) -> Iter[int]:
-    """ Docstring TBD """
+    """ Replacement for the itertools ``count`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     return Iter(itertools.count(*args))
 
 
 def cycle(iterable) -> Iter[T]:
-    """ Docstring TBD """
+    """ Replacement for the itertools ``count`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     return Iter(itertools.cycle(iterable))
 
 
 def repeat(elem: C, times=None) -> Iter[C]:
-    """ Docstring TBD """
+    """ Replacement for the itertools ``count`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     # TODO: does it really work like this? Wow.
     if times:
         return Iter(itertools.repeat(elem, times=times))
@@ -213,63 +277,76 @@ def repeat(elem: C, times=None) -> Iter[C]:
 
 # Iterators terminating on the shortest input sequence
 def accumulate(func, iterable):
-    """ |flux| """
+    """ Replacement for the itertools ``accumulate`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     return Iter(itertools.accumulate(iterable, func))
 
 
 def chain(*iterables: Iterable[T]) -> Iter[T]:
-    """ |flux| """
+    """ Replacement for the itertools ``chain`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     return Iter(itertools.chain(*iterables))
 
 
 def chain_from_iterable(iterable) -> Iter[T]:
-    """ Docstring TBD """
+    """ Replacement for the itertools ``chain.from_iterable`` method.
+    This version returns an instance of ``excitertools.Iter`` to allow
+    further iterable chaining."""
     return Iter(itertools.chain.from_iterable(iterable))
 
 
 def compress(selectors, iterable):
-    """ Docstring TBD """
+    """ Replacement for the itertools ``compress`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     return Iter(itertools.compress(iterable, selectors))
 
 
 def dropwhile(pred, iterable):
-    """ Docstring TBD """
+    """ Replacement for the itertools ``dropwhile`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     return Iter(itertools.dropwhile(pred, iterable))
 
 
 def filterfalse(pred, iterable):
-    """ Docstring TBD """
+    """ Replacement for the itertools ``filterfalse`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     return Iter(itertools.filterfalse(pred, iterable))
 
 
 def groupby(iterable, key=None):
-    """ Docstring TBD """
+    """ Replacement for the itertools ``groupby`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     return Iter(itertools.groupby(iterable, key=key))
 
 
 def islice(*args, iterable) -> Iter:
-    """ Docstring TBD """
+    """ Replacement for the itertools ``islice`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     return Iter(itertools.islice(iterable, *args))
 
 
 def starmap(func, iterable):
-    """ Docstring TBD """
+    """ Replacement for the itertools ``starmap`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     return Iter(itertools.starmap(func, iterable))
 
 
 def takewhile(pred, iterable):
-    """ Docstring TBD """
+    """ Replacement for the itertools ``takewhile`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     return Iter(itertools.takewhile(pred, iterable))
 
 
 def tee(iterable, n=2):
-    """ Docstring TBD """
+    """ Replacement for the itertools ``tee`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     # Pay attention
     return Iter(Iter(_) for _ in itertools.tee(iterable, n))
 
 
 def zip_longest(*iterables, fillvalue=None):
-    """ Docstring TBD """
+    """ Replacement for the itertools ``zip_longest`` function.  This version returns
+    an instance of ``excitertools.Iter`` to allow further iterable chaining."""
     return Iter(itertools.zip_longest(*iterables, fillvalue=fillvalue))
 
 
@@ -1406,6 +1483,13 @@ class Iter(Generic[T]):
 
 
 class IterDict(UserDict):
+    """
+    |flux|
+
+    The idea here was to make a custom dict where several of
+    the standard dict methods return ``Iter`` instances, which can then
+    be chained. I'm not sure if this will be kept yet.
+    """
     def __iter__(self) -> Iter:
         return Iter(self.data.keys())
 
@@ -1424,7 +1508,7 @@ class IterDict(UserDict):
 
 
 def insert_separator(iterable: Iterable[Any], glue: Any) -> Iterable[Any]:
-    """ Similar functionality can be obtained with, e.g.,
+    """Similar functionality can be obtained with, e.g.,
     interleave, as in
 
     >>> result = Iter('caleb').interleave(Iter.repeat('x')).collect()
@@ -1460,13 +1544,35 @@ def concat(iterable: Iterable[AnyStr], glue: AnyStr) -> AnyStr:
         return glue.join(iterable)
 
     else:
+        """ 
+        This function can raise ``ValueError`` if called with something
+        other than ``bytes``, ``bytearray`` or ``str``."""
         raise ValueError("Must be called with bytes, bytearray or str")
 
 
 """
 
-Blah blah blah here is some more text
+Dev Instructions
+################
+
+For general dev:
+
+.. code-block:: shell
+
+    $ python -m venv venv
+    $ source venv/bin/activate
+    (venv) $ pip install -e .[dev,test]
+
+To run the tests:
+
+.. code-block:: shell
+
+    (venv) $ pytest
+
+To regenerate the file ``README.rst``:
+
+.. code-block:: shell
+
+    (venv) $ python regenerate_readme.py -m excitertools.py > README.rst
 
 """
-
-
