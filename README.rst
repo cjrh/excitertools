@@ -64,6 +64,8 @@ Tangentially related:
 .. |warning| unicode:: U+26A0
 .. |cool| unicode:: U+2728
 .. |flux| unicode:: U+1F6E0
+.. |source| unicode:: U+1F3A4
+.. |sink| unicode:: U+1F3A7
 
 
 API Documentation
@@ -168,36 +170,69 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 Replacement for the builtin ``enumerate`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
 
+.. code-block:: python
+
+    >>> enumerate(string.ascii_lowercase).take(3).collect()
+    [(0, 'a'), (1, 'b'), (2, 'c')]
+
+
+
+
 .. _map:
 
 
 ``map(func: Union[Callable[..., C], str], iterable) -> Iter[C]``
 ****************************************************************
+Replacement for the builtin ``map`` function.  This version returns
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
-    >>> result = Iter('caleb').map(lambda x: (x, ord(x))).dict()
+    >>> result = map(lambda x: (x, ord(x)), 'caleb').dict()
     >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
 
-    >>> result = Iter('caleb').map('x, ord(x)').dict()
+    >>> result = map('x, ord(x)', 'caleb').dict()
     >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
 
 
 .. _filter:
 
 
-``filter(*args, iterable) -> Iter[T]``
-**************************************
+``filter(function: Callable[[Any], ...], iterable: Iterable) -> Iter[T]``
+*************************************************************************
 Replacement for the builtin ``filter`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
+
+.. code-block:: python
+
+    >>> filter(lambda x: x % 3 == 0, range(10)).collect()
+    [0, 3, 6, 9]
+
+
+
 
 .. _count:
 
 
-``count(*args) -> Iter[int]``
-*****************************
+``count(start, step: int = 1) -> Iter[int]``
+********************************************
 Replacement for the itertools ``count`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
+
+.. code-block:: python
+
+    >>> count(0).take(5).collect()
+    [0, 1, 2, 3, 4]
+    >>> count(0).take(0).collect()
+    []
+    >>> count(10).take(0).collect()
+    []
+    >>> count(10).take(5).collect()
+    [10, 11, 12, 13, 14]
+    >>> count(1).filter(lambda x: x > 10).take(5).collect()
+    [11, 12, 13, 14, 15]
+
+
 
 .. _cycle:
 
@@ -207,21 +242,72 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 Replacement for the itertools ``count`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
 
+.. code-block:: python
+
+    >>> cycle(range(3)).take(6).collect()
+    [0, 1, 2, 0, 1, 2]
+    >>> cycle([]).take(6).collect()
+    []
+    >>> cycle(range(3)).take(0).collect()
+    []
+
+
+
 .. _repeat:
 
 
-``repeat(elem: C, times=None) -> Iter[C]``
-******************************************
+``repeat(object: C, times=None) -> Iter[C]``
+********************************************
 Replacement for the itertools ``count`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
+
+.. code-block:: python
+
+    >>> repeat('a').take(3).collect()
+    ['a', 'a', 'a']
+    >>> repeat([1, 2]).take(3).collect()
+    [[1, 2], [1, 2], [1, 2]]
+    >>> repeat([1, 2]).take(3).collapse().collect()
+    [1, 2, 1, 2, 1, 2]
+    >>> repeat([1, 2]).collapse().take(3).collect()
+    [1, 2, 1]
+    >>> repeat('a', times=3).collect()
+    ['a', 'a', 'a']
+
+
+
+
+This next set of functions return iterators that terminate on the shortest 
+input sequence.
+
+
 
 .. _accumulate:
 
 
-``accumulate(func, iterable)``
-******************************
+``accumulate(iterable, func=None, *, initial=None)``
+****************************************************
 Replacement for the itertools ``accumulate`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
+
+.. code-block:: python
+
+    >>> accumulate([1, 2, 3, 4, 5]).collect()
+    [1, 3, 6, 10, 15]
+    >>> accumulate([1, 2, 3, 4, 5], initial=100).collect()
+    [100, 101, 103, 106, 110, 115]
+    >>> accumulate([1, 2, 3, 4, 5], operator.mul).collect()
+    [1, 2, 6, 24, 120]
+    >>> accumulate([]).collect()
+    []
+    >>> accumulate('abc').collect()
+    ['a', 'ab', 'abc']
+    >>> accumulate(b'abc').collect()
+    [97, 195, 294]
+    >>> accumulate(bytearray(b'abc')).collect()
+    [97, 195, 294]
+
+
 
 .. _chain:
 
@@ -230,6 +316,15 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 *********************************************
 Replacement for the itertools ``chain`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
+
+.. code-block:: python
+
+    >>> chain('ABC', 'DEF').collect()
+    ['A', 'B', 'C', 'D', 'E', 'F']
+    >>> chain().collect()
+    []
+
+
 
 .. _chain_from_iterable:
 
@@ -240,13 +335,30 @@ Replacement for the itertools ``chain.from_iterable`` method.
 This version returns an instance of ``excitertools.Iter`` to allow
 further iterable chaining.
 
+.. code-block:: python
+
+    >>> chain_from_iterable(['ABC', 'DEF']).collect()
+    ['A', 'B', 'C', 'D', 'E', 'F']
+    >>> chain_from_iterable([]).collect()
+    []
+
+
+
 .. _compress:
 
 
-``compress(selectors, iterable)``
-*********************************
+``compress(data, selectors)``
+*****************************
 Replacement for the itertools ``compress`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
+
+.. code-block:: python
+
+    >>> compress('ABCDEF', [1, 0, 1, 0, 1, 1]).collect()
+    ['A', 'C', 'E', 'F']
+
+
+
 
 .. _dropwhile:
 
@@ -256,6 +368,13 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 Replacement for the itertools ``dropwhile`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
 
+.. code-block:: python
+
+    >>> dropwhile(lambda x: x < 4, range(6)).collect()
+    [4, 5]
+
+
+
 .. _filterfalse:
 
 
@@ -263,6 +382,13 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 *******************************
 Replacement for the itertools ``filterfalse`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
+
+.. code-block:: python
+
+    >>> filterfalse(None, [2, 0, 3, None, 4, 0]).collect()
+    [0, None, 0]
+
+
 
 .. _groupby:
 
@@ -272,13 +398,42 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 Replacement for the itertools ``groupby`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
 
+groupby_ returns an iterator of a key and "grouper" iterable. In the
+example below, we use Iter.starmap_ to collect each grouper iterable
+into a list, as this makes it neater for display here in the docstring.
+
+.. code-block:: python
+
+    >>> (
+    ...     groupby(['john', 'jill', 'anne', 'jack'], key=lambda x: x[0])
+    ...         .starmap(lambda k, g: (k, list(g)))
+    ...         .collect()
+    ... )
+    [('j', ['john', 'jill']), ('a', ['anne']), ('j', ['jack'])]
+
+
+
+
 .. _islice:
 
 
-``islice(*args, iterable) -> Iter``
+``islice(iterable, *args) -> Iter``
 ***********************************
 Replacement for the itertools ``islice`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
+
+.. code-block:: python
+
+    >>> islice('ABCDEFG', 2).collect()
+    ['A', 'B']
+    >>> islice('ABCDEFG', 2, 4).collect()
+    ['C', 'D']
+    >>> islice('ABCDEFG', 2, None).collect()
+    ['C', 'D', 'E', 'F', 'G']
+    >>> islice('ABCDEFG', 0, None, 2).collect()
+    ['A', 'C', 'E', 'G']
+
+
 
 .. _starmap:
 
@@ -288,6 +443,13 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 Replacement for the itertools ``starmap`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
 
+.. code-block:: python
+
+    >>> starmap(pow, [(2, 5), (3, 2), (10, 3)]).collect()
+    [32, 9, 1000]
+
+
+
 .. _takewhile:
 
 
@@ -295,6 +457,13 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 *****************************
 Replacement for the itertools ``takewhile`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
+
+.. code-block:: python
+
+    >>> takewhile(lambda x: x < 5, [1, 4, 6, 4, 1]).collect()
+    [1, 4]
+
+
 
 .. _tee:
 
@@ -304,6 +473,35 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 Replacement for the itertools ``tee`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
 
+.. code-block:: python
+
+    >>> a, b = tee(range(5))
+    >>> a.collect()
+    [0, 1, 2, 3, 4]
+    >>> b.sum()
+    10
+
+It is also possible to operate on the returned iterators in the chain
+but it gets quite difficult to understand:
+
+.. code-block:: python
+
+    >>> tee(range(5)).map(lambda it: it.sum()).collect()
+    [10, 10]
+
+In the example above we passed in range_, but with *excitertools*
+it's usually more natural to push data sources further left:
+
+.. code-block:: python
+
+    >>> range(5).tee().map(lambda it: it.sum()).collect()
+    [10, 10]
+
+Pay close attention to the above. The map_ is acting on each of the
+copied iterators.
+
+
+
 .. _zip_longest:
 
 
@@ -311,6 +509,25 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 *******************************************
 Replacement for the itertools ``zip_longest`` function.  This version returns
 an instance of ``excitertools.Iter`` to allow further iterable chaining.
+
+.. code-block:: python
+
+    >>> zip_longest('ABCD', 'xy', fillvalue='-').collect()
+    [('A', 'x'), ('B', 'y'), ('C', '-'), ('D', '-')]
+    >>> (
+    ...     zip_longest('ABCD', 'xy', fillvalue='-')
+    ...         .map(lambda tup: concat(tup, ''))
+    ...         .collect()
+    ... )
+    ['Ax', 'By', 'C-', 'D-']
+    >>> (
+    ...     zip_longest('ABCD', 'xy', fillvalue='-')
+    ...         .starmap(operator.add)
+    ...         .collect()
+    ... )
+    ['Ax', 'By', 'C-', 'D-']
+
+
 
 .. _Iter:
 
@@ -495,9 +712,19 @@ Docstring TBD
 .. _Iter.accumulate:
 
 
-``Iter.accumulate(self, func)``
-===============================
+``Iter.accumulate(self, func=None, *, initial=None)``
+=====================================================
 Docstring TBD
+
+.. code-block:: python
+
+    >>> Iter([1, 2, 3, 4, 5]).accumulate().collect()
+    [1, 3, 6, 10, 15]
+    >>> Iter([1, 2, 3, 4, 5]).accumulate(initial=100).collect()
+    [100, 101, 103, 106, 110, 115]
+    >>> Iter([1, 2, 3, 4, 5]).accumulate(operator.mul).collect()
+    [1, 2, 6, 24, 120]
+
 
 
 .. _Iter.chain:
@@ -507,6 +734,14 @@ Docstring TBD
 ========================================================
 Docstring TBD
 
+.. code-block:: python
+
+    >>> Iter('ABC').chain('DEF').collect()
+    ['A', 'B', 'C', 'D', 'E', 'F']
+    >>> Iter('ABC').chain().collect()
+    ['A', 'B', 'C']
+
+
 
 .. _Iter.chain_from_iterable:
 
@@ -515,13 +750,26 @@ Docstring TBD
 =============================================
 Docstring TBD
 
+.. code-block:: python
+
+    >>> Iter(['ABC', 'DEF']).chain_from_iterable().collect()
+    ['A', 'B', 'C', 'D', 'E', 'F']
+
+
 
 .. _Iter.compress:
 
 
 ``Iter.compress(self, selectors)``
 ==================================
-Docstring TBD
+Replacement for the itertools ``compress`` function.  This version returns
+an instance of ``excitertools.Iter`` to allow further iterable chaining.
+
+.. code-block:: python
+
+    >>> Iter('ABCDEF').compress([1, 0, 1, 0, 1, 1]).collect()
+    ['A', 'C', 'E', 'F']
+
 
 
 .. _Iter.dropwhile:
@@ -1330,8 +1578,16 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map
 .. _Iter.exactly_n:
 
 
-``Iter.exactly_n(self, n, predicate=bool) -> Iter``
+``Iter.exactly_n(self, n, predicate=bool) -> bool``
 ===================================================
+Docstring TBD
+
+.. code-block:: python
+
+    >>> Iter([True, True, False]).exactly_n(2)
+    True
+
+
 
 .. _Iter.all_equal:
 
@@ -1622,8 +1878,16 @@ the iterator.
 .. _Iter.repeatfunc:
 
 
-``Iter.repeatfunc(self)``
-=========================
+``@classmethod Iter.repeatfunc(cls, func, *args, times=None)``
+==============================================================
+Docstring TBD
+
+.. code-block:: python
+
+    >>> Iter.repeatfunc(operator.add, 3, 5, times=4).collect()
+    [8, 8, 8, 8]
+
+
 
 .. _Iter.wrap:
 
@@ -1667,6 +1931,63 @@ a `print()` step as necessary to observe data during iteration.
     before filter 4: 4
     after filter 1: 4
     [3, 4]
+
+
+
+.. _Iter.from_queue:
+
+
+|source| ``@classmethod Iter.from_queue(cls, q: queue.Queue, timeout=None, sentinel=None)``
+===========================================================================================
+
+
+Wrap a queue with an iterator interface. This allows it to participate
+in chaining operations. The iterator will block while waiting for
+new values to appear on the queue. This is useful: it allows you
+to easily and safely pass data between threads or processes, and
+feed the incoming data into a pipeline.
+
+The sentinel value, default ``None``, will terminate the iterator.
+
+.. code-block:: python
+
+    >>> q = queue.Queue()
+    >>> # This line puts stuff onto a queue
+    >>> range(10).chain([None]).map(q.put).consume()
+    >>> # This is where we consume data from the queue:
+    >>> Iter.from_queue(q).filter(lambda x: 2 < x < 9).collect()
+    [3, 4, 5, 6, 7, 8]
+
+If ``None`` had not been chained onto the data, the iterator would
+have waited in Iter.collect_ forever.
+
+
+
+.. _Iter.into_queue:
+
+
+|sink| ``Iter.into_queue(self, q: queue.Queue)``
+================================================
+
+
+This is a sink, like Iter.collect_, that consumes data from
+an iterator chain and puts the data into the given queue.
+
+.. code-block:: python
+
+    >>> q = queue.Queue()
+    >>> # This demonstrates the queue sink
+    >>> range(5).into_queue(q)
+    >>> # Code below is only for verification
+    >>> out = []
+    >>> finished = False
+    >>> while not finished:
+    ...     try:
+    ...         out.append(q.get_nowait())
+    ...     except queue.Empty:
+    ...         finished = True
+    >>> out
+    [0, 1, 2, 3, 4]
 
 
 
