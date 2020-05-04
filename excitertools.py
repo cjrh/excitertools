@@ -108,6 +108,7 @@ import functools
 import operator
 import inspect
 from collections import UserDict
+import builtins
 from typing import (
     Iterable,
     Tuple,
@@ -174,11 +175,11 @@ class class_or_instancemethod(classmethod):
 
 
 # First save the builtins
-_range = __builtins__["range"]
-_zip = __builtins__["zip"]
-_enumerate = __builtins__["enumerate"]
-_map = __builtins__["map"]
-_filter = __builtins__["filter"]
+_range = builtins.range
+_zip = builtins.zip
+_enumerate = builtins.enumerate
+_map = builtins.map
+_filter = builtins.filter
 
 """
 
