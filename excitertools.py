@@ -2446,7 +2446,7 @@ class Iter(Generic[T]):
             [0, 1, 2]
 
         If the generator is closed before the iteration is complete,
-        you'll get a ``StopIteration`` exception (Python 3.7+):
+        you'll get an exception (Python 3.7+):
 
         .. code-block:: python
 
@@ -2462,9 +2462,11 @@ class Iter(Generic[T]):
         Note that the above doesn't happen in Python < 3.7 (which includes
         pypy 7.3.1 that matches Python 3.6.9 compatibility). Instead, you
         collect out the items up to until the point that the collector
-        returns; in this case, you'd get [0, 1, 2]. Regardless, for any
-        Python it's recommended that your generator live at least as long
-        as the iterator feeding it!
+        returns; in this case, you'd get [0, 1, 2]. This change was made
+        as part of `PEP 479 <https://www.python.org/dev/peps/pep-0479/>`_.
+
+        Regardless, for any Python it's recommended that your generator
+        live at least as long as the iterator feeding it.
 
         """
         import traceback
