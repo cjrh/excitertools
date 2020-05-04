@@ -264,7 +264,7 @@ def range(*args) -> "Iter[int]":
 def zip(*iterables: Any) -> "Iter[Tuple[T, ...]]":
     """ Replacement for the builtin ``zip`` function.  This version returns
     an instance of Iter_ to allow further iterable chaining."""
-    return Iter(__builtins__["zip"](*iterables))
+    return Iter(_zip(*iterables))
 
 
 def enumerate(iterable) -> "Iter[Tuple[int, T]]":
@@ -278,7 +278,7 @@ def enumerate(iterable) -> "Iter[Tuple[int, T]]":
 
 
     """
-    return Iter(__builtins__["enumerate"](iterable))
+    return Iter(_enumerate(iterable))
 
 
 def map(func: Union[Callable[..., C], str], iterable) -> "Iter[C]":
@@ -884,7 +884,8 @@ class Iter(Generic[T]):
 
         >>> import tempfile
         >>> with tempfile.TemporaryDirectory() as td:
-        ...     open(td + 'text.txt', 'w').writelines(['abc\\n', 'def\\n', 'ghi\\n'])
+        ...     with open(td + 'text.txt', 'w') as f:
+        ...         f.writelines(['abc\\n', 'def\\n', 'ghi\\n'])
         ...     Iter.open(td + 'text.txt').filter(lambda line: 'def' in line).collect()
         ['def\\n']
 
@@ -1925,7 +1926,7 @@ class Iter(Generic[T]):
     #     raise NotImplementedError
 
     @classmethod
-    def with_iter(self, context_manager):
+    def with_iter(cls, context_manager):
         """
         Reference: `more_itertools.with_iter <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.with_iter>`_
 
@@ -1936,7 +1937,8 @@ class Iter(Generic[T]):
 
             >>> import tempfile
             >>> with tempfile.TemporaryDirectory() as td:
-            ...     open(td + 'text.txt', 'w').writelines(['abc\\n', 'def\\n', 'ghi\\n'])
+            ...     with open(td + 'text.txt', 'w') as f:
+            ...         f.writelines(['abc\\n', 'def\\n', 'ghi\\n'])
             ...     Iter.with_iter(open(td + 'text.txt')).map(lambda x: x.upper()).collect()
             ['ABC\\n', 'DEF\\n', 'GHI\\n']
 
@@ -1948,7 +1950,7 @@ class Iter(Generic[T]):
         return Iter(more_itertools.with_iter(context_manager))
 
     @classmethod
-    def iter_except(self, func, exception, first=None) -> "Iter":
+    def iter_except(cls, func, exception, first=None) -> "Iter":
         """
         Reference: `more_itertools.iter_except <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.iter_except>`_
 
@@ -2105,10 +2107,21 @@ class Iter(Generic[T]):
 
         .. code-block:: python
 
+            >>> def f(item):
+            ...     if item == 3:
+            ...         raise Exception('got 3')
+            >>> Iter.range(5).side_effect(f).consume()
+            Traceback (most recent call last):
+                ...
+            Exception: got 3
+
+        .. code-block:: python
+
             >>> func = lambda item: print('Received {}'.format(item))
             >>> Iter.range(2).side_effect(func).consume()
             Received 0
             Received 1
+
 
         """
 
@@ -2433,20 +2446,28 @@ class Iter(Generic[T]):
             [0, 1, 2]
 
         If the generator is closed before the iteration is complete,
-        you'll get a ``StopIteration`` exception:
+        you'll get a ``StopIteration`` exception (Python 3.7+):
 
         .. code-block:: python
 
             >>> output = []
             >>> def collector():
-            ...   for i in range(3):
+            ...   for i in builtins.range(3):
             ...       output.append((yield))
-            >>> Iter.range(5).send_also(collector()).collect()
+            >>> Iter.range(50).send_also(collector()).collect()  # doctest: +SKIP
             Traceback (most recent call last):
                 ...
             RuntimeError
 
+        Note that the above doesn't happen in Python < 3.7 (which includes
+        pypy 7.3.1 that matches Python 3.6.9 compatibility). Instead, you
+        collect out the items up to until the point that the collector
+        returns; in this case, you'd get [0, 1, 2]. Regardless, for any
+        Python it's recommended that your generator live at least as long
+        as the iterator feeding it!
+
         """
+        import traceback
 
         def func(v):
             try:
