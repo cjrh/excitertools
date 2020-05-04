@@ -121,7 +121,8 @@ from typing import (
     Union,
     Generic,
     Type,
-    Optional, Generator,
+    Optional,
+    Generator,
 )
 import collections.abc
 import queue
@@ -130,26 +131,26 @@ import more_itertools
 
 __all__ = [
     "Iter",
-    'range',
-    'zip',
-    'enumerate',
-    'map',
-    'filter',
-    'count',
-    'cycle',
-    'repeat',
-    'accumulate',
-    'chain',
-    'chain_from_iterable',
-    'compress',
-    'dropwhile',
-    'filterfalse',
-    'groupby',
-    'islice',
-    'starmap',
-    'takewhile',
-    'tee',
-    'zip_longest',
+    "range",
+    "zip",
+    "enumerate",
+    "map",
+    "filter",
+    "count",
+    "cycle",
+    "repeat",
+    "accumulate",
+    "chain",
+    "chain_from_iterable",
+    "compress",
+    "dropwhile",
+    "filterfalse",
+    "groupby",
+    "islice",
+    "starmap",
+    "takewhile",
+    "tee",
+    "zip_longest",
     "insert_separator",
     "concat",
     "from_queue",
@@ -172,11 +173,11 @@ class class_or_instancemethod(classmethod):
 
 
 # First save the builtins
-_range = __builtins__['range']
-_zip = __builtins__['zip']
-_enumerate = __builtins__['enumerate']
-_map = __builtins__['map']
-_filter = __builtins__['filter']
+_range = __builtins__["range"]
+_zip = __builtins__["zip"]
+_enumerate = __builtins__["enumerate"]
+_map = __builtins__["map"]
+_filter = __builtins__["filter"]
 
 """
 
@@ -190,6 +191,7 @@ iterable, it means that the functions here can be used as drop-in
 replacements.
 
 """
+
 
 def range(*args) -> Iter[int]:
     """
@@ -260,7 +262,7 @@ def range(*args) -> Iter[int]:
 def zip(*iterables: Any) -> Iter[Tuple[T, ...]]:
     """ Replacement for the builtin ``zip`` function.  This version returns
     an instance of Iter_ to allow further iterable chaining."""
-    return Iter(__builtins__['zip'](*iterables))
+    return Iter(__builtins__["zip"](*iterables))
 
 
 def enumerate(iterable) -> Iter[Tuple[int, T]]:
@@ -274,7 +276,7 @@ def enumerate(iterable) -> Iter[Tuple[int, T]]:
 
 
     """
-    return Iter(__builtins__['enumerate'](iterable))
+    return Iter(__builtins__["enumerate"](iterable))
 
 
 def map(func: Union[Callable[..., C], str], iterable) -> Iter[C]:
@@ -313,6 +315,7 @@ def filter(function: Callable[[Any], ...], iterable: Iterable) -> Iter[T]:
 # =================
 
 # Infinite iterators
+
 
 def count(start, step: int = 1) -> Iter[int]:
     """
@@ -380,12 +383,14 @@ def repeat(object: C, times=None) -> Iter[C]:
     else:
         return Iter(itertools.repeat(object))
 
+
 """
 
 This next set of functions return iterators that terminate on the shortest 
 input sequence.
 
 """
+
 
 def accumulate(iterable, func=None, *, initial=None):
     """ Replacement for the itertools ``accumulate`` function.  This version returns
@@ -800,6 +805,7 @@ class Iter(Generic[T]):
 
 
     """
+
     x: Iterator[T]
 
     def __init__(self, x: Iterable[T]):
@@ -811,18 +817,18 @@ class Iter(Generic[T]):
             except TypeError as e:
                 if inspect.isgeneratorfunction(x):
                     raise TypeError(
-                        'It seems you passed a generator function, but you '
-                        'probably intended to pass a generator. Remember to '
-                        'evaluate the function to obtain a generator '
-                        'instance:\n'
-                        '\n'
-                        'def mygen():\n'
-                        '    yield 123\n'
-                        '\n'
-                        'Iter(mygen)    # ERROR - a generator function object '
-                        'is not iterable\n'
-                        'Iter(mygen())  # CORRECT - a generator instance is '
-                        'iterable.'
+                        "It seems you passed a generator function, but you "
+                        "probably intended to pass a generator. Remember to "
+                        "evaluate the function to obtain a generator "
+                        "instance:\n"
+                        "\n"
+                        "def mygen():\n"
+                        "    yield 123\n"
+                        "\n"
+                        "Iter(mygen)    # ERROR - a generator function object "
+                        "is not iterable\n"
+                        "Iter(mygen())  # CORRECT - a generator instance is "
+                        "iterable."
                     ) from None
 
     def __iter__(self) -> Iterator[T]:
@@ -1137,6 +1143,7 @@ class Iter(Generic[T]):
 
     def bucket(self, key, validator=None):
         """ Docstring TBD """
+
         class _bucket(more_itertools.bucket):
             def __iter__(self):
                 return Iter(super().__iter__())
@@ -1168,6 +1175,7 @@ class Iter(Generic[T]):
 
     def peekable(self) -> more_itertools.peekable:
         """ Docstring TBD """
+
         class _peekable(more_itertools.peekable):
             def __iter__(self):
                 return Iter(super().__iter__())
@@ -1184,6 +1192,7 @@ class Iter(Generic[T]):
 
     def seekable(self) -> more_itertools.seekable:
         """ Docstring TBD """
+
         class _seekable(more_itertools.seekable):
             def __iter__(self):
                 return Iter(super().__iter__())
@@ -1753,7 +1762,7 @@ class Iter(Generic[T]):
         self,
         keyfunc: Callable[..., K],
         valuefunc: Optional[Callable[..., V]] = None,
-        reducefunc: Optional[Callable[..., R]] = None
+        reducefunc: Optional[Callable[..., R]] = None,
     ) -> Iter[Tuple[K, R]]:
         """
         Reference: `more_itertools.map_reduce <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce>`_
@@ -2425,6 +2434,7 @@ class Iter(Generic[T]):
             RuntimeError
 
         """
+
         def func(v):
             try:
                 collector.send(v)
@@ -2446,6 +2456,7 @@ class IterDict(UserDict):
     the standard dict methods return ``Iter`` instances, which can then
     be chained. I'm not sure if this will be kept yet.
     """
+
     def __iter__(self) -> Iter:
         return Iter(self.data.keys())
 
@@ -2526,11 +2537,7 @@ def from_queue(q: queue.Queue, timeout=None, sentinel=None) -> Iter:
         [3, 4, 5, 6, 7, 8]
 
     """
-    return Iter.from_queue(
-        q,
-        timeout=timeout,
-        sentinel=sentinel
-    )
+    return Iter.from_queue(q, timeout=timeout, sentinel=sentinel)
 
 
 """
