@@ -174,6 +174,9 @@ class class_or_instancemethod(classmethod):
         return descr_get(instance, type_)
 
 
+_marker = object()
+
+
 # First save the builtins
 _range = builtins.range
 _zip = builtins.zip
@@ -1828,94 +1831,256 @@ class Iter(Generic[T]):
     # Selecting
 
     def islice_extended(self, *args):
+        """
+        Reference: `more_itertools.islice_extended <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.islice_extended>`_
+
+        .. code-block:: python
+
+            >>> Iter('abcdefgh').islice_extended(-4, -1).collect()
+            ['e', 'f', 'g']
+
+        .. code-block:: python
+
+            >>> Iter.count().islice_extended( 110, 99, -2).collect()
+            [110, 108, 106, 104, 102, 100]
+
+        """
         return Iter(more_itertools.islice_extended(self.x, *args))
 
     def first(self):
+        """
+        Reference: `more_itertools.first <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.first>`_
+        """
         raise NotImplementedError
 
     def last(self):
+        """
+        Reference: `more_itertools.last <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.last>`_
+        """
         raise NotImplementedError
 
     def one(self):
+        """
+        Reference: `more_itertools.one <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.one>`_
+
+        """
         raise NotImplementedError
 
-    def only(self, default=None, too_long=None) -> "Any":
+    def only(self, default=None, too_long=ValueError) -> "T":
+        """
+        Reference: `more_itertools.one <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.one>`_
+
+        .. code-block:: python
+
+            >>> Iter([]).only(default='missing')
+            'missing'
+            >>> Iter([42]).only(default='missing')
+            42
+            >>> Iter([1, 2]).only()
+            Traceback (most recent call last):
+                ...
+            ValueError: ...
+
+        """
         return more_itertools.only(self.x, default=default, too_long=too_long)
 
-    def strip(self, pred):
+    def strip(self, pred) -> "Iter[T]":
+        """
+        Reference: `more_itertools.strip <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.strip>`_
+
+        .. code-block:: python
+
+            >>> iterable = (None, False, None, 1, 2, None, 3, False, None)
+            >>> pred = lambda x: x in {None, False, ''}
+            >>> Iter(iterable).strip(pred).collect()
+            [1, 2, None, 3]
+
+        """
         return Iter(more_itertools.strip(self.x, pred))
 
-    def lstrip(self, pred):
+    def lstrip(self, pred) -> "Iter[T]":
+        """
+        Reference: `more_itertools.lstrip <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.lstrip>`_
+
+        .. code-block:: python
+
+            >>> iterable = (None, False, None, 1, 2, None, 3, False, None)
+            >>> pred = lambda x: x in {None, False, ''}
+            >>> Iter(iterable).lstrip(pred).collect()
+            [1, 2, None, 3, False, None]
+
+        """
         return Iter(more_itertools.lstrip(self.x, pred))
 
-    def rstrip(self, pred):
+    def rstrip(self, pred) -> "Iter[T]":
+        """
+        Reference: `more_itertools.rstrip <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.rstrip>`_
+
+        .. code-block:: python
+
+            >>> iterable = (None, False, None, 1, 2, None, 3, False, None)
+            >>> pred = lambda x: x in {None, False, ''}
+            >>> Iter(iterable).rstrip(pred).collect()
+            [None, False, None, 1, 2, None, 3]
+
+        """
         return Iter(more_itertools.rstrip(self.x, pred))
 
-    def filter_except(self, validator, *exceptions):
+    def filter_except(self, validator, *exceptions) -> "Iter[T]":
+        """
+        Reference: `more_itertools.filter_except <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.filter_except>`_
+
+        .. code-block:: python
+
+            >>> iterable = ['1', '2', 'three', '4', None]
+            >>> Iter(iterable).filter_except(int, ValueError, TypeError).collect()
+            ['1', '2', '4']
+
+        """
         return Iter(more_itertools.filter_except(validator, self.x, *exceptions))
 
-    def map_except(self, function, *exceptions):
+    def map_except(self, function, *exceptions) -> "Iter":
+        """
+        Reference: `more_itertools.map_except <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_except>`_
+
+        .. code-block:: python
+
+            >>> iterable = ['1', '2', 'three', '4', None]
+            >>> Iter(iterable).map_except(int, ValueError, TypeError).collect()
+            [1, 2, 4]
+
+        """
         return Iter(more_itertools.map_except(function, self.x, *exceptions))
 
-    def nth_or_last(self):
-        raise NotImplementedError
+    def nth_or_last(self, n, default=_marker) -> "T":
+        """
+        Reference: `more_itertools.nth_or_last <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.nth_or_last>`_
+
+        .. code-block:: python
+
+            >>> Iter([0, 1, 2, 3]).nth_or_last(2)
+            2
+            >>> Iter([0, 1]).nth_or_last(2)
+            1
+            >>> Iter([]).nth_or_last(0, 'some default')
+            'some default'
+
+        """
+        if default is _marker:
+            return more_itertools.nth_or_last(self, n)
+        else:
+            return more_itertools.nth_or_last(self, n, default)
 
     def nth(self, n, default=None):
+        """
+        Reference: `more_itertools.nth <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.nth>`_
+        """
         return next(self.islice(n, None), default)
 
     def take(self, n: int) -> "Iter":
+        """
+        Reference: `more_itertools.take <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.take>`_
+        """
         return Iter(more_itertools.take(n, self.x))
 
     def tail(self):
+        """
+        Reference: `more_itertools.tail <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.tail>`_
+        """
         raise NotImplementedError
 
     def unique_everseen(self):
+        """
+        Reference: `more_itertools.unique_everseen <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_everseen>`_
+        """
         raise NotImplementedError
 
     def unique_justseen(self):
+        """
+        Reference: `more_itertools.unique_justseen <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_justseen>`_
+        """
         raise NotImplementedError
 
     # Combinatorics
 
     def distinct_permutations(self):
+        """
+        Reference: `more_itertools.distinct_permutations <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.distinct_permutations>`_
+        """
         return Iter(more_itertools.distinct_permutations(self.x))
 
     def distinct_combinations(self, r):
+        """
+        Reference: `more_itertools.distinct_combinations <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.distinct_combinations>`_
+        """
         return Iter(more_itertools.distinct_combinations(self.x, r))
 
     def circular_shifts(self) -> "Iter":
+        """
+        Reference: `more_itertools.circular_shifts <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.circular_shifts>`_
+        """
         return Iter(more_itertools.circular_shifts(self.x))
 
     def partitions(self) -> "Iter":
+        """
+        Reference: `more_itertools.partitions <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.partitions>`_
+        """
         return Iter(more_itertools.partitions(self.x))
 
     def set_partitions(self, k=None) -> "Iter":
+        """
+        Reference: `more_itertools.set_partitions <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.set_partitions>`_
+        """
         return Iter(more_itertools.set_partitions(self.x, k=k))
 
     def powerset(self):
+        """
+        Reference: `more_itertools.powerset <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.powerset>`_
+        """
         raise NotImplementedError
 
     def random_product(self):
+        """
+        Reference: `more_itertools.random_product <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_product>`_
+        """
         raise NotImplementedError
 
     def random_permutation(self):
+        """
+        Reference: `more_itertools.random_permutation <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_permutation>`_
+        """
         raise NotImplementedError
 
     def random_combination(self):
+        """
+        Reference: `more_itertools.random_combination <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_combination>`_
+        """
         raise NotImplementedError
 
     def random_combination_with_replacement(self):
+        """
+        Reference: `more_itertools.random_combination_with_replacement <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_combination_with_replacement>`_
+        """
         raise NotImplementedError
 
     def nth_combination(self):
+        """
+        Reference: `more_itertools.nth_combination <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.nth_combination>`_
+        """
         raise NotImplementedError
 
     # Wrapping
 
     def always_iterable(self):
+        """
+        Reference: `more_itertools.always_iterable <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.always_iterable>`_
+        """
         raise NotImplementedError
 
     def always_reversible(self):
+        """
+        Reference: `more_itertools.always_reversible <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.always_reversible>`_
+        """
         return Iter(more_itertools.always_reversible(self.x))
 
     # TODO: do we need this? See Iter.send_ further down.

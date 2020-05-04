@@ -1846,11 +1846,28 @@ Docstring TBD
 ``Iter.islice_extended(self, *args)``
 =====================================
 
+Reference: `more_itertools.islice_extended <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.islice_extended>`_
+
+.. code-block:: python
+
+    >>> Iter('abcdefgh').islice_extended(-4, -1).collect()
+    ['e', 'f', 'g']
+
+.. code-block:: python
+
+    >>> Iter.count().islice_extended( 110, 99, -2).collect()
+    [110, 108, 106, 104, 102, 100]
+
+
+
 .. _Iter.first:
 
 
 ``Iter.first(self)``
 ====================
+
+Reference: `more_itertools.first <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.first>`_
+
 
 .. _Iter.last:
 
@@ -1858,53 +1875,141 @@ Docstring TBD
 ``Iter.last(self)``
 ===================
 
+Reference: `more_itertools.last <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.last>`_
+
+
 .. _Iter.one:
 
 
 ``Iter.one(self)``
 ==================
 
+Reference: `more_itertools.one <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.one>`_
+
+
+
 .. _Iter.only:
 
 
-``Iter.only(self, default=None, too_long=None) -> "Any"``
-=========================================================
+``Iter.only(self, default=None, too_long=ValueError) -> "T"``
+=============================================================
+
+Reference: `more_itertools.one <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.one>`_
+
+.. code-block:: python
+
+    >>> Iter([]).only(default='missing')
+    'missing'
+    >>> Iter([42]).only(default='missing')
+    42
+    >>> Iter([1, 2]).only()
+    Traceback (most recent call last):
+        ...
+    ValueError: ...
+
+
 
 .. _Iter.strip:
 
 
-``Iter.strip(self, pred)``
-==========================
+``Iter.strip(self, pred) -> "Iter[T]"``
+=======================================
+
+Reference: `more_itertools.strip <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.strip>`_
+
+.. code-block:: python
+
+    >>> iterable = (None, False, None, 1, 2, None, 3, False, None)
+    >>> pred = lambda x: x in {None, False, ''}
+    >>> Iter(iterable).strip(pred).collect()
+    [1, 2, None, 3]
+
+
 
 .. _Iter.lstrip:
 
 
-``Iter.lstrip(self, pred)``
-===========================
+``Iter.lstrip(self, pred) -> "Iter[T]"``
+========================================
+
+Reference: `more_itertools.lstrip <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.lstrip>`_
+
+.. code-block:: python
+
+    >>> iterable = (None, False, None, 1, 2, None, 3, False, None)
+    >>> pred = lambda x: x in {None, False, ''}
+    >>> Iter(iterable).lstrip(pred).collect()
+    [1, 2, None, 3, False, None]
+
+
 
 .. _Iter.rstrip:
 
 
-``Iter.rstrip(self, pred)``
-===========================
+``Iter.rstrip(self, pred) -> "Iter[T]"``
+========================================
+
+Reference: `more_itertools.rstrip <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.rstrip>`_
+
+.. code-block:: python
+
+    >>> iterable = (None, False, None, 1, 2, None, 3, False, None)
+    >>> pred = lambda x: x in {None, False, ''}
+    >>> Iter(iterable).rstrip(pred).collect()
+    [None, False, None, 1, 2, None, 3]
+
+
 
 .. _Iter.filter_except:
 
 
-``Iter.filter_except(self, validator, *exceptions)``
-====================================================
+``Iter.filter_except(self, validator, *exceptions) -> "Iter[T]"``
+=================================================================
+
+Reference: `more_itertools.filter_except <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.filter_except>`_
+
+.. code-block:: python
+
+    >>> iterable = ['1', '2', 'three', '4', None]
+    >>> Iter(iterable).filter_except(int, ValueError, TypeError).collect()
+    ['1', '2', '4']
+
+
 
 .. _Iter.map_except:
 
 
-``Iter.map_except(self, function, *exceptions)``
-================================================
+``Iter.map_except(self, function, *exceptions) -> "Iter"``
+==========================================================
+
+Reference: `more_itertools.map_except <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_except>`_
+
+.. code-block:: python
+
+    >>> iterable = ['1', '2', 'three', '4', None]
+    >>> Iter(iterable).map_except(int, ValueError, TypeError).collect()
+    [1, 2, 4]
+
+
 
 .. _Iter.nth_or_last:
 
 
-``Iter.nth_or_last(self)``
-==========================
+``Iter.nth_or_last(self, n, default=_marker) -> "T"``
+=====================================================
+
+Reference: `more_itertools.nth_or_last <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.nth_or_last>`_
+
+.. code-block:: python
+
+    >>> Iter([0, 1, 2, 3]).nth_or_last(2)
+    2
+    >>> Iter([0, 1]).nth_or_last(2)
+    1
+    >>> Iter([]).nth_or_last(0, 'some default')
+    'some default'
+
+
 
 .. _Iter.nth:
 
@@ -1912,11 +2017,17 @@ Docstring TBD
 ``Iter.nth(self, n, default=None)``
 ===================================
 
+Reference: `more_itertools.nth <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.nth>`_
+
+
 .. _Iter.take:
 
 
 ``Iter.take(self, n: int) -> "Iter"``
 =====================================
+
+Reference: `more_itertools.take <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.take>`_
+
 
 .. _Iter.tail:
 
@@ -1924,11 +2035,17 @@ Docstring TBD
 ``Iter.tail(self)``
 ===================
 
+Reference: `more_itertools.tail <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.tail>`_
+
+
 .. _Iter.unique_everseen:
 
 
 ``Iter.unique_everseen(self)``
 ==============================
+
+Reference: `more_itertools.unique_everseen <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_everseen>`_
+
 
 .. _Iter.unique_justseen:
 
@@ -1936,11 +2053,17 @@ Docstring TBD
 ``Iter.unique_justseen(self)``
 ==============================
 
+Reference: `more_itertools.unique_justseen <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_justseen>`_
+
+
 .. _Iter.distinct_permutations:
 
 
 ``Iter.distinct_permutations(self)``
 ====================================
+
+Reference: `more_itertools.distinct_permutations <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.distinct_permutations>`_
+
 
 .. _Iter.distinct_combinations:
 
@@ -1948,11 +2071,17 @@ Docstring TBD
 ``Iter.distinct_combinations(self, r)``
 =======================================
 
+Reference: `more_itertools.distinct_combinations <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.distinct_combinations>`_
+
+
 .. _Iter.circular_shifts:
 
 
 ``Iter.circular_shifts(self) -> "Iter"``
 ========================================
+
+Reference: `more_itertools.circular_shifts <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.circular_shifts>`_
+
 
 .. _Iter.partitions:
 
@@ -1960,11 +2089,17 @@ Docstring TBD
 ``Iter.partitions(self) -> "Iter"``
 ===================================
 
+Reference: `more_itertools.partitions <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.partitions>`_
+
+
 .. _Iter.set_partitions:
 
 
 ``Iter.set_partitions(self, k=None) -> "Iter"``
 ===============================================
+
+Reference: `more_itertools.set_partitions <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.set_partitions>`_
+
 
 .. _Iter.powerset:
 
@@ -1972,11 +2107,17 @@ Docstring TBD
 ``Iter.powerset(self)``
 =======================
 
+Reference: `more_itertools.powerset <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.powerset>`_
+
+
 .. _Iter.random_product:
 
 
 ``Iter.random_product(self)``
 =============================
+
+Reference: `more_itertools.random_product <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_product>`_
+
 
 .. _Iter.random_permutation:
 
@@ -1984,11 +2125,17 @@ Docstring TBD
 ``Iter.random_permutation(self)``
 =================================
 
+Reference: `more_itertools.random_permutation <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_permutation>`_
+
+
 .. _Iter.random_combination:
 
 
 ``Iter.random_combination(self)``
 =================================
+
+Reference: `more_itertools.random_combination <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_combination>`_
+
 
 .. _Iter.random_combination_with_replacement:
 
@@ -1996,11 +2143,17 @@ Docstring TBD
 ``Iter.random_combination_with_replacement(self)``
 ==================================================
 
+Reference: `more_itertools.random_combination_with_replacement <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_combination_with_replacement>`_
+
+
 .. _Iter.nth_combination:
 
 
 ``Iter.nth_combination(self)``
 ==============================
+
+Reference: `more_itertools.nth_combination <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.nth_combination>`_
+
 
 .. _Iter.always_iterable:
 
@@ -2008,11 +2161,17 @@ Docstring TBD
 ``Iter.always_iterable(self)``
 ==============================
 
+Reference: `more_itertools.always_iterable <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.always_iterable>`_
+
+
 .. _Iter.always_reversible:
 
 
 ``Iter.always_reversible(self)``
 ================================
+
+Reference: `more_itertools.always_reversible <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.always_reversible>`_
+
 
 .. _Iter.with_iter:
 
