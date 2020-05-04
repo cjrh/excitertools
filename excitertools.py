@@ -100,13 +100,15 @@ the iterators from the more-itertools_ 3rd-party package.
     :local:
 
 """
-from __future__ import annotations
+#from __future__ import annotations
+import sys
 import string
 import itertools
 import functools
 import operator
 import inspect
 from collections import UserDict
+import builtins
 from typing import (
     Iterable,
     Tuple,
@@ -173,11 +175,11 @@ class class_or_instancemethod(classmethod):
 
 
 # First save the builtins
-_range = __builtins__["range"]
-_zip = __builtins__["zip"]
-_enumerate = __builtins__["enumerate"]
-_map = __builtins__["map"]
-_filter = __builtins__["filter"]
+_range = builtins.range
+_zip = builtins.zip
+_enumerate = builtins.enumerate
+_map = builtins.map
+_filter = builtins.filter
 
 """
 
@@ -193,7 +195,7 @@ replacements.
 """
 
 
-def range(*args) -> Iter[int]:
+def range(*args) -> "Iter[int]":
     """
     |source|
     Replacement for the builtin ``range`` function.  This version returns
@@ -259,13 +261,13 @@ def range(*args) -> Iter[int]:
     return Iter(_range(*args))
 
 
-def zip(*iterables: Any) -> Iter[Tuple[T, ...]]:
+def zip(*iterables: Any) -> "Iter[Tuple[T, ...]]":
     """ Replacement for the builtin ``zip`` function.  This version returns
     an instance of Iter_ to allow further iterable chaining."""
-    return Iter(__builtins__["zip"](*iterables))
+    return Iter(_zip(*iterables))
 
 
-def enumerate(iterable) -> Iter[Tuple[int, T]]:
+def enumerate(iterable) -> "Iter[Tuple[int, T]]":
     """ Replacement for the builtin ``enumerate`` function.  This version returns
     an instance of Iter_ to allow further iterable chaining.
 
@@ -276,10 +278,10 @@ def enumerate(iterable) -> Iter[Tuple[int, T]]:
 
 
     """
-    return Iter(__builtins__["enumerate"](iterable))
+    return Iter(_enumerate(iterable))
 
 
-def map(func: Union[Callable[..., C], str], iterable) -> Iter[C]:
+def map(func: Union[Callable[..., C], str], iterable) -> "Iter[C]":
     """ Replacement for the builtin ``map`` function.  This version returns
     an instance of Iter_ to allow further iterable chaining.
 
@@ -297,7 +299,7 @@ def map(func: Union[Callable[..., C], str], iterable) -> Iter[C]:
         return Iter(_map(func, iterable))
 
 
-def filter(function: Callable[[Any], ...], iterable: Iterable) -> Iter[T]:
+def filter(function: "Callable[[Any], ...]", iterable: Iterable) -> "Iter[T]":
     """ Replacement for the builtin ``filter`` function.  This version returns
     an instance of Iter_ to allow further iterable chaining.
 
@@ -317,7 +319,7 @@ def filter(function: Callable[[Any], ...], iterable: Iterable) -> Iter[T]:
 # Infinite iterators
 
 
-def count(start, step: int = 1) -> Iter[int]:
+def count(start, step: int = 1) -> "Iter[int]":
     """
     |source|
     Replacement for the itertools ``count`` function.  This version returns
@@ -340,7 +342,7 @@ def count(start, step: int = 1) -> Iter[int]:
     return Iter(itertools.count(start, step))
 
 
-def cycle(iterable) -> Iter[T]:
+def cycle(iterable) -> "Iter[T]":
     """ Replacement for the itertools ``count`` function.  This version returns
     an instance of Iter_ to allow further iterable chaining.
 
@@ -357,7 +359,7 @@ def cycle(iterable) -> Iter[T]:
     return Iter(itertools.cycle(iterable))
 
 
-def repeat(object: C, times=None) -> Iter[C]:
+def repeat(object: C, times=None) -> "Iter[C]":
     """
     |source|
     Replacement for the itertools ``count`` function.  This version returns
@@ -400,8 +402,9 @@ def accumulate(iterable, func=None, *, initial=None):
 
         >>> accumulate([1, 2, 3, 4, 5]).collect()
         [1, 3, 6, 10, 15]
-        >>> accumulate([1, 2, 3, 4, 5], initial=100).collect()
-        [100, 101, 103, 106, 110, 115]
+        >>> if sys.version_info >= (3, 8):
+        ...     output = accumulate([1, 2, 3, 4, 5], initial=100).collect()
+        ...     assert output == [100, 101, 103, 106, 110, 115]
         >>> accumulate([1, 2, 3, 4, 5], operator.mul).collect()
         [1, 2, 6, 24, 120]
         >>> accumulate([]).collect()
@@ -414,10 +417,10 @@ def accumulate(iterable, func=None, *, initial=None):
         [97, 195, 294]
 
     """
-    return Iter(itertools.accumulate(iterable, func, initial=initial))
+    return Iter(iterable).accumulate(func, initial=initial)
 
 
-def chain(*iterables: Iterable[T]) -> Iter[T]:
+def chain(*iterables: Iterable[T]) -> "Iter[T]":
     """ Replacement for the itertools ``chain`` function.  This version returns
     an instance of Iter_ to allow further iterable chaining.
 
@@ -432,7 +435,7 @@ def chain(*iterables: Iterable[T]) -> Iter[T]:
     return Iter(itertools.chain(*iterables))
 
 
-def chain_from_iterable(iterable) -> Iter[T]:
+def chain_from_iterable(iterable) -> "Iter[T]":
     """ Replacement for the itertools ``chain.from_iterable`` method.
     This version returns an instance of Iter_ to allow
     further iterable chaining.
@@ -510,7 +513,7 @@ def groupby(iterable, key=None):
     return Iter(itertools.groupby(iterable, key=key))
 
 
-def islice(iterable, *args) -> Iter:
+def islice(iterable, *args) -> "Iter":
     """ Replacement for the itertools ``islice`` function.  This version returns
     an instance of Iter_ to allow further iterable chaining.
 
@@ -831,13 +834,13 @@ class Iter(Generic[T]):
                         "iterable."
                     ) from None
 
-    def __iter__(self) -> Iterator[T]:
+    def __iter__(self) -> "Iterator[T]":
         return self.x
 
-    def __next__(self) -> T:
+    def __next__(self) -> "T":
         return next(self.x)
 
-    def collect(self, container=list) -> List[T]:
+    def collect(self, container=list) -> "List[T]":
         """
         |sink|
 
@@ -871,7 +874,7 @@ class Iter(Generic[T]):
         newline=None,
         closefd=True,
         opener=None,
-    ) -> Iter:
+    ) -> "Iter":
         """
         |cool|
         |source|
@@ -881,7 +884,8 @@ class Iter(Generic[T]):
 
         >>> import tempfile
         >>> with tempfile.TemporaryDirectory() as td:
-        ...     open(td + 'text.txt', 'w').writelines(['abc\\n', 'def\\n', 'ghi\\n'])
+        ...     with open(td + 'text.txt', 'w') as f:
+        ...         f.writelines(['abc\\n', 'def\\n', 'ghi\\n'])
         ...     Iter.open(td + 'text.txt').filter(lambda line: 'def' in line).collect()
         ['def\\n']
 
@@ -910,42 +914,42 @@ class Iter(Generic[T]):
     # Standard utilities
 
     @classmethod
-    def range(cls, *args) -> Iter[int]:
+    def range(cls, *args) -> "Iter[int]":
         """
         |source|
         Docstring TBD
         """
         return cls(range(*args))
 
-    def zip(self, *iterables: Any) -> Iter[Tuple[T, ...]]:
+    def zip(self, *iterables: Any) -> "Iter[Tuple[T, ...]]":
         """ Docstring TBD """
         return Iter(_zip(self.x, *iterables))
 
-    def any(self) -> bool:
+    def any(self) -> "bool":
         """
         |sink|
         Docstring TBD
         """
         return any(self.x)
 
-    def all(self) -> bool:
+    def all(self) -> "bool":
         """
         |sink|
         Docstring TBD
         """
         return all(self.x)
 
-    def enumerate(self) -> Iter[Tuple[int, T]]:
+    def enumerate(self) -> "Iter[Tuple[int, T]]":
         """ Docstring TBD """
         return Iter(_enumerate(self.x))
 
-    def dict(self) -> Dict:
+    def dict(self) -> "Dict":
         """ Docstring TBD """
         return dict(self.x)
 
     ###
 
-    def map(self, func: Union[Callable[..., C], str]) -> Iter[C]:
+    def map(self, func: Union[Callable[..., C], str]) -> "Iter[C]":
         """
         >>> result = Iter('caleb').map(lambda x: (x, ord(x))).dict()
         >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
@@ -958,11 +962,11 @@ class Iter(Generic[T]):
         else:
             return Iter(_map(func, self.x))
 
-    def filter(self, *args) -> Iter[T]:
+    def filter(self, *args) -> "Iter[T]":
         """ Docstring TBD """
         return Iter(_filter(*args, self.x))
 
-    def reduce(self, func: Callable[..., T], *args) -> T:
+    def reduce(self, func: Callable[..., T], *args) -> "T":
         """ Docstring TBD """
         return functools.reduce(func, self.x, *args)
 
@@ -972,14 +976,14 @@ class Iter(Generic[T]):
         Docstring TBD """
         return sum(self.x)
 
-    def concat(self, glue: AnyStr) -> AnyStr:
+    def concat(self, glue: AnyStr) -> "AnyStr":
         """
         |sink|
         Docstring TBD
         """
         return concat(self.x, glue)
 
-    def insert(self, glue: C) -> Iter[Union[C, T]]:
+    def insert(self, glue: C) -> "Iter[Union[C, T]]":
         """ Docstring TBD """
         return Iter(insert_separator(self, glue))
 
@@ -989,18 +993,18 @@ class Iter(Generic[T]):
     # Infinite iterators
 
     @classmethod
-    def count(cls, *args) -> Iter[int]:
+    def count(cls, *args) -> "Iter[int]":
         """
         |source|
         Docstring TBD """
         return cls(itertools.count(*args))
 
-    def cycle(self) -> Iter[T]:
+    def cycle(self) -> "Iter[T]":
         """ Docstring TBD """
         return Iter(itertools.cycle(self.x))
 
     @classmethod
-    def repeat(cls, elem: C, times=None) -> Iter[C]:
+    def repeat(cls, elem: C, times=None) -> "Iter[C]":
         """
         |source|
         Docstring TBD """
@@ -1018,15 +1022,25 @@ class Iter(Generic[T]):
 
             >>> Iter([1, 2, 3, 4, 5]).accumulate().collect()
             [1, 3, 6, 10, 15]
-            >>> Iter([1, 2, 3, 4, 5]).accumulate(initial=100).collect()
-            [100, 101, 103, 106, 110, 115]
+            >>> if sys.version_info >= (3, 8):
+            ...     out = Iter([1, 2, 3, 4, 5]).accumulate(initial=100).collect()
+            ...     assert out == [100, 101, 103, 106, 110, 115]
             >>> Iter([1, 2, 3, 4, 5]).accumulate(operator.mul).collect()
             [1, 2, 6, 24, 120]
 
         """
+        if sys.version_info < (3, 8):
+            if initial:
+                raise RuntimeError(
+                    f'The "initial" kwarg was added in Python 3.8 and is not'
+                    f'available on this version of Python which is '
+                    f'{sys.version_info} '
+                )
+            return Iter(itertools.accumulate(self.x, func))
+
         return Iter(itertools.accumulate(self.x, func, initial=initial))
 
-    def chain(self, *iterables: Iterable[T]) -> Iter[T]:
+    def chain(self, *iterables: Iterable[T]) -> "Iter[T]":
         """ Docstring TBD
 
         .. code-block:: python
@@ -1039,7 +1053,7 @@ class Iter(Generic[T]):
          """
         return Iter(itertools.chain(self.x, *iterables))
 
-    def chain_from_iterable(self) -> Iter[T]:
+    def chain_from_iterable(self) -> "Iter[T]":
         """ Docstring TBD
 
         .. code-block:: python
@@ -1074,7 +1088,7 @@ class Iter(Generic[T]):
         """ Docstring TBD """
         return Iter(itertools.groupby(self.x, key=key))
 
-    def islice(self, *args) -> Iter:
+    def islice(self, *args) -> "Iter":
         """ Docstring TBD """
         return Iter(itertools.islice(self.x, *args))
 
@@ -1100,24 +1114,24 @@ class Iter(Generic[T]):
 
     # Grouping
 
-    def chunked(self, n: int) -> Iter:
+    def chunked(self, n: int) -> "Iter":
         """ Docstring TBD """
         return Iter(more_itertools.chunked(self.x, n))
 
-    def ichunked(self, n: int) -> Iter:
+    def ichunked(self, n: int) -> "Iter":
         """ Docstring TBD """
         return Iter(Iter(it) for it in more_itertools.ichunked(self.x, n))
 
     @classmethod
-    def sliced(cls, seq: Sequence, n: int) -> Iter:
+    def sliced(cls, seq: Sequence, n: int) -> "Iter":
         """ Docstring TBD """
         return Iter(more_itertools.sliced(seq, n))
 
-    def distribute(self, n: int) -> Iter:
+    def distribute(self, n: int) -> "Iter":
         """ Docstring TBD """
         return Iter((Iter(x) for x in Iter(more_itertools.distribute(n, self.x))))
 
-    def divide(self, n: int) -> Iter:
+    def divide(self, n: int) -> "Iter":
         """ Docstring TBD """
         return Iter(Iter(x) for x in more_itertools.divide(n, self.x))
 
@@ -1157,23 +1171,23 @@ class Iter(Generic[T]):
         """ Docstring TBD """
         return Iter(Iter(x) for x in more_itertools.unzip(self.x))
 
-    def grouper(self, n: int, fillvalue=None) -> Iter:
+    def grouper(self, n: int, fillvalue=None) -> "Iter":
         """ Docstring TBD """
         return Iter(more_itertools.grouper(self.x, n, fillvalue=fillvalue))
 
-    def partition(self, pred) -> Iter:
+    def partition(self, pred) -> "Iter":
         """ Docstring TBD """
         left, right = more_itertools.partition(pred, self.x)
         return Iter((Iter(left), Iter(right)))
 
     # Lookahead and lookback
 
-    def spy(self, n=1) -> Tuple[Iter, Iter]:
+    def spy(self, n=1) -> "Tuple[Iter, Iter]":
         """ Docstring TBD """
         head, iterable = more_itertools.spy(self.x, n)
         return Iter(head), Iter(iterable)
 
-    def peekable(self) -> more_itertools.peekable:
+    def peekable(self) -> "more_itertools.peekable":
         """ Docstring TBD """
 
         class _peekable(more_itertools.peekable):
@@ -1184,13 +1198,13 @@ class Iter(Generic[T]):
                 return super().__getitem__(item)
 
             # TODO: need to somehow combine peekable and Iter
-            # def prepend(self, *items) -> Iter:
+            # def prepend(self, *items) -> "Iter":
             #     super().prepend(*items)
             #     return Iter(self)
 
         return _peekable(self.x)
 
-    def seekable(self) -> more_itertools.seekable:
+    def seekable(self) -> "more_itertools.seekable":
         """ Docstring TBD """
 
         class _seekable(more_itertools.seekable):
@@ -1201,7 +1215,7 @@ class Iter(Generic[T]):
 
     # Windowing
 
-    def windowed(self, n, fillvalue=None, step=1) -> Iter:
+    def windowed(self, n, fillvalue=None, step=1) -> "Iter":
         """ Docstring TBD """
         return Iter(more_itertools.windowed(self.x, n, fillvalue=fillvalue, step=step))
 
@@ -1244,7 +1258,7 @@ class Iter(Generic[T]):
 
     # Augmenting
 
-    def count_cycle(self, n=None) -> Iter:
+    def count_cycle(self, n=None) -> "Iter":
         """
 
         Reference: `more_itertools.count_cycle <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.count_cycle>`_
@@ -1257,7 +1271,7 @@ class Iter(Generic[T]):
         """
         return Iter(more_itertools.count_cycle(self.x, n=n))
 
-    def intersperse(self, e, n=1) -> Iter:
+    def intersperse(self, e, n=1) -> "Iter":
         """
         Reference: `more_itertools.intersperse <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.intersperse>`_
 
@@ -1277,7 +1291,7 @@ class Iter(Generic[T]):
         fillvalue: Optional[C] = None,
         n: Optional[int] = None,
         next_multiple: bool = False,
-    ) -> Iter[Union[T, C]]:
+    ) -> "Iter[Union[T, C]]":
         """
         Reference: `more_itertools.padded <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padded>`_
 
@@ -1298,7 +1312,7 @@ class Iter(Generic[T]):
 
     # repeat from upstream
 
-    def repeat_last(self, default=None) -> Iter[T]:
+    def repeat_last(self, default=None) -> "Iter[T]":
         """
         Reference: `more_itertools.repeat_last <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.repeat_last>`_
 
@@ -1313,7 +1327,7 @@ class Iter(Generic[T]):
         """
         return Iter(more_itertools.repeat_last(self.x, default=default))
 
-    def adjacent(self, pred, distance=1) -> Iter[Tuple[bool, T]]:
+    def adjacent(self, pred, distance=1) -> "Iter[Tuple[bool, T]]":
         """
         Reference: `more_itertools.adjacent <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.adjacent>`_
 
@@ -1333,7 +1347,7 @@ class Iter(Generic[T]):
         self,
         keyfunc: Optional[Callable[..., K]] = None,
         valuefunc: Optional[Callable[..., V]] = None,
-    ) -> Iter[Tuple[K, Iterable[V]]]:
+    ) -> "Iter[Tuple[K, Iterable[V]]]":
         """
         Reference: `more_itertools.groupby_transform <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.groupby_transform>`_
 
@@ -1373,7 +1387,7 @@ class Iter(Generic[T]):
             )
         )
 
-    def padnone(self) -> Iter[Union[T, None]]:
+    def padnone(self) -> "Iter[Union[T, None]]":
         """
         Reference: `more_itertools.padnone <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padnone>`_
 
@@ -1385,7 +1399,7 @@ class Iter(Generic[T]):
         """
         return Iter(more_itertools.padnone(self.x))
 
-    def ncycles(self, n) -> Iter[T]:
+    def ncycles(self, n) -> "Iter[T]":
         """
         Reference: `more_itertools.ncycles <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ncycles>`_
 
@@ -1399,7 +1413,7 @@ class Iter(Generic[T]):
 
     # Combining
 
-    def collapse(self, base_type=None, levels=None) -> Iter:
+    def collapse(self, base_type=None, levels=None) -> "Iter":
         """
         Reference: `more_itertools.collapse <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.collapse>`_
 
@@ -1476,7 +1490,7 @@ class Iter(Generic[T]):
             )
 
     @class_or_instancemethod
-    def interleave(self_or_cls, *iterables) -> Iter:
+    def interleave(self_or_cls, *iterables) -> "Iter":
         """
         Reference: `more_itertools.interleave <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave>`_
 
@@ -1501,7 +1515,7 @@ class Iter(Generic[T]):
             return Iter(more_itertools.interleave(self_or_cls, *iterables))
 
     @class_or_instancemethod
-    def interleave_longest(self_or_cls, *iterables) -> Iter:
+    def interleave_longest(self_or_cls, *iterables) -> "Iter":
         """
         Reference: `more_itertools.interleave_longest <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave_longest>`_
 
@@ -1526,7 +1540,7 @@ class Iter(Generic[T]):
             return Iter(more_itertools.interleave_longest(self_or_cls, *iterables))
 
     @classmethod
-    def zip_offset(cls, *iterables, offsets, longest=False, fillvalue=None) -> Iter:
+    def zip_offset(cls, *iterables, offsets, longest=False, fillvalue=None) -> "Iter":
         """
         Reference: `more_itertools.zip_offset <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.zip_offset>`_
 
@@ -1556,7 +1570,7 @@ class Iter(Generic[T]):
         """
         return more_itertools.dotproduct(self.x, vec2)
 
-    def flatten(self) -> Iter[T]:
+    def flatten(self) -> "Iter[T]":
         """
         Reference: `more_itertools.flatten <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.flatten>`_
 
@@ -1569,7 +1583,7 @@ class Iter(Generic[T]):
         return Iter(more_itertools.flatten(self))
 
     @class_or_instancemethod
-    def roundrobin(self_or_cls: Union[Type[T], T], *iterables: C) -> Iter[Union[T, C]]:
+    def roundrobin(self_or_cls: Union[Type[T], T], *iterables: C) -> "Iter[Union[T, C]]":
         """
         Reference: `more_itertools.roundrobin <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.roundrobin>`_
 
@@ -1593,7 +1607,7 @@ class Iter(Generic[T]):
         else:
             return Iter(more_itertools.roundrobin(self_or_cls, *iterables))
 
-    def prepend(self, value: C) -> Iter[Union[T, C]]:
+    def prepend(self, value: C) -> "Iter[Union[T, C]]":
         """
         Reference: `more_itertools.prepend <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.prepend>`_
 
@@ -1609,7 +1623,7 @@ class Iter(Generic[T]):
 
     # Summarizing
 
-    def ilen(self) -> int:
+    def ilen(self) -> "int":
         """
         |sink|
 
@@ -1623,7 +1637,7 @@ class Iter(Generic[T]):
         """
         return more_itertools.ilen(self)
 
-    def unique_to_each(self) -> Iter[T]:
+    def unique_to_each(self) -> "Iter[T]":
         """
         Reference: `more_itertools.unique_to_each <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_to_each>`_
 
@@ -1639,7 +1653,7 @@ class Iter(Generic[T]):
         #  a *iterables parameter. Not sure if this is what we want.
         return Iter(more_itertools.unique_to_each(*self))
 
-    def sample(self, k=1, weights=None) -> Iter:
+    def sample(self, k=1, weights=None) -> "Iter":
         """
         Reference: `more_itertools.sample <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sample>`_
 
@@ -1686,7 +1700,7 @@ class Iter(Generic[T]):
 
         return Iter(more_itertools.consecutive_groups(self.x, ordering=ordering))
 
-    def run_length_encode(self) -> Iter[Tuple[T, int]]:
+    def run_length_encode(self) -> "Iter[Tuple[T, int]]":
         """
         Reference: `more_itertools.run_length <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run_length>`_
 
@@ -1699,7 +1713,7 @@ class Iter(Generic[T]):
         """
         return Iter(more_itertools.run_length.encode(self))
 
-    def run_length_decode(self) -> Iter:
+    def run_length_decode(self) -> "Iter":
         """
         Reference: `more_itertools.run_length <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run_length>`_
 
@@ -1712,7 +1726,7 @@ class Iter(Generic[T]):
         """
         return Iter(more_itertools.run_length.decode(self))
 
-    def map_reduce(self, keyfunc, valuefunc=None, reducefunc=None) -> Dict:
+    def map_reduce(self, keyfunc, valuefunc=None, reducefunc=None) -> "Dict":
         """
         Reference: `more_itertools.map_reduce <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce>`_
 
@@ -1763,7 +1777,7 @@ class Iter(Generic[T]):
         keyfunc: Callable[..., K],
         valuefunc: Optional[Callable[..., V]] = None,
         reducefunc: Optional[Callable[..., R]] = None,
-    ) -> Iter[Tuple[K, R]]:
+    ) -> "Iter[Tuple[K, R]]":
         """
         Reference: `more_itertools.map_reduce <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce>`_
 
@@ -1788,7 +1802,7 @@ class Iter(Generic[T]):
         d = more_itertools.map_reduce(self.x, keyfunc, valuefunc, reducefunc,)
         return Iter(d.items())
 
-    def exactly_n(self, n, predicate=bool) -> bool:
+    def exactly_n(self, n, predicate=bool) -> "bool":
         """
         |sink|
 
@@ -1825,7 +1839,7 @@ class Iter(Generic[T]):
     def one(self):
         raise NotImplementedError
 
-    def only(self, default=None, too_long=None) -> Any:
+    def only(self, default=None, too_long=None) -> "Any":
         return more_itertools.only(self.x, default=default, too_long=too_long)
 
     def strip(self, pred):
@@ -1849,7 +1863,7 @@ class Iter(Generic[T]):
     def nth(self, n, default=None):
         return next(self.islice(n, None), default)
 
-    def take(self, n: int) -> Iter:
+    def take(self, n: int) -> "Iter":
         return Iter(more_itertools.take(n, self.x))
 
     def tail(self):
@@ -1869,13 +1883,13 @@ class Iter(Generic[T]):
     def distinct_combinations(self, r):
         return Iter(more_itertools.distinct_combinations(self.x, r))
 
-    def circular_shifts(self) -> Iter:
+    def circular_shifts(self) -> "Iter":
         return Iter(more_itertools.circular_shifts(self.x))
 
-    def partitions(self) -> Iter:
+    def partitions(self) -> "Iter":
         return Iter(more_itertools.partitions(self.x))
 
-    def set_partitions(self, k=None) -> Iter:
+    def set_partitions(self, k=None) -> "Iter":
         return Iter(more_itertools.set_partitions(self.x, k=k))
 
     def powerset(self):
@@ -1912,7 +1926,7 @@ class Iter(Generic[T]):
     #     raise NotImplementedError
 
     @classmethod
-    def with_iter(self, context_manager):
+    def with_iter(cls, context_manager):
         """
         Reference: `more_itertools.with_iter <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.with_iter>`_
 
@@ -1923,7 +1937,8 @@ class Iter(Generic[T]):
 
             >>> import tempfile
             >>> with tempfile.TemporaryDirectory() as td:
-            ...     open(td + 'text.txt', 'w').writelines(['abc\\n', 'def\\n', 'ghi\\n'])
+            ...     with open(td + 'text.txt', 'w') as f:
+            ...         f.writelines(['abc\\n', 'def\\n', 'ghi\\n'])
             ...     Iter.with_iter(open(td + 'text.txt')).map(lambda x: x.upper()).collect()
             ['ABC\\n', 'DEF\\n', 'GHI\\n']
 
@@ -1935,7 +1950,7 @@ class Iter(Generic[T]):
         return Iter(more_itertools.with_iter(context_manager))
 
     @classmethod
-    def iter_except(self, func, exception, first=None) -> Iter:
+    def iter_except(cls, func, exception, first=None) -> "Iter":
         """
         Reference: `more_itertools.iter_except <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.iter_except>`_
 
@@ -1950,7 +1965,7 @@ class Iter(Generic[T]):
 
     # Others
 
-    def locate(self, pred=bool, window_size=None) -> Iter:
+    def locate(self, pred=bool, window_size=None) -> "Iter":
         """
         Reference: `more_itertools.locate <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.locate>`_
 
@@ -1988,7 +2003,7 @@ class Iter(Generic[T]):
         """
         return Iter(more_itertools.locate(self.x, pred=pred, window_size=window_size))
 
-    def rlocate(self, pred=bool, window_size=None) -> Iter:
+    def rlocate(self, pred=bool, window_size=None) -> "Iter":
         """
         Reference: `more_itertools.rlocate <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.rlocate>`_
 
@@ -2013,7 +2028,7 @@ class Iter(Generic[T]):
         """
         return Iter(more_itertools.rlocate(self.x, pred, window_size))
 
-    def replace(self, pred, substitutes, count=None, window_size=1) -> Iter:
+    def replace(self, pred, substitutes, count=None, window_size=1) -> "Iter":
         """
         Reference: `more_itertools.replace <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.replace>`_
 
@@ -2052,7 +2067,7 @@ class Iter(Generic[T]):
         )
 
     @classmethod
-    def numeric_range(cls, *args) -> Iter:
+    def numeric_range(cls, *args) -> "Iter":
         """
         Reference: `more_itertools.numeric_range <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.numeric_range>`_
 
@@ -2092,10 +2107,21 @@ class Iter(Generic[T]):
 
         .. code-block:: python
 
+            >>> def f(item):
+            ...     if item == 3:
+            ...         raise Exception('got 3')
+            >>> Iter.range(5).side_effect(f).consume()
+            Traceback (most recent call last):
+                ...
+            Exception: got 3
+
+        .. code-block:: python
+
             >>> func = lambda item: print('Received {}'.format(item))
             >>> Iter.range(2).side_effect(func).consume()
             Received 0
             Received 1
+
 
         """
 
@@ -2134,7 +2160,7 @@ class Iter(Generic[T]):
     def SequenceView(self):
         raise NotImplementedError
 
-    def time_limited(self, limit_seconds) -> Iter:
+    def time_limited(self, limit_seconds) -> "Iter":
         """
         Reference: `more_itertools.time_limited <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=time_limited#more_itertools.time_limited>`_
 
@@ -2152,7 +2178,7 @@ class Iter(Generic[T]):
         """
         return Iter(more_itertools.time_limited(limit_seconds, self.x))
 
-    def consume(self, n: Optional[int] = None) -> Optional[Iter[T]]:
+    def consume(self, n: Optional[int] = None) -> "Optional[Iter[T]]":
         """
         |sink|
         If n is not provided, the entire iterator is consumed and
@@ -2210,14 +2236,14 @@ class Iter(Generic[T]):
 
     # New
 
-    def wrap(self, ends: Sequence[T, T] = "()"):
+    def wrap(self, ends: "Sequence[T, T]" = "()"):
         """ Other examples for ends: '"' * 2, or '`' * 2, or '[]' etc. """
         if len(ends) != 2:
             raise ValueError("The ends must be a 2-length sequence")
 
         return Iter(itertools.chain.from_iterable([ends[0], self, ends[1]]))
 
-    def print(self, template="{i}: {v}") -> Iter[T]:
+    def print(self, template="{i}: {v}") -> "Iter[T]":
         """
         Printing during the execution of an iterator. Mostly useful
         for debugging. Returns another iterator instance through which
@@ -2308,7 +2334,7 @@ class Iter(Generic[T]):
         """
         self.map(q.put).consume()
 
-    def send(self, collector: Generator, close_collector_when_done=False) -> None:
+    def send(self, collector: Generator, close_collector_when_done=False) -> "None":
         """
         |sink|
         See also: `more_itertools.consumer <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.consumer>`_
@@ -2396,7 +2422,7 @@ class Iter(Generic[T]):
         if close_collector_when_done:
             collector.close()
 
-    def send_also(self, collector: Generator) -> Iter:
+    def send_also(self, collector: Generator) -> "Iter":
         """
         Reference: `more_itertools.consumer <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.consumer>`_
 
@@ -2420,20 +2446,30 @@ class Iter(Generic[T]):
             [0, 1, 2]
 
         If the generator is closed before the iteration is complete,
-        you'll get a ``StopIteration`` exception:
+        you'll get an exception (Python 3.7+):
 
         .. code-block:: python
 
             >>> output = []
             >>> def collector():
-            ...   for i in range(3):
+            ...   for i in builtins.range(3):
             ...       output.append((yield))
-            >>> Iter.range(5).send_also(collector()).collect()
+            >>> Iter.range(50).send_also(collector()).collect()  # doctest: +SKIP
             Traceback (most recent call last):
                 ...
             RuntimeError
 
+        Note that the above doesn't happen in Python < 3.7 (which includes
+        pypy 7.3.1 that matches Python 3.6.9 compatibility). Instead, you
+        collect out the items up to until the point that the collector
+        returns; in this case, you'd get [0, 1, 2]. This change was made
+        as part of `PEP 479 <https://www.python.org/dev/peps/pep-0479/>`_.
+
+        Regardless, for any Python it's recommended that your generator
+        live at least as long as the iterator feeding it.
+
         """
+        import traceback
 
         def func(v):
             try:
@@ -2457,24 +2493,24 @@ class IterDict(UserDict):
     be chained. I'm not sure if this will be kept yet.
     """
 
-    def __iter__(self) -> Iter:
+    def __iter__(self) -> "Iter":
         return Iter(self.data.keys())
 
-    def keys(self) -> Iter:
+    def keys(self) -> "Iter":
         return Iter(self.data.keys())
 
-    def values(self) -> Iter:
+    def values(self) -> "Iter":
         return Iter(self.data.values())
 
-    def items(self) -> Iter:
+    def items(self) -> "Iter":
         return Iter(self.data.items())
 
-    def update(self, *args, **kwargs) -> IterDict:
+    def update(self, *args, **kwargs) -> "IterDict":
         self.data.update(*args, **kwargs)
         return self
 
 
-def insert_separator(iterable: Iterable[Any], glue: Any) -> Iterable[Any]:
+def insert_separator(iterable: Iterable[Any], glue: Any) -> "Iterable[Any]":
     """Similar functionality can be obtained with, e.g.,
     interleave, as in
 
@@ -2500,7 +2536,7 @@ def insert_separator(iterable: Iterable[Any], glue: Any) -> Iterable[Any]:
         yield item
 
 
-def concat(iterable: Iterable[AnyStr], glue: AnyStr) -> AnyStr:
+def concat(iterable: Iterable[AnyStr], glue: AnyStr) -> "AnyStr":
     """Concatenate strings, bytes and bytearrays. It is careful to avoid the
      problem with single bytes becoming integers, and it looks at the value
      of `glue` to know whether to handle bytes or strings."""
@@ -2517,7 +2553,7 @@ def concat(iterable: Iterable[AnyStr], glue: AnyStr) -> AnyStr:
         raise ValueError("Must be called with bytes, bytearray or str")
 
 
-def from_queue(q: queue.Queue, timeout=None, sentinel=None) -> Iter:
+def from_queue(q: queue.Queue, timeout=None, sentinel=None) -> "Iter":
     """
     |source|
     Wrap a queue with an iterator interface. This allows it to participate
