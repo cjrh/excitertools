@@ -101,6 +101,7 @@ the iterators from the more-itertools_ 3rd-party package.
 
 """
 #from __future__ import annotations
+import sys
 import string
 import itertools
 import functools
@@ -400,8 +401,9 @@ def accumulate(iterable, func=None, *, initial=None):
 
         >>> accumulate([1, 2, 3, 4, 5]).collect()
         [1, 3, 6, 10, 15]
-        >>> accumulate([1, 2, 3, 4, 5], initial=100).collect()
-        [100, 101, 103, 106, 110, 115]
+        >>> if sys.version_info >= (3, 8):
+        ...     output = accumulate([1, 2, 3, 4, 5], initial=100).collect()
+        ...     assert output == [100, 101, 103, 106, 110, 115]
         >>> accumulate([1, 2, 3, 4, 5], operator.mul).collect()
         [1, 2, 6, 24, 120]
         >>> accumulate([]).collect()
@@ -414,7 +416,7 @@ def accumulate(iterable, func=None, *, initial=None):
         [97, 195, 294]
 
     """
-    return Iter(itertools.accumulate(iterable, func, initial=initial))
+    return Iter(iterable).accumulate(func, initial=initial)
 
 
 def chain(*iterables: Iterable[T]) -> "Iter[T]":
@@ -1018,12 +1020,22 @@ class Iter(Generic[T]):
 
             >>> Iter([1, 2, 3, 4, 5]).accumulate().collect()
             [1, 3, 6, 10, 15]
-            >>> Iter([1, 2, 3, 4, 5]).accumulate(initial=100).collect()
-            [100, 101, 103, 106, 110, 115]
+            >>> if sys.version_info >= (3, 8):
+            ...     out = Iter([1, 2, 3, 4, 5]).accumulate(initial=100).collect()
+            ...     assert out == [100, 101, 103, 106, 110, 115]
             >>> Iter([1, 2, 3, 4, 5]).accumulate(operator.mul).collect()
             [1, 2, 6, 24, 120]
 
         """
+        if sys.version_info < (3, 8):
+            if initial:
+                raise RuntimeError(
+                    f'The "initial" kwarg was added in Python 3.8 and is not'
+                    f'available on this version of Python which is '
+                    f'{sys.version_info} '
+                )
+            return Iter(itertools.accumulate(self.x, func))
+
         return Iter(itertools.accumulate(self.x, func, initial=initial))
 
     def chain(self, *iterables: Iterable[T]) -> "Iter[T]":
