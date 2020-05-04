@@ -25,6 +25,10 @@
     :target: https://github.com/ambv/black
 
 
+.. _more-itertools: https://more-itertools.readthedocs.io/en/stable/index.html
+
+.. _excitertools:
+
 excitertools
 ############
 
@@ -90,7 +94,7 @@ why they're presented first.
 
 The API includes wrappers for the stdlib *itertools* module, including
 the "recipes" given in the *itertools* docs, as well as wrappers for
-the iterators from the *more-itertools* 3rd-party package.
+the iterators from the more-itertools_ 3rd-party package.
 
 .. contents::
     :local:
@@ -117,7 +121,7 @@ replacements.
 
 
 Replacement for the builtin ``range`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 All the same calling variations work because this function merely wraps
 the original function.
@@ -183,7 +187,7 @@ at all:
 ``zip(*iterables: Any) -> Iter[Tuple[T, ...]]``
 ***********************************************
 Replacement for the builtin ``zip`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. _enumerate:
 
@@ -191,7 +195,7 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 ``enumerate(iterable) -> Iter[Tuple[int, T]]``
 **********************************************
 Replacement for the builtin ``enumerate`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -224,7 +228,7 @@ an instance of Iter_ to allow further iterable chaining.
 ``filter(function: Callable[[Any], ...], iterable: Iterable) -> Iter[T]``
 *************************************************************************
 Replacement for the builtin ``filter`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -242,7 +246,7 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 
 
 Replacement for the itertools ``count`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -265,7 +269,7 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 ``cycle(iterable) -> Iter[T]``
 ******************************
 Replacement for the itertools ``count`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -286,7 +290,7 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 
 
 Replacement for the itertools ``count`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -315,7 +319,7 @@ input sequence.
 ``accumulate(iterable, func=None, *, initial=None)``
 ****************************************************
 Replacement for the itertools ``accumulate`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -342,7 +346,7 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 ``chain(*iterables: Iterable[T]) -> Iter[T]``
 *********************************************
 Replacement for the itertools ``chain`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -359,7 +363,7 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 ``chain_from_iterable(iterable) -> Iter[T]``
 ********************************************
 Replacement for the itertools ``chain.from_iterable`` method.
-This version returns an instance of ``excitertools.Iter`` to allow
+This version returns an instance of Iter_ to allow
 further iterable chaining.
 
 .. code-block:: python
@@ -377,7 +381,7 @@ further iterable chaining.
 ``compress(data, selectors)``
 *****************************
 Replacement for the itertools ``compress`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -393,7 +397,7 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 ``dropwhile(pred, iterable)``
 *****************************
 Replacement for the itertools ``dropwhile`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -408,7 +412,7 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 ``filterfalse(pred, iterable)``
 *******************************
 Replacement for the itertools ``filterfalse`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -423,7 +427,7 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 ``groupby(iterable, key=None)``
 *******************************
 Replacement for the itertools ``groupby`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 groupby_ returns an iterator of a key and "grouper" iterable. In the
 example below, we use Iter.starmap_ to collect each grouper iterable
@@ -447,7 +451,7 @@ into a list, as this makes it neater for display here in the docstring.
 ``islice(iterable, *args) -> Iter``
 ***********************************
 Replacement for the itertools ``islice`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -468,7 +472,7 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 ``starmap(func, iterable)``
 ***************************
 Replacement for the itertools ``starmap`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -483,7 +487,7 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 ``takewhile(pred, iterable)``
 *****************************
 Replacement for the itertools ``takewhile`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -498,7 +502,7 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 ``tee(iterable, n=2)``
 **********************
 Replacement for the itertools ``tee`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -516,7 +520,7 @@ but it gets quite difficult to understand:
     >>> tee(range(5)).map(lambda it: it.sum()).collect()
     [10, 10]
 
-In the example above we passed in range_, but with *excitertools*
+In the example above we passed in range_, but with excitertools_
 it's usually more natural to push data sources further left:
 
 .. code-block:: python
@@ -535,7 +539,7 @@ copied iterators.
 ``zip_longest(*iterables, fillvalue=None)``
 *******************************************
 Replacement for the itertools ``zip_longest`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -559,14 +563,194 @@ an instance of ``excitertools.Iter`` to allow further iterable chaining.
 .. _Iter:
 
 
-``class Iter(Generic[T])``
-**************************
+|cool| ``class Iter(Generic[T])``
+*********************************
 
-This is the docstring for the ``Iter`` class.
 
-Each of the following methods of ``Iter`` describe how they work.
+This class is what allows chaining. Many of the methods in this class
+return an instance of Iter_, which allows further chaining. There
+are two exceptions to this: *sources* and *sinks*.
 
-Test warning: |warning|
+A "source" is usually a ``classmethod`` which can be used as an
+initializer to produce data via an iterable. For example, the Iter.range_
+classmethod can be used to get a sequence of numbers:
+
+.. code-block:: python
+
+    >>> Iter.range(1_000_000).take(3).collect()
+    [0, 1, 2]
+
+Even though our range was a million elements, the iterator chaining
+took only 3 of those elements before collecting.
+
+A "sink" is a method that is usually the last component of a processing
+chain and often (but not always!) consumes the entire iterator. In the
+example above, the call to Iter.collect_ was a sink. Note that we still
+call it a sink even though it did not consume the entire iterator.
+
+We're using the term "source" to refer to a classmethod of Iter_ that
+produces data; but, the most typical source is going to be data that
+you provide. Iter_ can be called with anything that is iterable, including
+sequences, iterators, mappings, sets, generators and so on.
+
+Examples:
+
+.. code-block:: python
+
+    List
+    >>> Iter([1, 2, 3]).map(lambda x: x * 2).sum()
+    12
+
+    Generator
+    >>> Iter((1, 2, 3)).map(lambda x: x * 2).sum()
+    12
+    >>> def g():
+    ...     for i in [1, 2, 3]:
+    ...         yield i
+    >>> Iter(g()).map(lambda x: x * 2).sum()
+    12
+
+    Iterator
+    >>> Iter(iter([1, 2, 3])).map(lambda x: x * 2).sum()
+    12
+
+    Dict
+    >>> Iter(dict(a=1, b=2)).map(lambda x: x.upper()).collect()
+    ['A', 'B']
+    >>> d = dict(a=1, b=2, c=3)
+    >>> Iter(d.items()).starmap(lambda k, v: v).map(lambda x: x * 2).sum()
+    12
+
+A common error with generators is forgetting to actually evaluate, i.e.,
+call a generator function. If you do this there's a friendly error
+pointing out the mistake:
+
+.. code-block:: python
+
+    >>> def mygen(): yield 123
+    >>> Iter(mygen).collect()
+    Traceback (most recent call last):
+        ...
+    TypeError: It seems you passed a generator function, but you
+    probably intended to pass a generator. Remember to evaluate the
+    function to obtain a generator instance:
+    <BLANKLINE>
+    def mygen():
+        yield 123
+    <BLANKLINE>
+    Iter(mygen)    # ERROR - a generator function object is not iterable
+    Iter(mygen())  # CORRECT - a generator instance is iterable.
+    >>> Iter(mygen()).collect()
+    [123]
+
+Instance of Iter_ are resumable. Once an instance it created, it can
+be partially iterated in successive calls, like the following example
+shows:
+
+.. code-block:: python
+
+    >>> it = Iter.range(1_000_000)
+    >>> it.take(3).collect()
+    [0, 1, 2]
+    >>> it.take(4).collect()
+    [3, 4, 5, 6]
+    >>> # Consume most of the stream, collect the last few
+    >>> it.consume(999_990).collect()
+    [999997, 999998, 999999]
+
+This class implements the chaining. However, the module-level functions
+in excitertools_, such as range_, zip_ and so on, also return
+instances of Iter_, so they allow the chaining to continue. These are
+equivalent:
+
+.. code-block:: python
+
+    >>> Iter.range(10).filter(lambda x: x > 7).collect()
+    [8, 9]
+    >>> range(10).filter(lambda x: x > 7).collect()
+    [8, 9]
+
+It is intended that the module-level functions can act as drop-in
+replacements for the builtins they wrap:
+
+>>> import builtins
+>>> list(builtins.range(3))
+[0, 1, 2]
+>>> list(range(3))  # This is excitertools.range!
+[0, 1, 2]
+>>> list(Iter.range(3))
+[0, 1, 2]
+
+In your own code where you might like to use the excitertools_ version of
+range_ and the other functions, you can just import it and use it to access all the other
+cool stuff:
+
+.. code-block:: python
+
+    # mymodule.py
+    from excitertools import (
+        range,
+        map,
+        filter,
+        reduce,
+        repeat,
+        count,
+        enumerate,
+        zip,
+        ...
+    )
+
+    def func(inputs):
+        data = (
+            map(lambda x: x + 2, inputs)
+                .enumerate()
+                .filter(lambda x: x[1] > 10)
+                ...
+                .collect()
+
+        )
+
+Alternatively, if you don't want to hide the builtins you can do just
+fine with importing this class only, or even importing the module only:
+
+.. code-block:: python
+
+    # mymodule.py - same example as before
+    import excitertools
+
+    def func(inputs):
+        data = (
+            excitertools.Iter(inputs)
+                .map(lambda x: x + 2, inputs)
+                .enumerate()
+                .filter(lambda x: x[1] > 10)
+                ...
+                .collect()
+        )
+
+        # Do something with data
+
+There are several valuable additions to the standard *itertools* and
+more-itertools_ functions. These usually involve sources and sinks,
+which are ways of getting data into an iterator pipeline, and then
+getting results out again. In the majority of documentation examples
+shown here, the Iter.collect_ method is used to collect all the
+remaining data on a stream into a list; but in practice this is not
+useful because large lists consume memory.
+
+In practice it is more useful to send iterator data to one of these
+common sinks:
+
+- files
+- sockets
+- queues
+- HTTP APIs
+- Cloud storage buckets
+- (Ideas for more to add here?)
+
+Iter_ has support for these use-cases, both for reading and for writing.
+
+
 
 
 
@@ -804,7 +988,7 @@ Docstring TBD
 ``Iter.compress(self, selectors)``
 ==================================
 Replacement for the itertools ``compress`` function.  This version returns
-an instance of ``excitertools.Iter`` to allow further iterable chaining.
+an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
@@ -1060,7 +1244,7 @@ Docstring TBD
 ``Iter.pairwise(self)``
 =======================
 
-See https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.pairwise
+Reference `more_itertools.pairwise <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.pairwise>`_
 
 .. code-block:: python
 
@@ -1075,7 +1259,7 @@ See https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.pair
 ==========================================
 
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.count_cycle
+Reference: `more_itertools.count_cycle <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.count_cycle>`_
 
 .. code-block:: python
 
@@ -1090,7 +1274,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.cou
 ``Iter.intersperse(self, e, n=1) -> Iter``
 ==========================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.intersperse
+Reference: `more_itertools.intersperse <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.intersperse>`_
 
 .. code-block:: python
 
@@ -1108,7 +1292,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.int
 ``Iter.padded(self, fillvalue: Optional[C] = None, n: Optional[int] = None, next_multiple: bool = False, ) -> Iter[Union[T, C]]``
 =================================================================================================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padded
+Reference: `more_itertools.padded <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padded>`_
 
 .. code-block:: python
 
@@ -1126,7 +1310,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.pad
 ``Iter.repeat_last(self, default=None) -> Iter[T]``
 ===================================================
 
-https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.repeat_last
+Reference: `more_itertools.repeat_last <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.repeat_last>`_
 
 .. code-block:: python
 
@@ -1144,7 +1328,7 @@ https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.repeat_l
 ``Iter.adjacent(self, pred, distance=1) -> Iter[Tuple[bool, T]]``
 =================================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.adjacent
+Reference: `more_itertools.adjacent <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.adjacent>`_
 
 .. code-block:: python
 
@@ -1163,7 +1347,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.adj
 ``Iter.groupby_transform(self, keyfunc: Optional[Callable[..., K]] = None, valuefunc: Optional[Callable[..., V]] = None, ) -> Iter[Tuple[K, Iterable[V]]]``
 ===========================================================================================================================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.groupby_transform
+Reference: `more_itertools.groupby_transform <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.groupby_transform>`_
 
 This example has been modified somewhat from the original. We're using
 ``starmap`` here to "unzip" the tuples produced by the group
@@ -1202,7 +1386,7 @@ transform.
 ``Iter.padnone(self) -> Iter[Union[T, None]]``
 ==============================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padnone
+Reference: `more_itertools.padnone <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.padnone>`_
 
 .. code-block:: python
 
@@ -1217,7 +1401,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.pad
 ``Iter.ncycles(self, n) -> Iter[T]``
 ====================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ncycles
+Reference: `more_itertools.ncycles <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ncycles>`_
 
 .. code-block:: python
 
@@ -1232,7 +1416,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ncy
 ``Iter.collapse(self, base_type=None, levels=None) -> Iter``
 ============================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.collapse
+Reference: `more_itertools.collapse <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.collapse>`_
 
 .. code-block:: python
 
@@ -1258,7 +1442,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.col
 ``@class_or_instancemethod Iter.sort_together(self_or_cls, iterables, key_list=(0,), reverse=False)``
 =====================================================================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sort_together
+Reference: `more_itertools.sort_together <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sort_together>`_
 
 This can be called either as an instance method or a class method.
 The classmethod form is more convenient if all the iterables are
@@ -1266,7 +1450,7 @@ already available. The instancemethod form is more convenient if
 one of the iterables already goes through some transformation.
 
 Here are examples from the classmethod form, which mirror the
-examples in the *more-itertools* documentation:
+examples in the more-itertools_ documentation:
 
 .. code-block:: python
 
@@ -1295,7 +1479,7 @@ Here is an examples using the instancemethod form:
 ``@class_or_instancemethod Iter.interleave(self_or_cls, *iterables) -> Iter``
 =============================================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave
+Reference: `more_itertools.interleave <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave>`_
 
 Classmethod form:
 
@@ -1319,7 +1503,7 @@ Instancemethod form:
 ``@class_or_instancemethod Iter.interleave_longest(self_or_cls, *iterables) -> Iter``
 =====================================================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave_longest
+Reference: `more_itertools.interleave_longest <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave_longest>`_
 
 Classmethod form:
 
@@ -1343,7 +1527,7 @@ Instancemethod form:
 ``@classmethod Iter.zip_offset(cls, *iterables, offsets, longest=False, fillvalue=None) -> Iter``
 =================================================================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.zip_offset
+Reference: `more_itertools.zip_offset <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.zip_offset>`_
 
 .. code-block:: python
 
@@ -1360,7 +1544,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.zip
 ``Iter.dotproduct(self, vec2: Iterable)``
 =========================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.dotproduct
+Reference: `more_itertools.dotproduct <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.dotproduct>`_
 
 .. code-block:: python
 
@@ -1374,7 +1558,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.dot
 ``Iter.flatten(self) -> Iter[T]``
 =================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.flatten
+Reference: `more_itertools.flatten <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.flatten>`_
 
 .. code-block:: python
 
@@ -1389,7 +1573,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.fla
 ``@class_or_instancemethod Iter.roundrobin(self_or_cls: Union[Type[T], T], *iterables: C) -> Iter[Union[T, C]]``
 ================================================================================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.roundrobin
+Reference: `more_itertools.roundrobin <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.roundrobin>`_
 
 Classmethod form:
 
@@ -1413,7 +1597,7 @@ Instancemethod form:
 ``Iter.prepend(self, value: C) -> Iter[Union[T, C]]``
 =====================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.prepend
+Reference: `more_itertools.prepend <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.prepend>`_
 
 .. code-block:: python
 
@@ -1432,7 +1616,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.pre
 
 
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ilen
+Reference: `more_itertools.ilen <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ilen>`_
 
 .. code-block:: python
 
@@ -1447,7 +1631,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ile
 ``Iter.unique_to_each(self) -> Iter[T]``
 ========================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_to_each
+Reference: `more_itertools.unique_to_each <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_to_each>`_
 
 .. code-block:: python
 
@@ -1464,7 +1648,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.uni
 ``Iter.sample(self, k=1, weights=None) -> Iter``
 ================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sample
+Reference: `more_itertools.sample <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sample>`_
 
 .. code-block:: python
 
@@ -1496,7 +1680,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sam
 ``Iter.consecutive_groups(self, ordering=lambda x: x)``
 =======================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.consecutive_groups
+Reference: `more_itertools.consecutive_groups <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.consecutive_groups>`_
 
 .. code-block:: python
 
@@ -1516,7 +1700,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.con
 ``Iter.run_length_encode(self) -> Iter[Tuple[T, int]]``
 =======================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run_length
+Reference: `more_itertools.run_length <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run_length>`_
 
 .. code-block:: python
 
@@ -1532,7 +1716,7 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run
 ``Iter.run_length_decode(self) -> Iter``
 ========================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run_length
+Reference: `more_itertools.run_length <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run_length>`_
 
 .. code-block:: python
 
@@ -1548,9 +1732,9 @@ See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.run
 ``Iter.map_reduce(self, keyfunc, valuefunc=None, reducefunc=None) -> Dict``
 ===========================================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce
+Reference: `more_itertools.map_reduce <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce>`_
 
-This interface mirrors what *more-itertools* does in that it returns
+This interface mirrors what more-itertools_ does in that it returns
 a dict. See ``map_reduce_it()`` for a slightly-modified interface
 that returns the dict items as another iterator.
 
@@ -1574,7 +1758,7 @@ that returns the dict items as another iterator.
     >>> sorted(d.items())
     [('A', 1), ('B', 2), ('C', 3)]
 
-Note the warning given in the *more-itertools* docs about how
+Note the warning given in the more-itertools_ docs about how
 lists are created before the reduce step. This means you always want
 to filter *before* applying map_reduce, not after.
 
@@ -1597,7 +1781,7 @@ to filter *before* applying map_reduce, not after.
 ``Iter.map_reduce_it(self, keyfunc: Callable[..., K], valuefunc: Optional[Callable[..., V]] = None, reducefunc: Optional[Callable[..., R]] = None) -> Iter[Tuple[K, R]]``
 =========================================================================================================================================================================
 
-See: https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce
+Reference: `more_itertools.map_reduce <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.map_reduce>`_
 
 .. code-block:: python
 
@@ -1827,23 +2011,46 @@ Docstring TBD
 ``Iter.always_reversible(self)``
 ================================
 
-.. _Iter.consumer:
-
-
-``Iter.consumer(self)``
-=======================
-
 .. _Iter.with_iter:
 
 
-``Iter.with_iter(self)``
-========================
+``@classmethod Iter.with_iter(self, context_manager)``
+======================================================
+
+Reference: `more_itertools.with_iter <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.with_iter>`_
+
+Note: Any context manager which returns an iterable is a candidate for
+Iter.with_iter_.
+
+.. code-block:: python
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as td:
+    ...     open(td + 'text.txt', 'w').writelines(['abc\n', 'def\n', 'ghi\n'])
+    ...     Iter.with_iter(open(td + 'text.txt')).map(lambda x: x.upper()).collect()
+    ['ABC\n', 'DEF\n', 'GHI\n']
+
+See also: Iter.open_
+
+|flux| TODO: perhaps we should get rid of Iter.open_ and just use this?
+
+
 
 .. _Iter.iter_except:
 
 
-``Iter.iter_except(self)``
-==========================
+``@classmethod Iter.iter_except(self, func, exception, first=None) -> Iter``
+============================================================================
+
+Reference: `more_itertools.iter_except <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.iter_except>`_
+
+.. code-block:: python
+
+    >>> l = [0, 1, 2]
+    >>> Iter.iter_except(l.pop, IndexError).collect()
+    [2, 1, 0]
+
+
 
 .. _Iter.locate:
 
@@ -1851,11 +2058,68 @@ Docstring TBD
 ``Iter.locate(self, pred=bool, window_size=None) -> Iter``
 ==========================================================
 
+Reference: `more_itertools.locate <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.locate>`_
+
+.. code-block:: python
+
+    >>> Iter([0, 1, 1, 0, 1, 0, 0]).locate().collect()
+    [1, 2, 4]
+
+.. code-block:: python
+
+    >>> Iter(['a', 'b', 'c', 'b']).locate(lambda x: x == 'b').collect()
+    [1, 3]
+
+.. code-block:: python
+
+    >>> iterable = [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]
+    >>> pred = lambda *args: args == (1, 2, 3)
+    >>> Iter(iterable).locate(pred=pred, window_size=3).collect()
+    [1, 5, 9]
+
+.. code-block:: python
+
+    >>> from itertools import count
+    >>> from more_itertools import seekable
+    >>> source = (3 * n + 1 if (n % 2) else n // 2 for n in count())
+    >>> it = Iter(source).seekable()
+    >>> pred = lambda x: x > 100
+    >>> # TODO: can we avoid making two instances?
+    >>> indexes = Iter(it).locate(pred=pred)
+    >>> i = next(indexes)
+    >>> it.seek(i)
+    >>> next(it)
+    106
+
+
+
 .. _Iter.rlocate:
 
 
 ``Iter.rlocate(self, pred=bool, window_size=None) -> Iter``
 ===========================================================
+
+Reference: `more_itertools.rlocate <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.rlocate>`_
+
+.. code-block:: python
+
+    >>> Iter([0, 1, 1, 0, 1, 0, 0]).rlocate().collect()  # Truthy at 1, 2, and 4
+    [4, 2, 1]
+
+.. code-block:: python
+
+    >>> pred = lambda x: x == 'b'
+    >>> Iter('abcb').rlocate(pred).collect()
+    [3, 1]
+
+.. code-block:: python
+
+    >>> iterable = [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]
+    >>> pred = lambda *args: args == (1, 2, 3)
+    >>> Iter(iterable).rlocate(pred=pred, window_size=3).collect()
+    [9, 5, 1]
+
+
 
 .. _Iter.replace:
 
@@ -1863,17 +2127,90 @@ Docstring TBD
 ``Iter.replace(self, pred, substitutes, count=None, window_size=1) -> Iter``
 ============================================================================
 
+Reference: `more_itertools.replace <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.replace>`_
+
+.. code-block:: python
+
+    >>> iterable = [1, 1, 0, 1, 1, 0, 1, 1]
+    >>> pred = lambda x: x == 0
+    >>> substitutes = (2, 3)
+    >>> Iter(iterable).replace(pred, substitutes).collect()
+    [1, 1, 2, 3, 1, 1, 2, 3, 1, 1]
+
+.. code-block:: python
+
+    >>> iterable = [1, 1, 0, 1, 1, 0, 1, 1, 0]
+    >>> pred = lambda x: x == 0
+    >>> substitutes = [None]
+    >>> Iter(iterable).replace(pred, substitutes, count=2).collect()
+    [1, 1, None, 1, 1, None, 1, 1, 0]
+
+.. code-block:: python
+
+    >>> iterable = [0, 1, 2, 5, 0, 1, 2, 5]
+    >>> window_size = 3
+    >>> pred = lambda *args: args == (0, 1, 2)  # 3 items passed to pred
+    >>> substitutes = [3, 4] # Splice in these items
+    >>> Iter(iterable).replace(
+    ...     pred, substitutes, window_size=window_size
+    ... ).collect()
+    [3, 4, 5, 3, 4, 5]
+
+
+
 .. _Iter.numeric_range:
 
 
 ``@classmethod Iter.numeric_range(cls, *args) -> Iter``
 =======================================================
 
+Reference: `more_itertools.numeric_range <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.numeric_range>`_
+
+.. code-block:: python
+
+    >>> Iter.numeric_range(3.5).collect()
+    [0.0, 1.0, 2.0, 3.0]
+
+.. code-block:: python
+
+    >>> from decimal import Decimal
+    >>> start = Decimal('2.1')
+    >>> stop = Decimal('5.1')
+    >>> Iter.numeric_range(start, stop).collect()
+    [Decimal('2.1'), Decimal('3.1'), Decimal('4.1')]
+
+.. code-block:: python
+
+    >>> from fractions import Fraction
+    >>> start = Fraction(1, 2)  # Start at 1/2
+    >>> stop = Fraction(5, 2)  # End at 5/2
+    >>> step = Fraction(1, 2)  # Count by 1/2
+    >>> Iter.numeric_range(start, stop, step).collect()
+    [Fraction(1, 2), Fraction(1, 1), Fraction(3, 2), Fraction(2, 1)]
+
+.. code-block:: python
+
+    >>> Iter.numeric_range(3, -1, -1.0).collect()
+    [3.0, 2.0, 1.0, 0.0]
+
+
+
 .. _Iter.side_effect:
 
 
 ``Iter.side_effect(self, func, chunk_size=None, before=None, after=None)``
 ==========================================================================
+
+Reference: `more_itertools.side_effect <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.side_effect>`_
+
+.. code-block:: python
+
+    >>> func = lambda item: print('Received {}'.format(item))
+    >>> Iter.range(2).side_effect(func).consume()
+    Received 0
+    Received 1
+
+
 
 .. _Iter.iterate:
 
@@ -1886,6 +2223,23 @@ Docstring TBD
 
 ``Iter.difference(self, func=operator.sub, *, initial=None)``
 =============================================================
+
+Reference: `more_itertools.difference <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=difference#more_itertools.difference>`_
+
+.. code-block:: python
+
+    >>> iterable = [0, 1, 3, 6, 10]
+    >>> Iter(iterable).difference().collect()
+    [0, 1, 2, 3, 4]
+
+.. code-block:: python
+
+    >>> iterable = [1, 2, 6, 24, 120]  # Factorial sequence
+    >>> func = lambda x, y: x // y
+    >>> Iter(iterable).difference(func).collect()
+    [1, 2, 3, 4, 5]
+
+
 
 .. _Iter.make_decorator:
 
@@ -1905,6 +2259,21 @@ Docstring TBD
 ``Iter.time_limited(self, limit_seconds) -> Iter``
 ==================================================
 
+Reference: `more_itertools.time_limited <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=time_limited#more_itertools.time_limited>`_
+
+.. code-block:: python
+
+    >>> from time import sleep
+    >>> def generator():
+    ...     yield 1
+    ...     yield 2
+    ...     sleep(0.2)
+    ...     yield 3
+    >>> Iter(generator()).time_limited(0.1).collect()
+    [1, 2]
+
+
+
 .. _Iter.consume:
 
 
@@ -1913,9 +2282,37 @@ Docstring TBD
 
 
 If n is not provided, the entire iterator is consumed and
-``None`` is returned. Otherwise, an iterator will always be
+``None`` is returned. Otherwise, an iterator will *always* be
 returned, even if n is greater than the number of items left in
 the iterator.
+
+In this example, the source has more elements than what we consume,
+so there will still be data available on the chain:
+
+.. code-block:: python
+
+    >>> range(10).consume(5).collect()
+    [5, 6, 7, 8, 9]
+
+We can bump up the count of how many items can be consumed. Note that
+even though ``n`` is greater than the number of items in the source,
+it is still required to call Iter.collect_ to consume the remaining
+items.
+
+.. code-block:: python
+
+    >>> range(10).consume(50).collect()
+    []
+
+Finally, if ``n`` is not provided, the entire stream is consumed.
+In this scenario, Iter.collect_ would fail since nothing is being
+returned from the consume call.
+
+.. code-block:: python
+
+    >>> assert range(10).consume() is None
+
+
 
 .. _Iter.tabulate:
 
@@ -2041,6 +2438,129 @@ an iterator chain and puts the data into the given queue.
 
 
 
+.. _Iter.send:
+
+
+|sink| ``Iter.send(self, collector: Generator, close_collector_when_done=False) -> None``
+=========================================================================================
+
+
+See also: `more_itertools.consumer <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.consumer>`_
+
+Send data into a generator. You do not have to first call ``next()``
+on the generator. Iter.send_ will do this for you.
+
+|warning| Look carefully at the examples below; you'll see that the
+``yield`` keyword is wrapped in a second set of parens, e.g.
+``output.append((yield))``. This is required!
+
+Simple case:
+
+.. code-block:: python
+
+    >>> output = []
+    >>> def collector():
+    ...     while True:
+    ...         output.append((yield))
+    >>> Iter.range(3).send(collector())
+    >>> output
+    [0, 1, 2]
+
+Note that the generator is **not** closed by default after the iterable is
+exhausted. But this can be changed. If you choose to close the
+generator, use the parameter:
+
+.. code-block:: python
+
+    >>> output = []
+    >>> def collector():
+    ...     while True:
+    ...         output.append((yield))
+    >>> g = collector()
+    >>> Iter.range(3).send(g, close_collector_when_done=True)
+    >>> Iter.range(3).send(g)
+    Traceback (most recent call last):
+        ...
+    StopIteration
+
+The default behaviour is that the generator is left open which means you
+can keep using it for other iterators:
+
+.. code-block:: python
+
+    >>> output = []
+    >>> def collector():
+    ...     while True:
+    ...         output.append((yield))
+    >>> g = collector()
+    >>> Iter.range(3).send(g)
+    >>> Iter.range(10, 13).send(g)
+    >>> Iter.range(100, 103).send(g)
+    >>> output
+    [0, 1, 2, 10, 11, 12, 100, 101, 102]
+
+
+If the generator is closed before the iteration is complete,
+you'll get a ``StopIteration`` exception:
+
+.. code-block:: python
+
+    >>> output = []
+    >>> def collector():
+    ...   for i in range(3):
+    ...       output.append((yield))
+    >>> Iter.range(5).send(collector())
+    Traceback (most recent call last):
+        ...
+    StopIteration
+
+Note that Iter.send_ is a sink, so no further chaining is allowed.
+
+
+
+.. _Iter.send_also:
+
+
+``Iter.send_also(self, collector: Generator) -> Iter``
+======================================================
+
+Reference: `more_itertools.consumer <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.consumer>`_
+
+Some ideas around a reverse iterator as a sink. The requirement to
+first "next" a just-started generator before you can send values
+into it is irritating, but not insurmountable. This method will
+automatically detect the "just-started generator" situation, do the
+``next()``, and then send in the first value as necessary.
+
+Simple case:
+
+.. code-block:: python
+
+    >>> output = []
+    >>> def collector():
+    ...     while True:
+    ...         output.append((yield))
+    >>> Iter.range(3).send_also(collector()).collect()
+    [0, 1, 2]
+    >>> output
+    [0, 1, 2]
+
+If the generator is closed before the iteration is complete,
+you'll get a ``StopIteration`` exception:
+
+.. code-block:: python
+
+    >>> output = []
+    >>> def collector():
+    ...   for i in range(3):
+    ...       output.append((yield))
+    >>> Iter.range(5).send_also(collector()).collect()
+    Traceback (most recent call last):
+        ...
+    RuntimeError
+
+
+
 .. _IterDict:
 
 
@@ -2140,7 +2660,8 @@ The sentinel value, default ``None``, will terminate the iterator.
 Dev Instructions
 ################
 
-For general dev:
+Setup
+*****
 
 .. code-block:: shell
 
@@ -2148,16 +2669,44 @@ For general dev:
     $ source venv/bin/activate
     (venv) $ pip install -e .[dev,test]
 
-To run the tests:
+Testing
+*******
 
 .. code-block:: shell
 
-    (venv) $ pytest
+    (venv) $ pytest --cov
 
-To regenerate the file ``README.rst``:
+Documentation
+*************
+
+To regenerate the documentation, file ``README.rst``:
 
 .. code-block:: shell
 
     (venv) $ python regenerate_readme.py -m excitertools.py > README.rst
+
+Releasing
+*********
+
+To do a release, we're using `bumpymcbumpface <https://pypi.org/project/bumpymcbumpface/>`_.
+Make sure that is set up correctly according to its own documentation. I 
+like to use `pipx <https://github.com/pipxproject/pipx>`_ to install and 
+manage these kinds of tools.
+
+.. code-block:: shell
+
+    $ bumpymcbumpface --push-git --push-pypi
+
+|
+|
+
+-----
+
+|
+|
+
+    Work is a necessary evil to be avoided. 
+    *Mark Twain*
+
 
 
