@@ -4,13 +4,6 @@ from excitertools import Iter
 
 def test_open():
     fname = pathlib.Path(__file__)
-    x = (
-        Iter
-            .open(fname)
-            .map(str.strip)
-            .filter(None)
-            .map(str.upper)
-            .collect()
-    )
+    x = Iter.open(fname).map(str.strip).filter(None).map(str.upper).collect()
     assert len(x) == 14
-    assert x[0] == 'IMPORT PATHLIB'
+    assert x[0] == "IMPORT PATHLIB"
