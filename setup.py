@@ -102,6 +102,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: Implementation :: PyPy',
     ],
 
     # This field adds keywords for your project which will appear on the
