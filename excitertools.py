@@ -816,7 +816,10 @@ class Iter(Generic[T]):
 
     def __init__(self, x: Iterable[T]):
         self.isasync = False
-        if isinstance(x, collections.abc.Iterator):
+        if isinstance(x, Iter):
+            self.isasync = x.isasync
+            self.x = x.x
+        elif isinstance(x, collections.abc.Iterator):
             # Must come before the Iterable check, otherwise we get a
             # RecursionError.
             self.x = x
@@ -860,6 +863,18 @@ class Iter(Generic[T]):
                             'iterated in a sync way.')
         return next(self.x)
 
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if self.isasync:
+            return await self.x.__anext__()
+        else:
+            try:
+                return next(self.x)
+            except StopIteration:
+                raise StopAsyncIteration
+
     def collect(self, container=list) -> "List[T]":
         """
         |sink|
@@ -879,6 +894,14 @@ class Iter(Generic[T]):
         elif container == bytes:
             return self.concat(b"")
         else:
+            if self.isasync:
+                async def inner():
+                    # If container is an async fn, caller is responsible for
+                    # awaiting it.
+                    return container(v async for v in self)
+
+                return inner()
+
             return container(self)
 
     # File operations
@@ -943,7 +966,14 @@ class Iter(Generic[T]):
 
     def zip(self, *iterables: Any) -> "Iter[Tuple[T, ...]]":
         """ Docstring TBD """
-        return Iter(_zip(self.x, *iterables))
+        while 1:
+            v = next(self)
+            other = [next(i) for i in iterables]
+
+
+
+
+        return Iter(builtins.zip(self.x, *iterables))
 
     def any(self) -> "bool":
         """
