@@ -815,12 +815,26 @@ class Iter(Generic[T]):
     x: Iterator[T]
 
     def __init__(self, x: Iterable[T]):
-        if isinstance(x, collections.abc.Iterator):
+        self.isasync = False
+        if isinstance(x, Iter):
+            self.isasync = x.isasync
+            self.x = x.x
+        elif isinstance(x, collections.abc.Iterator):
+            # Must come before the Iterable check, otherwise we get a
+            # RecursionError.
+            self.x = x
+        elif isinstance(x, collections.abc.Iterable):
+            self.x = iter(x)
+        elif isinstance(x, collections.abc.AsyncIterable):
+            self.isasync = True
+            self.x = x.__aiter__()
+        elif isinstance(x, collections.abc.AsyncIterator):
+            self.isasync = True
             self.x = x
         else:
             try:
                 self.x = iter(x)
-            except TypeError as e:
+            except TypeError:
                 if inspect.isgeneratorfunction(x):
                     raise TypeError(
                         "It seems you passed a generator function, but you "
@@ -838,10 +852,28 @@ class Iter(Generic[T]):
                     ) from None
 
     def __iter__(self) -> "Iterator[T]":
-        return self.x
+        if self.isasync:
+            raise TypeError('This is an async iterator and cannot be '
+                            'iterated in a sync way.')
+        return self
 
     def __next__(self) -> "T":
+        if self.isasync:
+            raise TypeError('This is an async iterator and cannot be '
+                            'iterated in a sync way.')
         return next(self.x)
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if self.isasync:
+            return await self.x.__anext__()
+        else:
+            try:
+                return next(self.x)
+            except StopIteration:
+                raise StopAsyncIteration
 
     def collect(self, container=list) -> "List[T]":
         """
@@ -862,6 +894,14 @@ class Iter(Generic[T]):
         elif container == bytes:
             return self.concat(b"")
         else:
+            if self.isasync:
+                async def inner():
+                    # If container is an async fn, caller is responsible for
+                    # awaiting it.
+                    return container(v async for v in self)
+
+                return inner()
+
             return container(self)
 
     # File operations
@@ -926,7 +966,14 @@ class Iter(Generic[T]):
 
     def zip(self, *iterables: Any) -> "Iter[Tuple[T, ...]]":
         """ Docstring TBD """
-        return Iter(_zip(self.x, *iterables))
+        while 1:
+            v = next(self)
+            other = [next(i) for i in iterables]
+
+
+
+
+        return Iter(builtins.zip(self.x, *iterables))
 
     def any(self) -> "bool":
         """
