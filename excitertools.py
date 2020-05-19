@@ -2634,8 +2634,6 @@ class Iter(Generic[T]):
         live at least as long as the iterator feeding it.
 
         """
-        import traceback
-
         def func(v):
             try:
                 collector.send(v)
