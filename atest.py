@@ -1,3 +1,5 @@
+from typing import Callable, Awaitable, AsyncIterable
+import collections.abc
 import builtins
 import inspect
 import asyncio
@@ -37,7 +39,17 @@ def xiter(seq):
     return Xiter(seq)
 
 
-class map:
+def xfunc(func) -> Callable[..., Awaitable]:
+    async def actual_func(v):
+        if inspect.iscoroutinefunction(func):
+            return await func(v)
+        else:
+            return func(v)
+
+    return actual_func
+
+
+class amap:
     def __init__(self, func, iterable):
         self.func = func
         self.iterable = xiter(iterable)
@@ -47,27 +59,18 @@ class map:
 
     def __aiter__(self):
         async def inner():
-            if inspect.iscoroutinefunction(self.func):
-                if self.iterable.isasyncgen:
-                    async for v in self.iterable:
-                        yield await self.func(v)
-
+            async for v in self.iterable:
+                if inspect.iscoroutinefunction(self.func):
+                    yield await self.func(v)
                 else:
-                    for v in self.iterable:
-                        yield await self.func(v)
-
-            else:
-                if self.iterable.isasyncgen:
-                    async for v in self.iterable:
-                        yield self.func(v)
-                else:
-                    for v in self.iterable:
-                        yield self.func(v)
+                    yield self.func(v)
 
         return inner()
 
 
-async def main():
+async def tests(map_func):
+    map = map_func
+
     def abc(v):
         return v + 1
 
@@ -82,7 +85,6 @@ async def main():
 
     items = [x for x in map(abc, range(10))]
     print(items)
-
 
     ####################################################################
     #
@@ -124,6 +126,10 @@ async def main():
 
     items = [x async for x in map(aabc, arange(10))]
     print(items)
+
+
+async def main():
+    await tests(map_func=amap)
 
 
 asyncio.run(main())
