@@ -2071,15 +2071,42 @@ class Iter(Generic[T]):
 
     # Wrapping
 
-    def always_iterable(self):
+    @classmethod
+    def always_iterable(cls, obj, base_type=(str, bytes)) -> 'Iter':
         """
         Reference: `more_itertools.always_iterable <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.always_iterable>`_
+
+        .. code-block: python
+
+        >>> Iter.always_iterable([1, 2, 3]).collect()
+        [1, 2, 3]
+        >>> Iter.always_iterable(1).collect()
+        [1]
+        >>> Iter.always_iterable(None).collect()
+        []
+        >>> Iter.always_iterable('foo').collect()
+        ['foo']
+        >>> Iter.always_iterable(dict(a=1), base_type=dict).collect()
+        [{'a': 1}]
+
         """
-        raise NotImplementedError
+        return Iter(more_itertools.always_iterable(obj, base_type=base_type))
 
     def always_reversible(self):
         """
         Reference: `more_itertools.always_reversible <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.always_reversible>`_
+
+        This is like ``reversed()`` but it also operates on things that
+        wouldn't normally be reversible, like generators. It does this with
+        internal caching, so be careful with memory use.
+
+        .. code-block: python
+
+        >>> Iter('abc').always_reversible().collect()
+        ['c', 'b', 'a']
+        >>> Iter(x for x in 'abc').always_reversible().collect()
+        ['c', 'b', 'a']
+
         """
         return Iter(more_itertools.always_reversible(self.x))
 
@@ -2581,7 +2608,7 @@ class Iter(Generic[T]):
                 if "just-started generator" in str(e):
                     next(collector)
                     collector.send(v)
-                else:
+                else:  # pragma: no cover
                     raise
 
         if close_collector_when_done:
@@ -2634,8 +2661,6 @@ class Iter(Generic[T]):
         live at least as long as the iterator feeding it.
 
         """
-        import traceback
-
         def func(v):
             try:
                 collector.send(v)
@@ -2643,7 +2668,7 @@ class Iter(Generic[T]):
                 if "just-started generator" in str(e):
                     next(collector)
                     collector.send(v)
-                else:
+                else:  # pragma: no cover
                     raise
 
         return self.side_effect(func)
