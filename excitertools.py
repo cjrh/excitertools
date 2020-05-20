@@ -2024,50 +2024,108 @@ class Iter(Generic[T]):
     def partitions(self) -> "Iter":
         """
         Reference: `more_itertools.partitions <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.partitions>`_
+
+        >>> Iter('abc').partitions().collect()
+        [[['a', 'b', 'c']], [['a'], ['b', 'c']], [['a', 'b'], ['c']], [['a'], ['b'], ['c']]]
+        >>> Iter('abc').partitions().print('{v}').consume()
+        [['a', 'b', 'c']]
+        [['a'], ['b', 'c']]
+        [['a', 'b'], ['c']]
+        [['a'], ['b'], ['c']]
+        >>> Iter('abc').partitions().map(lambda v: [''.join(p) for p in v]).print('{v}').consume()
+        ['abc']
+        ['a', 'bc']
+        ['ab', 'c']
+        ['a', 'b', 'c']
+
         """
         return Iter(more_itertools.partitions(self.x))
 
     def set_partitions(self, k=None) -> "Iter":
         """
         Reference: `more_itertools.set_partitions <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.set_partitions>`_
+
+        >>> Iter('abc').set_partitions(2).collect()
+        [[['a'], ['b', 'c']], [['a', 'b'], ['c']], [['b'], ['a', 'c']]]
+
         """
-        return Iter(more_itertools.set_partitions(self.x, k=k))
+        return Iter(more_itertools.set_partitions(self, k=k))
 
     def powerset(self):
         """
         Reference: `more_itertools.powerset <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.powerset>`_
-        """
-        raise NotImplementedError
 
-    def random_product(self):
+        >>> Iter([1, 2, 3]).powerset().collect()
+        [(), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3), (1, 2, 3)]
+
+        """
+        return Iter(more_itertools.powerset(self))
+
+    @class_or_instancemethod
+    def random_product(self_or_cls, *args, repeat=1):
         """
         Reference: `more_itertools.random_product <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_product>`_
-        """
-        raise NotImplementedError
 
-    def random_permutation(self):
+        >>> Iter('abc').random_product(range(4), 'XYZ').collect()  # doctest: +SKIP
+        ['c', 3, 'X']
+        >>> Iter.random_product('abc', range(4), 'XYZ').collect()  # doctest: +SKIP
+        ['c', 0, 'Z']
+
+        """
+        if isinstance(self_or_cls, type):
+            return Iter(more_itertools.random_product(*args, repeat=repeat))
+        else:
+            return Iter(more_itertools.random_product(self_or_cls, *args, repeat=repeat))
+
+    def random_permutation(self, r=None):
         """
         Reference: `more_itertools.random_permutation <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_permutation>`_
-        """
-        raise NotImplementedError
 
-    def random_combination(self):
+        >>> Iter(range(5)).random_permutation().collect()  # doctest: +SKIP
+        [2, 0, 4, 3, 1]
+
+        """
+        return Iter(more_itertools.random_permutation(self, r=r))
+
+    def random_combination(self, r):
         """
         Reference: `more_itertools.random_combination <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_combination>`_
-        """
-        raise NotImplementedError
 
-    def random_combination_with_replacement(self):
+        >>> Iter(range(5)).random_combination(3).collect()  # doctest: +SKIP
+        [0, 1, 4]
+
+        """
+        return Iter(more_itertools.random_combination(self, r))
+
+    def random_combination_with_replacement(self, r):
         """
         Reference: `more_itertools.random_combination_with_replacement <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_combination_with_replacement>`_
-        """
-        raise NotImplementedError
 
-    def nth_combination(self):
+        >>> Iter(range(3)).random_combination_with_replacement(5).collect()  # doctest: +SKIP
+        [0, 0, 1, 2, 2]
+
+        """
+        return Iter(more_itertools.random_combination_with_replacement(
+            self, r
+        ))
+
+    def nth_combination(self, r, index):
         """
         Reference: `more_itertools.nth_combination <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.nth_combination>`_
+
+        >>> Iter(range(9)).nth_combination(3, 1).collect()
+        [0, 1, 3]
+        >>> Iter(range(9)).nth_combination(3, 2).collect()
+        [0, 1, 4]
+        >>> Iter(range(9)).nth_combination(3, 3).collect()
+        [0, 1, 5]
+        >>> Iter(range(9)).nth_combination(4, 3).collect()
+        [0, 1, 2, 6]
+        >>> Iter(range(9)).nth_combination(3, 7).collect()
+        [0, 2, 3]
+
         """
-        raise NotImplementedError
+        return Iter(more_itertools.nth_combination(self, r, index))
 
     # Wrapping
 
