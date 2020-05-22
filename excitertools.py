@@ -100,6 +100,7 @@ the iterators from the more-itertools_ 3rd-party package.
     :local:
 
 """
+# This cannot be enabled because we still support 3.6 and pypy
 #from __future__ import annotations
 import sys
 import string
@@ -2080,23 +2081,48 @@ class Iter(Generic[T]):
         """
         return Iter(more_itertools.take(n, self.x))
 
-    def tail(self):
+    def tail(self, n) -> "Iter[T]":
         """
         Reference: `more_itertools.tail <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.tail>`_
-        """
-        raise NotImplementedError
 
-    def unique_everseen(self):
+        >>> Iter('ABCDEFG').tail(3).collect()
+        ['E', 'F', 'G']
+
+        """
+        return Iter(more_itertools.tail(n, self))
+
+    def unique_everseen(self, key=None) -> "Iter[T]":
         """
         Reference: `more_itertools.unique_everseen <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_everseen>`_
-        """
-        raise NotImplementedError
 
-    def unique_justseen(self):
+        >>> Iter('AAAABBBCCDAABBB').unique_everseen().collect()
+        ['A', 'B', 'C', 'D']
+        >>> Iter('ABBCcAD').unique_everseen(key=str.lower).collect()
+        ['A', 'B', 'C', 'D']
+
+        Be sure to read the *more-itertools* docs whne using unhashable
+        items.
+
+        >>> iterable = ([1, 2], [2, 3], [1, 2])
+        >>> Iter(iterable).unique_everseen().collect()  # Slow
+        [[1, 2], [2, 3]]
+        >>> Iter(iterable).unique_everseen(key=tuple).collect()  # Faster
+        [[1, 2], [2, 3]]
+
+        """
+        return Iter(more_itertools.unique_everseen(self, key=key))
+
+    def unique_justseen(self, key=None) -> "Iter[T]":
         """
         Reference: `more_itertools.unique_justseen <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_justseen>`_
+
+        >>> Iter('AAAABBBCCDAABBB').unique_justseen().collect()
+        ['A', 'B', 'C', 'D', 'A', 'B']
+        >>> Iter('ABBCcAD').unique_justseen(key=str.lower).collect()
+        ['A', 'B', 'C', 'A', 'D']
+
         """
-        raise NotImplementedError
+        return Iter(more_itertools.unique_justseen(self, key=key))
 
     # Combinatorics
 
