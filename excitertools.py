@@ -1289,19 +1289,59 @@ class Iter(Generic[T]):
         return Iter(head), Iter(iterable)
 
     def peekable(self) -> "more_itertools.peekable":
-        """ Docstring TBD """
+        """
+        Docstring TBD
+
+        >>> p = Iter(['a', 'b']).peekable()
+        >>> p.peek()
+        'a'
+        >>> next(p)
+        'a'
+
+        The peekable can be used to inspect what will be coming up.
+        But if you then want to resume iterator chaining, pass the
+        peekable back into an Iter_ instance.
+        >>> p = Iter(range(10)).peekable()
+        >>> p.peek()
+        0
+        >>> Iter(p).take(3).collect()
+        [0, 1, 2]
+
+        A peekable is not an Iter_ instance so it doesn't provide
+        the iterator chaining methods. But if you want to get into
+        chaining, use the ``iter()`` method.
+        >>> p = Iter(range(5)).peekable()
+        >>> p.peek()
+        0
+        >>> p[1]
+        1
+        >>> p.iter().take(3).collect()
+        [0, 1, 2]
+
+        Peekables can be prepended. But then you usually want to go
+        right back to iterator chaining. Thus, the ``prepend`` method
+        (on the returned ``peekable`` instance) returns an Iter_ instance.
+        >>> p = Iter(range(3)).peekable()
+        >>> p.peek()
+        0
+        >>> p.prepend('a', 'b').take(4).collect()
+        ['a', 'b', 0, 1]
+
+        """
 
         class _peekable(more_itertools.peekable):
             def __iter__(self):
                 return Iter(super().__iter__())
 
+            def iter(self) -> "Iter":
+                return self.__iter__()
+
             def __getitem__(self, item):
                 return super().__getitem__(item)
 
-            # TODO: need to somehow combine peekable and Iter
-            # def prepend(self, *items) -> "Iter":
-            #     super().prepend(*items)
-            #     return Iter(self)
+            def prepend(self, *items) -> "Iter":
+                super().prepend(*items)
+                return self.__iter__()
 
         return _peekable(self.x)
 
