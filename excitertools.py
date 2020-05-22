@@ -681,19 +681,23 @@ def splititer_regex(
 
     Note that splitting at a single whitespace character will return blanks
     for each found. This is different to how ``str.split()`` works.
+
     >>> splititer_regex(r"\\s", "aaa     bbb  \\n  ccc\\nddd\\teee").collect()
     ['aaa', '', '', '', '', 'bbb', '', '', '', '', 'ccc', 'ddd', 'eee']
 
     To match ``str.split()``, specify a sequence of whitespace as the
     regex pattern.
+
     >>> splititer_regex(r"\\s+", "aaa     bbb  \\n  ccc\\nddd\\teee").collect()
     ['aaa', 'bbb', 'ccc', 'ddd', 'eee']
 
     Counting the whitespace
+
     >>> splititer_regex(r"\\s", "aaa     bbb  \\n  ccc\\nddd\\teee").collect(Counter)
     Counter({'': 8, 'aaa': 1, 'bbb': 1, 'ccc': 1, 'ddd': 1, 'eee': 1})
 
     Lazy splitting at newlines
+
     >>> splititer_regex(r"\\n", "aaa     bbb  \\n  ccc\\nddd\\teee").collect()
     ['aaa     bbb  ', '  ccc', 'ddd\\teee']
 
