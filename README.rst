@@ -1282,6 +1282,7 @@ Docstring TBD
 The peekable can be used to inspect what will be coming up.
 But if you then want to resume iterator chaining, pass the
 peekable back into an Iter_ instance.
+
 >>> p = Iter(range(10)).peekable()
 >>> p.peek()
 0
@@ -1291,6 +1292,7 @@ peekable back into an Iter_ instance.
 A peekable is not an Iter_ instance so it doesn't provide
 the iterator chaining methods. But if you want to get into
 chaining, use the ``iter()`` method.
+
 >>> p = Iter(range(5)).peekable()
 >>> p.peek()
 0
@@ -1302,6 +1304,7 @@ chaining, use the ``iter()`` method.
 Peekables can be prepended. But then you usually want to go
 right back to iterator chaining. Thus, the ``prepend`` method
 (on the returned ``peekable`` instance) returns an Iter_ instance.
+
 >>> p = Iter(range(3)).peekable()
 >>> p.peek()
 0
