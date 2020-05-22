@@ -1266,7 +1266,44 @@ Docstring TBD
 
 ``Iter.peekable(self) -> "more_itertools.peekable"``
 ====================================================
+
 Docstring TBD
+
+>>> p = Iter(['a', 'b']).peekable()
+>>> p.peek()
+'a'
+>>> next(p)
+'a'
+
+The peekable can be used to inspect what will be coming up.
+But if you then want to resume iterator chaining, pass the
+peekable back into an Iter_ instance.
+>>> p = Iter(range(10)).peekable()
+>>> p.peek()
+0
+>>> Iter(p).take(3).collect()
+[0, 1, 2]
+
+A peekable is not an Iter_ instance so it doesn't provide
+the iterator chaining methods. But if you want to get into
+chaining, use the ``iter()`` method.
+>>> p = Iter(range(5)).peekable()
+>>> p.peek()
+0
+>>> p[1]
+1
+>>> p.iter().take(3).collect()
+[0, 1, 2]
+
+Peekables can be prepended. But then you usually want to go
+right back to iterator chaining. Thus, the ``prepend`` method
+(on the returned ``peekable`` instance) returns an Iter_ instance.
+>>> p = Iter(range(3)).peekable()
+>>> p.peek()
+0
+>>> p.prepend('a', 'b').take(4).collect()
+['a', 'b', 0, 1]
+
 
 
 .. _Iter.seekable:
@@ -2109,28 +2146,53 @@ Reference: `more_itertools.take <https://more-itertools.readthedocs.io/en/stable
 .. _Iter.tail:
 
 
-``Iter.tail(self)``
-===================
+``Iter.tail(self, n) -> "Iter[T]"``
+===================================
 
 Reference: `more_itertools.tail <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.tail>`_
+
+>>> Iter('ABCDEFG').tail(3).collect()
+['E', 'F', 'G']
+
 
 
 .. _Iter.unique_everseen:
 
 
-``Iter.unique_everseen(self)``
-==============================
+``Iter.unique_everseen(self, key=None) -> "Iter[T]"``
+=====================================================
 
 Reference: `more_itertools.unique_everseen <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_everseen>`_
+
+>>> Iter('AAAABBBCCDAABBB').unique_everseen().collect()
+['A', 'B', 'C', 'D']
+>>> Iter('ABBCcAD').unique_everseen(key=str.lower).collect()
+['A', 'B', 'C', 'D']
+
+Be sure to read the *more-itertools* docs whne using unhashable
+items.
+
+>>> iterable = ([1, 2], [2, 3], [1, 2])
+>>> Iter(iterable).unique_everseen().collect()  # Slow
+[[1, 2], [2, 3]]
+>>> Iter(iterable).unique_everseen(key=tuple).collect()  # Faster
+[[1, 2], [2, 3]]
+
 
 
 .. _Iter.unique_justseen:
 
 
-``Iter.unique_justseen(self)``
-==============================
+``Iter.unique_justseen(self, key=None) -> "Iter[T]"``
+=====================================================
 
 Reference: `more_itertools.unique_justseen <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_justseen>`_
+
+>>> Iter('AAAABBBCCDAABBB').unique_justseen().collect()
+['A', 'B', 'C', 'D', 'A', 'B']
+>>> Iter('ABBCcAD').unique_justseen(key=str.lower).collect()
+['A', 'B', 'C', 'A', 'D']
+
 
 
 .. _Iter.distinct_permutations:
