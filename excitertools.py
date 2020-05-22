@@ -2926,11 +2926,11 @@ class Iter(Generic[T]):
 
     def sorted(self, key=None, reverse=False) -> "Iter[T]":
         """
-        :sink:
+        |sink|
 
         Simple wrapper for the ``sorted`` builtin.
 
-        :warning:
+        |warning|
         Calling this will read the entire stream before producing
         results.
 
@@ -2946,11 +2946,11 @@ class Iter(Generic[T]):
 
     def reversed(self) -> "Iter[T]":
         """
-        :sink:
+        |sink|
 
         Simple wrapper for the ``reversed`` builtin.
 
-        :warning:
+        |warning|
         Calling this will read the entire stream before producing
         results.
 
