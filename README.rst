@@ -60,7 +60,7 @@ Related projects
 
 * `https://github.com/EntilZha/PyFunctional <https://github.com/EntilZha/PyFunctional>`_
 
-Tangentially related:
+Somewhat related:
 
 * `https://github.com/jreese/aioitertools <https://github.com/jreese/aioitertools>`_
 
@@ -225,8 +225,8 @@ an instance of Iter_ to allow further iterable chaining.
 .. _filter:
 
 
-``filter(function: "Callable[[Any], ...]", iterable: Iterable) -> "Iter[T]"``
-*****************************************************************************
+``filter(function: "Callable[[Any], bool]", iterable: "Iterable[T]") -> "Iter[T]"``
+***********************************************************************************
 Replacement for the builtin ``filter`` function.  This version returns
 an instance of Iter_ to allow further iterable chaining.
 
@@ -558,6 +558,83 @@ an instance of Iter_ to allow further iterable chaining.
     ...         .collect()
     ... )
     ['Ax', 'By', 'C-', 'D-']
+
+
+
+.. _finditer_regex:
+
+
+``finditer_regex(pat: "re.Pattern[AnyStr]", s: AnyStr, flags: Union[int, re.RegexFlag] = 0) -> "Iter[AnyStr]"``
+***************************************************************************************************************
+
+Wrapper for ``re.finditer``. Returns an instance of Iter_ to allow
+chaining.
+
+>>> pat = r"\w+"
+>>> text = "Well hello there! How ya doin!"
+>>> finditer_regex(pat, text).map(str.lower).filter(lambda w: 'o' in w).collect()
+['hello', 'how', 'doin']
+
+>>> finditer_regex(r"[A-Za-z']+", "A programmer's RegEx test.").collect()
+['A', "programmer's", 'RegEx', 'test']
+>>> finditer_regex(r"[A-Za-z']+", "").collect()
+[]
+>>> finditer_regex("", "").collect()
+['']
+>>> finditer_regex("", "").filter(None).collect()
+[]
+
+
+
+.. _splititer_regex:
+
+
+``splititer_regex(pat: "re.Pattern[AnyStr]", s: AnyStr, flags: Union[int, re.RegexFlag] = 0) -> "Iter[AnyStr]"``
+****************************************************************************************************************
+
+Lazy string splitting using regular expressions.
+
+Most of the time you want ``str.split``. Really! That will almost
+always be fastest. You might think that ``str.split`` is inefficient
+because it always has to build a list, but it can do this very, very
+quickly.
+
+The lazy splitting shown here is more about supporting a particular
+kind of programming model, rather than performance.
+
+See more discussion `here <https://stackoverflow.com/questions/3862010/is-there-a-generator-version-of-string-split-in-python>`_.
+
+>>> splititer_regex(r"\s", "A programmer's RegEx test.").collect()
+['A', "programmer's", 'RegEx', 'test.']
+
+Note that splitting at a single whitespace character will return blanks
+for each found. This is different to how ``str.split()`` works.
+>>> splititer_regex(r"\s", "aaa     bbb  \n  ccc\nddd\teee").collect()
+['aaa', '', '', '', '', 'bbb', '', '', '', '', 'ccc', 'ddd', 'eee']
+
+To match ``str.split()``, specify a sequence of whitespace as the
+regex pattern.
+>>> splititer_regex(r"\s+", "aaa     bbb  \n  ccc\nddd\teee").collect()
+['aaa', 'bbb', 'ccc', 'ddd', 'eee']
+
+Counting the whitespace
+>>> splititer_regex(r"\s", "aaa     bbb  \n  ccc\nddd\teee").collect(Counter)
+Counter({'': 8, 'aaa': 1, 'bbb': 1, 'ccc': 1, 'ddd': 1, 'eee': 1})
+
+Lazy splitting at newlines
+>>> splititer_regex(r"\n", "aaa     bbb  \n  ccc\nddd\teee").collect()
+['aaa     bbb  ', '  ccc', 'ddd\teee']
+
+>>> splititer_regex(r"", "aaa").collect()
+['', 'a', 'a', 'a', '']
+>>> splititer_regex(r"", "").collect()
+['', '']
+>>> splititer_regex(r"\s", "").collect()
+['']
+>>> splititer_regex(r"a", "").collect()
+['']
+>>> splititer_regex(r"\s", "aaa").collect()
+['aaa']
 
 
 
@@ -2064,41 +2141,71 @@ Reference: `more_itertools.unique_justseen <https://more-itertools.readthedocs.i
 
 Reference: `more_itertools.distinct_permutations <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.distinct_permutations>`_
 
+>>> Iter([1, 0, 1]).distinct_permutations().sorted().collect()
+[(0, 1, 1), (1, 0, 1), (1, 1, 0)]
+
+
 
 .. _Iter.distinct_combinations:
 
 
-``Iter.distinct_combinations(self, r)``
-=======================================
+``Iter.distinct_combinations(self, r) -> "Iter[T]"``
+====================================================
 
 Reference: `more_itertools.distinct_combinations <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.distinct_combinations>`_
+
+>>> Iter([0, 0, 1]).distinct_combinations(2).collect()
+[(0, 0), (0, 1)]
+
 
 
 .. _Iter.circular_shifts:
 
 
-``Iter.circular_shifts(self) -> "Iter"``
-========================================
+``Iter.circular_shifts(self) -> "Iter[T]"``
+===========================================
 
 Reference: `more_itertools.circular_shifts <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.circular_shifts>`_
+
+>>> Iter(range(4)).circular_shifts().collect()
+[(0, 1, 2, 3), (1, 2, 3, 0), (2, 3, 0, 1), (3, 0, 1, 2)]
+
 
 
 .. _Iter.partitions:
 
 
-``Iter.partitions(self) -> "Iter"``
-===================================
+``Iter.partitions(self) -> "Iter[T]"``
+======================================
 
 Reference: `more_itertools.partitions <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.partitions>`_
+
+>>> Iter('abc').partitions().collect()
+[[['a', 'b', 'c']], [['a'], ['b', 'c']], [['a', 'b'], ['c']], [['a'], ['b'], ['c']]]
+>>> Iter('abc').partitions().print('{v}').consume()
+[['a', 'b', 'c']]
+[['a'], ['b', 'c']]
+[['a', 'b'], ['c']]
+[['a'], ['b'], ['c']]
+>>> Iter('abc').partitions().map(lambda v: [''.join(p) for p in v]).print('{v}').consume()
+['abc']
+['a', 'bc']
+['ab', 'c']
+['a', 'b', 'c']
+
 
 
 .. _Iter.set_partitions:
 
 
-``Iter.set_partitions(self, k=None) -> "Iter"``
-===============================================
+``Iter.set_partitions(self, k=None) -> "Iter[T]"``
+==================================================
 
 Reference: `more_itertools.set_partitions <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.set_partitions>`_
+
+>>> Iter('abc').set_partitions(2).collect()
+[[['a'], ['b', 'c']], [['a', 'b'], ['c']], [['b'], ['a', 'c']]]
+
 
 
 .. _Iter.powerset:
@@ -2109,59 +2216,121 @@ Reference: `more_itertools.set_partitions <https://more-itertools.readthedocs.io
 
 Reference: `more_itertools.powerset <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.powerset>`_
 
+>>> Iter([1, 2, 3]).powerset().collect()
+[(), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3), (1, 2, 3)]
+
+
 
 .. _Iter.random_product:
 
 
-``Iter.random_product(self)``
-=============================
+``@class_or_instancemethod Iter.random_product(self_or_cls, *args, repeat=1)``
+==============================================================================
 
 Reference: `more_itertools.random_product <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_product>`_
+
+>>> Iter('abc').random_product(range(4), 'XYZ').collect()  # doctest: +SKIP
+['c', 3, 'X']
+>>> Iter.random_product('abc', range(4), 'XYZ').collect()  # doctest: +SKIP
+['c', 0, 'Z']
+>>> Iter('abc').random_product(range(0)).collect()
+Traceback (most recent call last):
+    ...
+IndexError: Cannot choose from an empty sequence
+>>> Iter.random_product(range(0)).collect()
+Traceback (most recent call last):
+    ...
+IndexError: Cannot choose from an empty sequence
+
 
 
 .. _Iter.random_permutation:
 
 
-``Iter.random_permutation(self)``
-=================================
+``Iter.random_permutation(self, r=None)``
+=========================================
 
 Reference: `more_itertools.random_permutation <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_permutation>`_
+
+>>> Iter(range(5)).random_permutation().collect()  # doctest: +SKIP
+[2, 0, 4, 3, 1]
+>>> Iter(range(0)).random_permutation().collect()
+[]
+
 
 
 .. _Iter.random_combination:
 
 
-``Iter.random_combination(self)``
-=================================
+``Iter.random_combination(self, r)``
+====================================
 
 Reference: `more_itertools.random_combination <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_combination>`_
+
+>>> Iter(range(5)).random_combination(3).collect()  # doctest: +SKIP
+[0, 1, 4]
+>>> Iter(range(5)).random_combination(0).collect()
+[]
+
 
 
 .. _Iter.random_combination_with_replacement:
 
 
-``Iter.random_combination_with_replacement(self)``
-==================================================
+``Iter.random_combination_with_replacement(self, r)``
+=====================================================
 
 Reference: `more_itertools.random_combination_with_replacement <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_combination_with_replacement>`_
+
+>>> Iter(range(3)).random_combination_with_replacement(5).collect()  # doctest: +SKIP
+[0, 0, 1, 2, 2]
+>>> Iter(range(3)).random_combination_with_replacement(0).collect()
+[]
+
 
 
 .. _Iter.nth_combination:
 
 
-``Iter.nth_combination(self)``
-==============================
+``Iter.nth_combination(self, r, index)``
+========================================
 
 Reference: `more_itertools.nth_combination <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.nth_combination>`_
+
+>>> Iter(range(9)).nth_combination(3, 1).collect()
+[0, 1, 3]
+>>> Iter(range(9)).nth_combination(3, 2).collect()
+[0, 1, 4]
+>>> Iter(range(9)).nth_combination(3, 3).collect()
+[0, 1, 5]
+>>> Iter(range(9)).nth_combination(4, 3).collect()
+[0, 1, 2, 6]
+>>> Iter(range(9)).nth_combination(3, 7).collect()
+[0, 2, 3]
+
 
 
 .. _Iter.always_iterable:
 
 
-``Iter.always_iterable(self)``
-==============================
+``@classmethod Iter.always_iterable(cls, obj, base_type=(str, bytes)) -> 'Iter'``
+=================================================================================
 
 Reference: `more_itertools.always_iterable <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.always_iterable>`_
+
+.. code-block: python
+
+>>> Iter.always_iterable([1, 2, 3]).collect()
+[1, 2, 3]
+>>> Iter.always_iterable(1).collect()
+[1]
+>>> Iter.always_iterable(None).collect()
+[]
+>>> Iter.always_iterable('foo').collect()
+['foo']
+>>> Iter.always_iterable(dict(a=1), base_type=dict).collect()
+[{'a': 1}]
+
 
 
 .. _Iter.always_reversible:
@@ -2171,6 +2340,18 @@ Reference: `more_itertools.always_iterable <https://more-itertools.readthedocs.i
 ================================
 
 Reference: `more_itertools.always_reversible <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.always_reversible>`_
+
+This is like ``reversed()`` but it also operates on things that
+wouldn't normally be reversible, like generators. It does this with
+internal caching, so be careful with memory use.
+
+.. code-block: python
+
+>>> Iter('abc').always_reversible().collect()
+['c', 'b', 'a']
+>>> Iter(x for x in 'abc').always_reversible().collect()
+['c', 'b', 'a']
+
 
 
 .. _Iter.with_iter:
@@ -2741,6 +2922,48 @@ as part of `PEP 479 <https://www.python.org/dev/peps/pep-0479/>`_.
 
 Regardless, for any Python it's recommended that your generator
 live at least as long as the iterator feeding it.
+
+
+
+.. _Iter.sorted:
+
+
+``Iter.sorted(self, key=None, reverse=False) -> "Iter[T]"``
+===========================================================
+
+:sink:
+
+Simple wrapper for the ``sorted`` builtin.
+
+:warning:
+Calling this will read the entire stream before producing
+results.
+
+>>> Iter('bac').sorted().collect()
+['a', 'b', 'c']
+>>> Iter('bac').sorted(reverse=True).collect()
+['c', 'b', 'a']
+>>> Iter('bac').zip([2, 1, 0]).sorted(key=lambda tup: tup[1]).collect()
+[('c', 0), ('a', 1), ('b', 2)]
+
+
+
+.. _Iter.reversed:
+
+
+``Iter.reversed(self) -> "Iter[T]"``
+====================================
+
+:sink:
+
+Simple wrapper for the ``reversed`` builtin.
+
+:warning:
+Calling this will read the entire stream before producing
+results.
+
+>>> Iter(range(4)).reversed().collect()
+[3, 2, 1, 0]
 
 
 

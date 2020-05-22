@@ -60,7 +60,7 @@ Related projects
 
 * `https://github.com/EntilZha/PyFunctional <https://github.com/EntilZha/PyFunctional>`_
 
-Tangentially related:
+Somewhat related:
 
 * `https://github.com/jreese/aioitertools <https://github.com/jreese/aioitertools>`_
 
@@ -100,6 +100,7 @@ the iterators from the more-itertools_ 3rd-party package.
     :local:
 
 """
+# This cannot be enabled because we still support 3.6 and pypy
 #from __future__ import annotations
 import sys
 import string
@@ -107,7 +108,7 @@ import itertools
 import functools
 import operator
 import inspect
-from collections import UserDict
+from collections import UserDict, Counter
 import builtins
 from typing import (
     Iterable,
@@ -128,6 +129,7 @@ from typing import (
 )
 import collections.abc
 import queue
+import re
 
 import more_itertools
 
@@ -157,6 +159,9 @@ __all__ = [
     "concat",
     "from_queue",
     "IterDict",
+
+    "finditer_regex",
+    "splititer_regex",
 ]
 
 T = TypeVar("T")
@@ -302,7 +307,7 @@ def map(func: Union[Callable[..., C], str], iterable) -> "Iter[C]":
         return Iter(_map(func, iterable))
 
 
-def filter(function: "Callable[[Any], ...]", iterable: Iterable) -> "Iter[T]":
+def filter(function: "Callable[[Any], bool]", iterable: "Iterable[T]") -> "Iter[T]":
     """ Replacement for the builtin ``filter`` function.  This version returns
     an instance of Iter_ to allow further iterable chaining.
 
@@ -314,6 +319,10 @@ def filter(function: "Callable[[Any], ...]", iterable: Iterable) -> "Iter[T]":
 
     """
     return Iter(_filter(function, iterable))
+
+
+def apply(function: "Callable[[Any], Iterable[T]]", value: Any) -> "Iter[T]":
+    return Iter(function(value))
 
 
 # standard library
@@ -620,6 +629,95 @@ def zip_longest(*iterables, fillvalue=None):
 
     """
     return Iter(itertools.zip_longest(*iterables, fillvalue=fillvalue))
+
+
+def finditer_regex(
+        pat: "re.Pattern[AnyStr]",
+        s: AnyStr,
+        flags: Union[int, re.RegexFlag] = 0
+) -> "Iter[AnyStr]":
+    """
+    Wrapper for ``re.finditer``. Returns an instance of Iter_ to allow
+    chaining.
+
+    >>> pat = r"\\w+"
+    >>> text = "Well hello there! How ya doin!"
+    >>> finditer_regex(pat, text).map(str.lower).filter(lambda w: 'o' in w).collect()
+    ['hello', 'how', 'doin']
+
+    >>> finditer_regex(r"[A-Za-z']+", "A programmer's RegEx test.").collect()
+    ['A', "programmer's", 'RegEx', 'test']
+    >>> finditer_regex(r"[A-Za-z']+", "").collect()
+    []
+    >>> finditer_regex("", "").collect()
+    ['']
+    >>> finditer_regex("", "").filter(None).collect()
+    []
+
+    """
+    return Iter(m.group(0) for m in re.finditer(pat, s, flags))
+
+
+def splititer_regex(
+        pat: "re.Pattern[AnyStr]",
+        s: AnyStr,
+        flags: Union[int, re.RegexFlag] = 0
+) -> "Iter[AnyStr]":
+    """
+    Lazy string splitting using regular expressions.
+
+    Most of the time you want ``str.split``. Really! That will almost
+    always be fastest. You might think that ``str.split`` is inefficient
+    because it always has to build a list, but it can do this very, very
+    quickly.
+
+    The lazy splitting shown here is more about supporting a particular
+    kind of programming model, rather than performance.
+
+    See more discussion `here <https://stackoverflow.com/questions/3862010/is-there-a-generator-version-of-string-split-in-python>`_.
+
+    >>> splititer_regex(r"\\s", "A programmer's RegEx test.").collect()
+    ['A', "programmer's", 'RegEx', 'test.']
+
+    Note that splitting at a single whitespace character will return blanks
+    for each found. This is different to how ``str.split()`` works.
+    >>> splititer_regex(r"\\s", "aaa     bbb  \\n  ccc\\nddd\\teee").collect()
+    ['aaa', '', '', '', '', 'bbb', '', '', '', '', 'ccc', 'ddd', 'eee']
+
+    To match ``str.split()``, specify a sequence of whitespace as the
+    regex pattern.
+    >>> splititer_regex(r"\\s+", "aaa     bbb  \\n  ccc\\nddd\\teee").collect()
+    ['aaa', 'bbb', 'ccc', 'ddd', 'eee']
+
+    Counting the whitespace
+    >>> splititer_regex(r"\\s", "aaa     bbb  \\n  ccc\\nddd\\teee").collect(Counter)
+    Counter({'': 8, 'aaa': 1, 'bbb': 1, 'ccc': 1, 'ddd': 1, 'eee': 1})
+
+    Lazy splitting at newlines
+    >>> splititer_regex(r"\\n", "aaa     bbb  \\n  ccc\\nddd\\teee").collect()
+    ['aaa     bbb  ', '  ccc', 'ddd\\teee']
+
+    >>> splititer_regex(r"", "aaa").collect()
+    ['', 'a', 'a', 'a', '']
+    >>> splititer_regex(r"", "").collect()
+    ['', '']
+    >>> splititer_regex(r"\\s", "").collect()
+    ['']
+    >>> splititer_regex(r"a", "").collect()
+    ['']
+    >>> splititer_regex(r"\\s", "aaa").collect()
+    ['aaa']
+
+    """
+    def inner():
+        prev = 0
+        for m in re.finditer(pat, s, flags):
+            yield s[prev:m.start()]
+            prev = m.end()
+
+        yield s[prev:]
+
+    return Iter(inner())
 
 
 class Iter(Generic[T]):
@@ -1191,19 +1289,59 @@ class Iter(Generic[T]):
         return Iter(head), Iter(iterable)
 
     def peekable(self) -> "more_itertools.peekable":
-        """ Docstring TBD """
+        """
+        Docstring TBD
+
+        >>> p = Iter(['a', 'b']).peekable()
+        >>> p.peek()
+        'a'
+        >>> next(p)
+        'a'
+
+        The peekable can be used to inspect what will be coming up.
+        But if you then want to resume iterator chaining, pass the
+        peekable back into an Iter_ instance.
+        >>> p = Iter(range(10)).peekable()
+        >>> p.peek()
+        0
+        >>> Iter(p).take(3).collect()
+        [0, 1, 2]
+
+        A peekable is not an Iter_ instance so it doesn't provide
+        the iterator chaining methods. But if you want to get into
+        chaining, use the ``iter()`` method.
+        >>> p = Iter(range(5)).peekable()
+        >>> p.peek()
+        0
+        >>> p[1]
+        1
+        >>> p.iter().take(3).collect()
+        [0, 1, 2]
+
+        Peekables can be prepended. But then you usually want to go
+        right back to iterator chaining. Thus, the ``prepend`` method
+        (on the returned ``peekable`` instance) returns an Iter_ instance.
+        >>> p = Iter(range(3)).peekable()
+        >>> p.peek()
+        0
+        >>> p.prepend('a', 'b').take(4).collect()
+        ['a', 'b', 0, 1]
+
+        """
 
         class _peekable(more_itertools.peekable):
             def __iter__(self):
                 return Iter(super().__iter__())
 
+            def iter(self) -> "Iter":
+                return self.__iter__()
+
             def __getitem__(self, item):
                 return super().__getitem__(item)
 
-            # TODO: need to somehow combine peekable and Iter
-            # def prepend(self, *items) -> "Iter":
-            #     super().prepend(*items)
-            #     return Iter(self)
+            def prepend(self, *items) -> "Iter":
+                super().prepend(*items)
+                return self.__iter__()
 
         return _peekable(self.x)
 
@@ -1983,45 +2121,82 @@ class Iter(Generic[T]):
         """
         return Iter(more_itertools.take(n, self.x))
 
-    def tail(self):
+    def tail(self, n) -> "Iter[T]":
         """
         Reference: `more_itertools.tail <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.tail>`_
-        """
-        raise NotImplementedError
 
-    def unique_everseen(self):
+        >>> Iter('ABCDEFG').tail(3).collect()
+        ['E', 'F', 'G']
+
+        """
+        return Iter(more_itertools.tail(n, self))
+
+    def unique_everseen(self, key=None) -> "Iter[T]":
         """
         Reference: `more_itertools.unique_everseen <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_everseen>`_
-        """
-        raise NotImplementedError
 
-    def unique_justseen(self):
+        >>> Iter('AAAABBBCCDAABBB').unique_everseen().collect()
+        ['A', 'B', 'C', 'D']
+        >>> Iter('ABBCcAD').unique_everseen(key=str.lower).collect()
+        ['A', 'B', 'C', 'D']
+
+        Be sure to read the *more-itertools* docs whne using unhashable
+        items.
+
+        >>> iterable = ([1, 2], [2, 3], [1, 2])
+        >>> Iter(iterable).unique_everseen().collect()  # Slow
+        [[1, 2], [2, 3]]
+        >>> Iter(iterable).unique_everseen(key=tuple).collect()  # Faster
+        [[1, 2], [2, 3]]
+
+        """
+        return Iter(more_itertools.unique_everseen(self, key=key))
+
+    def unique_justseen(self, key=None) -> "Iter[T]":
         """
         Reference: `more_itertools.unique_justseen <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_justseen>`_
+
+        >>> Iter('AAAABBBCCDAABBB').unique_justseen().collect()
+        ['A', 'B', 'C', 'D', 'A', 'B']
+        >>> Iter('ABBCcAD').unique_justseen(key=str.lower).collect()
+        ['A', 'B', 'C', 'A', 'D']
+
         """
-        raise NotImplementedError
+        return Iter(more_itertools.unique_justseen(self, key=key))
 
     # Combinatorics
 
     def distinct_permutations(self):
         """
         Reference: `more_itertools.distinct_permutations <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.distinct_permutations>`_
+
+        >>> Iter([1, 0, 1]).distinct_permutations().sorted().collect()
+        [(0, 1, 1), (1, 0, 1), (1, 1, 0)]
+
         """
         return Iter(more_itertools.distinct_permutations(self.x))
 
-    def distinct_combinations(self, r):
+    def distinct_combinations(self, r) -> "Iter[T]":
         """
         Reference: `more_itertools.distinct_combinations <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.distinct_combinations>`_
-        """
-        return Iter(more_itertools.distinct_combinations(self.x, r))
 
-    def circular_shifts(self) -> "Iter":
+        >>> Iter([0, 0, 1]).distinct_combinations(2).collect()
+        [(0, 0), (0, 1)]
+
+        """
+        return Iter(more_itertools.distinct_combinations(self, r))
+
+    def circular_shifts(self) -> "Iter[T]":
         """
         Reference: `more_itertools.circular_shifts <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.circular_shifts>`_
-        """
-        return Iter(more_itertools.circular_shifts(self.x))
 
-    def partitions(self) -> "Iter":
+        >>> Iter(range(4)).circular_shifts().collect()
+        [(0, 1, 2, 3), (1, 2, 3, 0), (2, 3, 0, 1), (3, 0, 1, 2)]
+
+        """
+        return Iter(more_itertools.circular_shifts(self))
+
+    def partitions(self) -> "Iter[T]":
         """
         Reference: `more_itertools.partitions <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.partitions>`_
 
@@ -2041,7 +2216,7 @@ class Iter(Generic[T]):
         """
         return Iter(more_itertools.partitions(self.x))
 
-    def set_partitions(self, k=None) -> "Iter":
+    def set_partitions(self, k=None) -> "Iter[T]":
         """
         Reference: `more_itertools.set_partitions <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.set_partitions>`_
 
@@ -2070,6 +2245,14 @@ class Iter(Generic[T]):
         ['c', 3, 'X']
         >>> Iter.random_product('abc', range(4), 'XYZ').collect()  # doctest: +SKIP
         ['c', 0, 'Z']
+        >>> Iter('abc').random_product(range(0)).collect()
+        Traceback (most recent call last):
+            ...
+        IndexError: Cannot choose from an empty sequence
+        >>> Iter.random_product(range(0)).collect()
+        Traceback (most recent call last):
+            ...
+        IndexError: Cannot choose from an empty sequence
 
         """
         if isinstance(self_or_cls, type):
@@ -2083,6 +2266,8 @@ class Iter(Generic[T]):
 
         >>> Iter(range(5)).random_permutation().collect()  # doctest: +SKIP
         [2, 0, 4, 3, 1]
+        >>> Iter(range(0)).random_permutation().collect()
+        []
 
         """
         return Iter(more_itertools.random_permutation(self, r=r))
@@ -2093,6 +2278,8 @@ class Iter(Generic[T]):
 
         >>> Iter(range(5)).random_combination(3).collect()  # doctest: +SKIP
         [0, 1, 4]
+        >>> Iter(range(5)).random_combination(0).collect()
+        []
 
         """
         return Iter(more_itertools.random_combination(self, r))
@@ -2103,6 +2290,8 @@ class Iter(Generic[T]):
 
         >>> Iter(range(3)).random_combination_with_replacement(5).collect()  # doctest: +SKIP
         [0, 0, 1, 2, 2]
+        >>> Iter(range(3)).random_combination_with_replacement(0).collect()
+        []
 
         """
         return Iter(more_itertools.random_combination_with_replacement(
@@ -2730,6 +2919,42 @@ class Iter(Generic[T]):
                     raise
 
         return self.side_effect(func)
+
+    def sorted(self, key=None, reverse=False) -> "Iter[T]":
+        """
+        :sink:
+
+        Simple wrapper for the ``sorted`` builtin.
+
+        :warning:
+        Calling this will read the entire stream before producing
+        results.
+
+        >>> Iter('bac').sorted().collect()
+        ['a', 'b', 'c']
+        >>> Iter('bac').sorted(reverse=True).collect()
+        ['c', 'b', 'a']
+        >>> Iter('bac').zip([2, 1, 0]).sorted(key=lambda tup: tup[1]).collect()
+        [('c', 0), ('a', 1), ('b', 2)]
+
+        """
+        return Iter(sorted(self, key=key, reverse=reverse))
+
+    def reversed(self) -> "Iter[T]":
+        """
+        :sink:
+
+        Simple wrapper for the ``reversed`` builtin.
+
+        :warning:
+        Calling this will read the entire stream before producing
+        results.
+
+        >>> Iter(range(4)).reversed().collect()
+        [3, 2, 1, 0]
+
+        """
+        return Iter(reversed(self.collect()))
 
 
 class IterDict(UserDict):
