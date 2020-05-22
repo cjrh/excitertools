@@ -609,19 +609,23 @@ See more discussion `here <https://stackoverflow.com/questions/3862010/is-there-
 
 Note that splitting at a single whitespace character will return blanks
 for each found. This is different to how ``str.split()`` works.
+
 >>> splititer_regex(r"\s", "aaa     bbb  \n  ccc\nddd\teee").collect()
 ['aaa', '', '', '', '', 'bbb', '', '', '', '', 'ccc', 'ddd', 'eee']
 
 To match ``str.split()``, specify a sequence of whitespace as the
 regex pattern.
+
 >>> splititer_regex(r"\s+", "aaa     bbb  \n  ccc\nddd\teee").collect()
 ['aaa', 'bbb', 'ccc', 'ddd', 'eee']
 
 Counting the whitespace
+
 >>> splititer_regex(r"\s", "aaa     bbb  \n  ccc\nddd\teee").collect(Counter)
 Counter({'': 8, 'aaa': 1, 'bbb': 1, 'ccc': 1, 'ddd': 1, 'eee': 1})
 
 Lazy splitting at newlines
+
 >>> splititer_regex(r"\n", "aaa     bbb  \n  ccc\nddd\teee").collect()
 ['aaa     bbb  ', '  ccc', 'ddd\teee']
 
@@ -2990,14 +2994,14 @@ live at least as long as the iterator feeding it.
 .. _Iter.sorted:
 
 
-``Iter.sorted(self, key=None, reverse=False) -> "Iter[T]"``
-===========================================================
+|sink| |warning| ``Iter.sorted(self, key=None, reverse=False) -> "Iter[T]"``
+============================================================================
 
-:sink:
+
 
 Simple wrapper for the ``sorted`` builtin.
 
-:warning:
+
 Calling this will read the entire stream before producing
 results.
 
@@ -3013,14 +3017,14 @@ results.
 .. _Iter.reversed:
 
 
-``Iter.reversed(self) -> "Iter[T]"``
-====================================
+|sink| |warning| ``Iter.reversed(self) -> "Iter[T]"``
+=====================================================
 
-:sink:
+
 
 Simple wrapper for the ``reversed`` builtin.
 
-:warning:
+
 Calling this will read the entire stream before producing
 results.
 
