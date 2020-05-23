@@ -8,8 +8,18 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: ['3.6', '3.7', '3.8', '3.9', 'pypy3']
+        python-version: ['3.6', '3.7', '3.8', 'pypy3']
         os: [ubuntu-latest, windows-latest, macOS-latest]
+        include:
+          - os: ubuntu-latest
+            python-version: 3.9
+            experimental: true
+          - os: windows-latest
+            python-version: 3.9
+            experimental: true
+          - os: macOS-latest
+            python-version: 3.9
+            experimental: true
       fail-fast: false
     timeout-minutes: 3
     steps:
