@@ -70,6 +70,7 @@ Somewhat related:
 .. |flux| unicode:: U+1F6E0
 .. |source| unicode:: U+1F3A4
 .. |sink| unicode:: U+1F3A7
+.. |inf| unicode:: U+267E
 
 
 API Documentation
@@ -241,8 +242,8 @@ an instance of Iter_ to allow further iterable chaining.
 .. _count:
 
 
-|source| ``count(start, step: int = 1) -> "Iter[int]"``
-*******************************************************
+|source| ``count(start=0, step: int = 1) -> "Iter[int]"``
+*********************************************************
 
 
 Replacement for the itertools ``count`` function.  This version returns
@@ -250,7 +251,7 @@ an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
-    >>> count(0).take(5).collect()
+    >>> count().take(5).collect()
     [0, 1, 2, 3, 4]
     >>> count(0).take(0).collect()
     []
@@ -844,12 +845,61 @@ Iter_ has support for these use-cases, both for reading and for writing.
 
 
 
+This is the most common way of "realizing" an interable chain
+into a concrete data structure. It should be the case that this
+is where most of the memory allocation occurs.
+
+The default container is a list and you'll see throughout this
+documentation that most examples produce lists. However,
+any container, and indeed any function, can be used as the sink.
+
+The basic example:
+
+.. code-block:: python
+
+    >>> Iter(range(3)).collect()
+    [0, 1, 2]
+    >>> Iter(range(3)).collect(tuple)
+    (0, 1, 2)
+
+You must pay attention to some things. For example, if your
+iterable is a string, the characters of the string are what
+get iterated over, and when you collect you'll get a collection
+of those atoms. You can however use ``str`` as your "container
+function" and that will give you back a string. It's like a join
+with blank joiner.
+
 .. code-block:: python
 
     >>> Iter('abc').collect()
     ['a', 'b', 'c']
     >>> Iter('abc').collect(str)
     'abc'
+
+With some types, things get a little more tricky. Take ``bytes``
+for example:
+
+.. code-block:: python
+
+    >>> Iter(b'abc').collect()
+    [97, 98, 99]
+
+You probably didn't expect to get the integers back right? Anyhow,
+you can use ``bytes`` as the "collection container", just like
+we did with strings and that will work:
+
+.. code-block:: python
+
+    >>> Iter(b'abc').collect(bytes)
+    b'abc'
+    >>> Iter(b'abc').collect(bytearray)
+    bytearray(b'abc')
+
+The other standard collections also work, here's a set for
+completeness.
+
+.. code-block:: python
+
     >>> Iter('abcaaaabbbbccc').collect(set) == {'a', 'b', 'c'}
     True
 
@@ -867,10 +917,18 @@ Iter_ has support for these use-cases, both for reading and for writing.
 Wrap the ``open()`` builtin precisely, but return an ``Iter``
 instance to allow function chaining on the result.
 
+I know you're thinking that we should always use a context
+manager for files. Don't worry, there is one being used
+internally. When the iterator chain is terminated the underlying
+file will be closed.
+
 >>> import tempfile
 >>> with tempfile.TemporaryDirectory() as td:
+...     # Put some random text into a temporary file
 ...     with open(td + 'text.txt', 'w') as f:
 ...         f.writelines(['abc\n', 'def\n', 'ghi\n'])
+...
+...     # Open the file, filter some lines, collect the result
 ...     Iter.open(td + 'text.txt').filter(lambda line: 'def' in line).collect()
 ['def\n']
 
@@ -888,7 +946,14 @@ only reading is supported.
 ===============================================================
 
 
-Docstring TBD
+
+The ``range`` function you all know and love.
+
+>>> Iter.range(3).collect()
+[0, 1, 2]
+>>> Iter.range(0).collect()
+[]
+
 
 
 .. _Iter.zip:
@@ -896,7 +961,42 @@ Docstring TBD
 
 ``Iter.zip(self, *iterables: Any) -> "Iter[Tuple[T, ...]]"``
 ============================================================
-Docstring TBD
+
+
+The ``zip`` function you all know and love. The only thing to
+note here is that the first iterable is really what the Iter_
+instance is wrapping. The Iter.zip_ invocation brings in the
+other iterables.
+
+Make an Iter_ instance, then call ``zip`` on that.
+
+>>> Iter('caleb').zip(range(10)).collect()
+[('c', 0), ('a', 1), ('l', 2), ('e', 3), ('b', 4)]
+
+Use a classmethod to get an infinite stream using Iter.count_
+and zip against that with more finite iterators.
+
+>>> Iter.count().zip(range(5), range(3, 100, 2)).collect()
+[(0, 0, 3), (1, 1, 5), (2, 2, 7), (3, 3, 9), (4, 4, 11)]
+
+It takes a few minutes to get used to that but feels comfortable
+pretty quickly.
+
+Iter.take_ can be used to stop infinite zip sequences:
+
+>>> Iter('caleb').cycle().enumerate().take(8).collect()
+[(0, 'c'), (1, 'a'), (2, 'l'), (3, 'e'), (4, 'b'), (5, 'c'), (6, 'a'), (7, 'l')]
+
+While we're here (assuming you worked through the previous
+example), note the difference if you switch the order of the
+Iter.cycle_ and Iter.enumerate_ calls:
+
+>>> Iter('caleb').enumerate().cycle().take(8).collect()
+[(0, 'c'), (1, 'a'), (2, 'l'), (3, 'e'), (4, 'b'), (0, 'c'), (1, 'a'), (2, 'l')]
+
+If you understand how this works, everything else in _excitertools_
+will be intuitive to use.
+
 
 
 .. _Iter.any:
@@ -906,7 +1006,14 @@ Docstring TBD
 ===================================
 
 
-Docstring TBD
+
+>>> Iter([0, 0, 0]).any()
+False
+>>> Iter([0, 0, 1]).any()
+True
+>>> Iter([]).any()
+False
+
 
 
 .. _Iter.all:
@@ -916,7 +1023,27 @@ Docstring TBD
 ===================================
 
 
-Docstring TBD
+
+
+>>> Iter([0, 0, 0]).all()
+False
+>>> Iter([0, 0, 1]).all()
+False
+>>> Iter([1, 1, 1]).all()
+True
+
+Now pay attention:
+
+>>> Iter([]).all()
+True
+
+This behaviour has some controversy around it, but that's how the
+``all()`` builtin works so that's what we do too. The way to
+think about what ``all()`` does is this: it returns False if there
+is at least one element that is falsy.  Thus, if there are no elements
+it follows that there are no elements that are falsy and that's why
+``all([]) == True``.
+
 
 
 .. _Iter.enumerate:
@@ -924,7 +1051,14 @@ Docstring TBD
 
 ``Iter.enumerate(self) -> "Iter[Tuple[int, T]]"``
 =================================================
-Docstring TBD
+
+Yup, *that* ``enumerate``.
+
+>>> Iter('abc').enumerate().collect()
+[(0, 'a'), (1, 'b'), (2, 'c')]
+>>> Iter([]).enumerate().collect()
+[]
+
 
 
 .. _Iter.dict:
@@ -932,7 +1066,18 @@ Docstring TBD
 
 ``Iter.dict(self) -> "Dict"``
 =============================
-Docstring TBD
+
+In Python a dict can be constructed through an iterable of tuples:
+
+>>> dict([('a', 0), ('b', 1)])  # doctest: +SKIP
+{'a': 0, 'b': 1}
+
+In *excitertools* we prefer chaining so this method is a shortcut
+for that:
+
+>>> d = Iter('abc').zip(count()).dict()
+>>> assert d == {'a': 0, 'b': 1, 'c': 2}
+
 
 
 .. _Iter.map:
@@ -941,8 +1086,34 @@ Docstring TBD
 ``Iter.map(self, func: Union[Callable[..., C], str]) -> "Iter[C]"``
 ===================================================================
 
+The ``map`` function you all know and love.
+
+>>> Iter('abc').map(str.upper).collect()
+['A', 'B', 'C']
+>>> Iter(['abc', 'def']).map(str.upper).collect()
+['ABC', 'DEF']
+
+Using lambdas might seem convenient but in practice it turns
+out that they make code difficult to read:
+
 >>> result = Iter('caleb').map(lambda x: (x, ord(x))).dict()
 >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
+
+It's recommended that you make a separate function instead:
+
+>>> def f(x):
+...     return x, ord(x)
+>>> result = Iter('caleb').map(f).dict()
+>>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
+
+I know many people prefer anonymous functions (often on
+philosphical grouds) but in practice it's just easier to make
+a separate, named function.
+
+I've experimented with passing a string into the map, and using
+``eval()`` to make a lambda internally. This simplifies the code
+very slightly, at the cost of using strings-as-code. I'm pretty
+sure this feature will be removed so don't use it.
 
 >>> result = Iter('caleb').map('x, ord(x)').dict()
 >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
@@ -951,17 +1122,135 @@ Docstring TBD
 .. _Iter.filter:
 
 
-``Iter.filter(self, *args) -> "Iter[T]"``
-=========================================
-Docstring TBD
+``Iter.filter(self, function: "Optional[Callable[[T], bool]]" = None) -> "Iter[T]"``
+====================================================================================
+
+The ``map`` function you all know and love.
+
+>>> Iter('caleb').filter(lambda x: x in 'aeiou').collect()
+['a', 'e']
+
+There is a slight difference between this method signature and
+the builtin ``filter``:  how the identity function is handled.
+This is a consquence of chaining. In the function signature above
+it is possible for us to give the ``function`` parameter a
+default value of ``None`` because the parameter appears towards
+the end of the parameter list. Last, in fact.  In the
+`builtin filter signature <https://docs.python.org/3/library/functions.html#filter>`_
+it doesn't allow for this because the predicate parameter appears
+first.
+
+This is a long way of saying: if you just want to filter out
+falsy values, no parameter is needed:
+
+>>> Iter([0, 1, 0, 0, 0, 1, 1, 1, 0, 0]).filter().collect()
+[1, 1, 1, 1]
+
+Using the builtin, you'd have to do ``filter(None, iterable)``.
+
+You'll find that Iter.map_ and Iter.filter_
+(and Iter.reduce_, up next) work together very nicely:
+
+>>> def not_eve(x):
+...    return x != 'eve'
+>>> Iter(['bob', 'eve', 'alice']).filter(not_eve).map(str.upper).collect()
+['BOB', 'ALICE']
+
+The long chains get unwieldy so let's rewrite that:
+
+>>> (
+...     Iter(['bob', 'eve', 'alice'])
+...         .filter(not_eve)
+...         .map(str.upper)
+...         .collect()
+... )
+['BOB', 'ALICE']
+
+
+
+.. _Iter.starfilter:
+
+
+|cool| ``Iter.starfilter(self, function: "Optional[Callable[[T, ...], bool]]" = None) -> "Iter[T]"``
+====================================================================================================
+
+
+Like Iter.filter_, but arg unpacking in lambdas will work.
+
+With the normal ``filter``, this fails:
+
+>>> Iter('caleb').enumerate().filter(lambda i, x: i > 2).collect()
+Traceback (most recent call last):
+    ...
+TypeError: <lambda>() missing 1 required positional argument: 'x'
+
+This is a real buzzkill. ``starfilter`` is very to ``starmap`` in
+that tuples are unpacked when calling the function:
+
+>>> Iter('caleb').enumerate().starfilter(lambda i, x: i > 2).collect()
+[(3, 'e'), (4, 'b')]
+
 
 
 .. _Iter.reduce:
 
 
-``Iter.reduce(self, func: Callable[..., T], *args) -> "T"``
-===========================================================
-Docstring TBD
+|sink| ``Iter.reduce(self, func: Callable[..., T], *args) -> "T"``
+==================================================================
+
+
+The ``reduce`` function you all know and...hang on, actually
+``reduce is rather unloved. In the past I've found it very complex
+to reason about, when looking at a bunch of nested function calls
+in typical ``itertools`` code. Hopefully iterable chaining makes
+it easier to read code that uses ``reduce``?
+
+Let's check, does this make sense?
+
+>>> payments = [
+...     ('bob', 100),
+...     ('alice', 50),
+...     ('eve', -100),
+...     ('bob', 19.95),
+...     ('bob', -5.50),
+...     ('eve', 11.95),
+...     ('eve', 200),
+...     ('alice', -45),
+...     ('alice', -67),
+...     ('bob', 1.99),
+...     ('alice', 89),
+... ]
+>>> (
+...     Iter(payments)
+...         .filter(lambda entry: entry[0] == 'bob')
+...         .map(lambda entry: entry[1])
+...         .reduce(lambda total, value: total + value, 0)
+... )
+116.44
+
+I intentionally omitted comments above so that you can try the
+"readability experiment", but in practice you would definitely
+want to add some comments on these chains:
+
+>>> (
+...     # Iterate over all payments
+...     Iter(payments)
+...         # Only look at bob's payments
+...         .filter(lambda entry: entry[0] == 'bob')
+...         # Extract the value of the payment
+...         .map(lambda entry: entry[1])
+...         # Add all those payments together
+...         .reduce(lambda total, value: total + value, 0)
+... )
+116.44
+
+``reduce`` is a quite crude low-level tool. In many cases you'll
+find that there are other functions and methods better suited
+to the situations you'll encounter most often. For example, it's
+much easier to use Iter.groupby_ for grouping than to try to
+make that work with Iter.reduce_. You *can* make it work but it'll
+be easier to use Iter.groupby_.
+
 
 
 .. _Iter.sum:
@@ -971,7 +1260,12 @@ Docstring TBD
 =========================
 
 
-Docstring TBD 
+Exactly what you expect:
+
+>>> Iter(range(10)).sum()
+45
+
+
 
 .. _Iter.concat:
 
@@ -980,7 +1274,16 @@ Docstring TBD
 ======================================================
 
 
-Docstring TBD
+
+Joining strings.
+
+>>> Iter(['hello', 'there']).concat(' ')
+'hello there'
+>>> Iter(['hello', 'there']).concat(',')
+'hello,there'
+>>> Iter([b'hello', b'there']).concat(b',')
+b'hello,there'
+
 
 
 .. _Iter.insert:
@@ -998,24 +1301,44 @@ Docstring TBD
 ===============================================================
 
 
-Docstring TBD 
+
+>>> Iter.count().take(3).collect()
+[0, 1, 2]
+>>> Iter.count(100).take(3).collect()
+[100, 101, 102]
+>>> Iter.count(100, 2).take(3).collect()
+[100, 102, 104]
+
+
 
 .. _Iter.cycle:
 
 
-``Iter.cycle(self) -> "Iter[T]"``
-=================================
-Docstring TBD
+|inf| ``Iter.cycle(self) -> "Iter[T]"``
+=======================================
+
+
+
+.. code-block:: python
+
+    >>> Iter('abc').cycle().take(8).collect()
+    ['a', 'b', 'c', 'a', 'b', 'c', 'a', 'b']
+    >>> Iter('abc').cycle().take(8).concat('')
+    'abcabcab'
+
 
 
 .. _Iter.repeat:
 
 
-|source| ``@classmethod Iter.repeat(cls, elem: C, times=None) -> "Iter[C]"``
-============================================================================
+|source| |inf| ``@classmethod Iter.repeat(cls, elem: C, times=None) -> "Iter[C]"``
+==================================================================================
 
 
-Docstring TBD 
+
+
+Docstring TBD
+
 
 .. _Iter.accumulate:
 
