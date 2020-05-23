@@ -40,6 +40,9 @@ itertools in the form of function call chaining
 Related projects
 ****************
 
+It turns out the idea of chaining iterators is not new. There are many
+libraries that offer similar features:
+
 * My fork of a now-missing library: `chained-iterable <https://github.com/cjrh/chained-iterable>`_.
 
 * `https://github.com/olirice/flupy <https://github.com/olirice/flupy>`_
@@ -76,12 +79,13 @@ Somewhat related:
 API Documentation
 #################
 
-Several emoji are used to indicate things about parts of the API:
+Several symbols are used to indicate things about parts of the API:
 
-- |source| This API method is a *source*, meaning that it produces data
+- |source| This function is a *source*, meaning that it produces data
   that will be processed in an iterator chain.
-- |sink| This API method is a *sink*, meaning that it consumes data that
+- |sink| This function is a *sink*, meaning that it consumes data that
   was processed in an iterator chain.
+- |inf| This function returns an infinite iterable
 - |warning| Warning - pay attention
 - |flux| This API is still in flux, and might be changed or
   removed in the future
@@ -911,8 +915,6 @@ class Iter(Generic[T]):
 
     Iter_ has support for these use-cases, both for reading and for writing.
 
-
-
     """
 
     x: Iterator[T]
@@ -945,6 +947,59 @@ class Iter(Generic[T]):
 
     def __next__(self) -> "T":
         return next(self.x)
+
+    @classmethod
+    def register(cls, *func):
+        """
+        Add a new method to Iter_. Sure, you could subclass Iter_ to get
+        new chaining features, but it would be neat to let all existing
+        Iter_ instance just immediately have the new registered function
+        available.
+
+        The new function must take ``iterable`` as the first parameter.
+
+        .. code-block:: python
+
+            >>> def up(iterable):
+            ...     for v in iterable:
+            ...         yield v.upper()
+            >>> Iter.register(up)
+            >>> Iter('abc').up().collect()
+            ['A', 'B', 'C']
+            >>> def poly(iterable, a, b, c):
+            ...     # Polynomials a.x^2 + b.x + c
+            ...     for x in iterable:
+            ...         yield a*x**2 + b*x + c
+            >>> Iter.register(poly)
+            >>> Iter(range(-5, 5, 1)).poly(1, -5, 6).collect()
+            [56, 42, 30, 20, 12, 6, 2, 0, 0, 2]
+
+        Here's a math round-trip rollercoaster.
+
+        .. code-block:: python
+
+            >>> import math
+            >>> def log(iterable):
+            ...     for x in iterable:
+            ...         yield math.log(x)
+            >>> def exp(iterable):
+            ...     for x in iterable:
+            ...         yield math.exp(x)
+            >>> def rnd(iterable):
+            ...     for x in iterable:
+            ...         yield round(x)
+            >>> Iter.register(log, exp, rnd)
+            >>> Iter(range(5)).exp().log().rnd().collect()
+            [0, 1, 2, 3, 4]
+
+        These are silly examples, but hopefully you get the idea.
+
+        """
+        for f in func:
+            def inner(self, *args, **kwargs):
+                return Iter(f(self, *args, **kwargs))
+
+            setattr(cls, f.__name__, inner)
 
     def collect(self, container=list) -> "List[T]":
         """
@@ -1364,6 +1419,55 @@ class Iter(Generic[T]):
         """
         return functools.reduce(func, self, *args)
 
+    def starreduce(self, function: Callable[..., T], initializer=0) -> "T":
+        """
+        |sink|
+        Iter.starreduce_ is the same as Iter.reduce_ except that args are
+        star-unpacked when passed into ``function``. This is frequently
+        more convenient than the default behaviour.
+
+        We can see this using the same example shown for Iter.reduce_.
+        The star unpacking makes it easier to just do the filtering
+        directly inside the reducer function.
+
+        >>> payments = [
+        ...     ('bob', 100),
+        ...     ('alice', 50),
+        ...     ('eve', -100),
+        ...     ('bob', 19.95),
+        ...     ('bob', -5.50),
+        ...     ('eve', 11.95),
+        ...     ('eve', 200),
+        ...     ('alice', -45),
+        ...     ('alice', -67),
+        ...     ('bob', 1.99),
+        ...     ('alice', 89),
+        ... ]
+        >>> (
+        ...     Iter(payments)
+        ...         .starreduce(
+        ...             lambda tot, name, value: tot + value if name == 'bob' else tot,
+        ...             0
+        ...         )
+        ... )
+        116.44
+
+        This is how that looks if you avoid a lambda:
+
+        >>> def f(tot, name, value):
+        ...     if name == 'bob':
+        ...         return tot + value
+        ...     else:
+        ...         return tot
+        >>> Iter(payments).starreduce(f)
+        116.44
+
+        """
+        for v in self:
+            initializer = function(initializer, *v)
+
+        return initializer
+
     def sum(self):
         """
         |sink|
@@ -1435,7 +1539,11 @@ class Iter(Generic[T]):
         |source|
         |inf|
 
-        Docstring TBD
+        .. code-block:: python
+
+            >>> Iter.repeat('c', times=3).collect()
+            ['c', 'c', 'c']
+
         """
         # TODO: does it really work like this? Wow.
         if times:
