@@ -942,6 +942,9 @@ class Iter(Generic[T]):
                         "iterable."
                     ) from None
 
+                # Raise the original exception
+                raise
+
     def __iter__(self) -> "Iterator[T]":
         return self.x
 
