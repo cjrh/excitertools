@@ -262,3 +262,21 @@ def test_zip():
 def test_zip_longest():
     result = Iter([1, 4, 6, 4, 1]).zip_longest("abc").collect()
     assert result == [(1, "a"), (4, "b"), (6, "c"), (4, None), (1, None)]
+
+
+def test_non_iterable_error():
+    """
+    Test the error message we give if a user accidentally passes a
+    generator function without evaluating it. This is only to give
+    a friendlier error message for a fairly common error. I still do
+    it sometimes so this helps me as much as anyone.
+    """
+    def gen():
+        for x in range(5):
+            yield x
+
+    with pytest.raises(TypeError, match='seems you passed'):
+        Iter(gen)
+
+    with pytest.raises(TypeError, match="'object' object is not iterable"):
+        Iter(object())

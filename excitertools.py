@@ -942,6 +942,9 @@ class Iter(Generic[T]):
                         "iterable."
                     ) from None
 
+                # Raise the original exception
+                raise
+
     def __iter__(self) -> "Iterator[T]":
         return self.x
 
@@ -1566,7 +1569,7 @@ class Iter(Generic[T]):
             [1, 2, 6, 24, 120]
 
         """
-        if sys.version_info < (3, 8):
+        if sys.version_info < (3, 8):  # pragma: no cover
             if initial:
                 raise RuntimeError(
                     f'The "initial" kwarg was added in Python 3.8 and is not'
