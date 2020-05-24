@@ -10,10 +10,13 @@
     :target: https://pypi.python.org/pypi/excitertools
 
 .. image:: https://img.shields.io/github/tag/cjrh/excitertools.svg
-    :target: https://img.shields.io/github/tag/cjrh/excitertools.svg
+    :target: https://github.com/cjrh/excitertools
 
 .. image:: https://img.shields.io/badge/install-pip%20install%20excitertools-ff69b4.svg
     :target: https://img.shields.io/badge/install-pip%20install%20excitertools-ff69b4.svg
+
+.. image:: https://img.shields.io/badge/dependencies-more--itertools-4488ff.svg
+    :target: https://more-itertools.readthedocs.io/en/stable/
 
 .. image:: https://img.shields.io/pypi/v/excitertools.svg
     :target: https://img.shields.io/pypi/v/excitertools.svg
