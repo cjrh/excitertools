@@ -10,10 +10,13 @@
     :target: https://pypi.python.org/pypi/excitertools
 
 .. image:: https://img.shields.io/github/tag/cjrh/excitertools.svg
-    :target: https://img.shields.io/github/tag/cjrh/excitertools.svg
+    :target: https://github.com/cjrh/excitertools
 
 .. image:: https://img.shields.io/badge/install-pip%20install%20excitertools-ff69b4.svg
     :target: https://img.shields.io/badge/install-pip%20install%20excitertools-ff69b4.svg
+
+.. image:: https://img.shields.io/badge/dependencies-more--itertools-4488ff.svg
+    :target: https://more-itertools.readthedocs.io/en/stable/
 
 .. image:: https://img.shields.io/pypi/v/excitertools.svg
     :target: https://img.shields.io/pypi/v/excitertools.svg
@@ -992,6 +995,207 @@ only reading is supported.
 
 
 
+.. _Iter.readbytes_backwards:
+
+
+|source| ``@classmethod Iter.readbytes_backwards(cls, filename: str, buffering=-1, chunksize=8192) -> "Iter[int]"``
+===================================================================================================================
+
+
+
+Read a file as bytes *backwards* and send chunks on the chain. Note
+that this returns an Iter_ of int: each byte is expressed as an
+integer. Grouping functions can be used to group sections of
+integers and convert those back into bytes sequences as necessary.
+
+This method appears crude, but it can easily be used to build up more
+exciting things. For example, we can use it as a building block
+for backwards iterating over some lines of a file.
+
+.. code-block:: python
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as td:
+    ...     filename = td + 'bytes.bin'
+    ...     with open(filename, 'w', newline='\n') as f:
+    ...         f.writelines(['abc\n', 'def\n', 'ghi\n'])
+    ...
+    ...     (
+    ...         Iter
+    ...             .readbytes_backwards(filename, chunksize=5)
+    ...             .split_before(lambda byte: byte == 10)
+    ...             .map(reversed)
+    ...             .map(bytes)
+    ...             .map(lambda x: x.decode())
+    ...             .take(2)
+    ...             .collect()
+    ...     )
+    ['ghi\n', 'def\n']
+
+The only real gotcha in this example is that the call to
+Iter.split_before_ does the comparison against an integer, 10.
+Comparison against ``"\n"`` won't work, because when the bytes
+get split up into individual bytes they become integers.
+
+
+
+.. _Iter.readbytes:
+
+
+|source| ``@classmethod Iter.readbytes(cls, filename: str, buffering=-1, chunksize=8192) -> "Iter[str]"``
+=========================================================================================================
+
+
+
+Read a file as bytes and send chunks on the chain.
+
+.. code-block:: python
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as td:
+    ...     # Put some random text into a temporary file
+    ...     with open(td + 'bytes.bin', 'w', newline='\n') as f:
+    ...         f.writelines(['abc\n', 'def\n', 'ghi\n'])
+    ...
+    ...     # Open the file, filter some lines, collect the result
+    ...     Iter.readbytes(td + 'bytes.bin', chunksize=5).collect()
+    [b'abc\nd', b'ef\ngh', b'i\n']
+
+
+
+.. _Iter.writebytes:
+
+
+|cool| |sink| ``Iter.writebytes(self, filename: str, mode: str = "wb", ) -> None``
+==================================================================================
+
+
+
+Write data on the chain to disk.
+
+There are several ways to deal with newlines. There's a parameter
+to append newlines to every line written:
+
+.. code-block:: python
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as td:
+    ...     (
+    ...         Iter([b'abc', b'xyz'])
+    ...             .writebytes(td + 'bytes.bin')
+    ...     )
+    ...
+    ...     with open(td + 'bytes.bin', 'rb') as f:
+    ...         data = f.read()
+    ...         print(data)
+    b'abcxyz'
+
+
+
+.. _Iter.readlines:
+
+
+|source| ``@classmethod Iter.readlines(cls, filename: str, encoding=None) -> "Iter[str]"``
+==========================================================================================
+
+
+
+Simpler method than Iter.open_.
+
+.. code-block:: python
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as td:
+    ...     # Put some random text into a temporary file
+    ...     with open(td + 'text.txt', 'w') as f:
+    ...         f.writelines(['abc\n', 'def\n', 'ghi\n'])
+    ...
+    ...     # Open the file, filter some lines, collect the result
+    ...     Iter.readlines(td + 'text.txt').filter(lambda line: 'def' in line).collect()
+    ['def\n']
+
+
+
+.. _Iter.writelines:
+
+
+|cool| |sink| ``Iter.writelines(self, filename: str, mode: str = "w", encoding=None, errors=None, append_newlines: bool = False, ) -> None``
+============================================================================================================================================
+
+
+
+Write data on the chain to disk.
+
+There are several ways to deal with newlines. There's a parameter
+to append newlines to every line written:
+
+.. code-block:: python
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as td:
+    ...     (
+    ...         Iter
+    ...             .range(5)
+    ...             .map(str)
+    ...             .writelines(td + 'text.txt', append_newlines=True)
+    ...     )
+    ...
+    ...     with open(td + 'text.txt', 'r') as f:
+    ...         data = f.read()
+    ...         print(data)
+    0
+    1
+    2
+    3
+    4
+
+Or, you can use Iter.intersperse_:
+
+.. code-block:: python
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as td:
+    ...     (
+    ...         Iter
+    ...             .range(5)
+    ...             .map(str)
+    ...             .intersperse("\n")
+    ...             .writelines(td + 'text.txt')
+    ...     )
+    ...
+    ...     with open(td + 'text.txt', 'r') as f:
+    ...         data = f.read()
+    ...         print(data)
+    0
+    1
+    2
+    3
+    4
+
+Finally, the newline can be added in the call to Iter.map_:
+
+.. code-block:: python
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as td:
+    ...     (
+    ...         Iter
+    ...             .range(5)
+    ...             .map(lambda line: str(line) + "\n")
+    ...             .writelines(td + 'text.txt')
+    ...     )
+    ...
+    ...     with open(td + 'text.txt', 'r') as f:
+    ...         data = f.read()
+    ...         print(data)
+    0
+    1
+    2
+    3
+    4
+
+
+
 .. _Iter.range:
 
 
@@ -1617,8 +1821,8 @@ Docstring TBD
 .. _Iter.split_at:
 
 
-``Iter.split_at(self, pred)``
-=============================
+``Iter.split_at(self, pred, maxsplit=-1, keep_separator=False)``
+================================================================
 Docstring TBD
 
 
@@ -2811,7 +3015,7 @@ Reference: `more_itertools.nth_combination <https://more-itertools.readthedocs.i
 .. _Iter.always_iterable:
 
 
-``@classmethod Iter.always_iterable(cls, obj, base_type=(str, bytes)) -> 'Iter'``
+``@classmethod Iter.always_iterable(cls, obj, base_type=(str, bytes)) -> "Iter"``
 =================================================================================
 
 Reference: `more_itertools.always_iterable <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.always_iterable>`_
