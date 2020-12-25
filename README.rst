@@ -10,10 +10,13 @@
     :target: https://pypi.python.org/pypi/excitertools
 
 .. image:: https://img.shields.io/github/tag/cjrh/excitertools.svg
-    :target: https://img.shields.io/github/tag/cjrh/excitertools.svg
+    :target: https://github.com/cjrh/excitertools
 
 .. image:: https://img.shields.io/badge/install-pip%20install%20excitertools-ff69b4.svg
     :target: https://img.shields.io/badge/install-pip%20install%20excitertools-ff69b4.svg
+
+.. image:: https://img.shields.io/badge/dependencies-more--itertools-4488ff.svg
+    :target: https://more-itertools.readthedocs.io/en/stable/
 
 .. image:: https://img.shields.io/pypi/v/excitertools.svg
     :target: https://img.shields.io/pypi/v/excitertools.svg
@@ -32,40 +35,19 @@
 excitertools
 ############
 
-itertools in the form of function call chaining
+``itertools`` reimagined as a `fluent interface <https://en.wikipedia.org/wiki/Fluent_interface>`_.
+
+    In software engineering, a fluent interface is an object-oriented API whose design
+    relies extensively on method chaining. Its goal is to increase code legibility by
+    creating a domain-specific language (DSL). The term was coined in 2005 by Eric
+    Evans and Martin Fowler.
+
+    `*Wikipedia - Fluent Interface* <https://en.wikipedia.org/wiki/Fluent_interface>`_
+
+Note that nearly all of the ``more-itertools`` extension library is included.
 
 .. contents::
     :depth: 1
-
-Related projects
-****************
-
-It turns out the idea of chaining iterators is not new. There are many
-libraries that offer similar features:
-
-* My fork of a now-missing library: `chained-iterable <https://github.com/cjrh/chained-iterable>`_.
-
-* `https://github.com/olirice/flupy <https://github.com/olirice/flupy>`_
-
-* `https://github.com/ddstte/chiter <https://github.com/ddstte/chiter>`_
-
-* `https://github.com/neverendingqs/pyiterable <https://github.com/neverendingqs/pyiterable>`_
-
-* `https://github.com/alliefitter/iterable_collections <https://github.com/alliefitter/iterable_collections>`_
-
-* `https://github.com/halprin/iterator-chain <https://github.com/halprin/iterator-chain>`_
-
-* `https://github.com/jagill/python-chainz <https://github.com/jagill/python-chainz>`_
-
-* `https://github.com/ZianVW/IterPipe <https://github.com/ZianVW/IterPipe>`_
-
-* `https://github.com/Evelyn-H/iterchain <https://github.com/Evelyn-H/iterchain>`_
-
-* `https://github.com/EntilZha/PyFunctional <https://github.com/EntilZha/PyFunctional>`_
-
-Somewhat related:
-
-* `https://github.com/jreese/aioitertools <https://github.com/jreese/aioitertools>`_
 
 
 .. |warning| unicode:: U+26A0
@@ -989,6 +971,90 @@ Note that this is a convenience method for *reading* from a file,
 not for writing. The function signature includes the ``mode``
 parameter for parity with the builtin ``open()`` function, but
 only reading is supported.
+
+
+
+.. _Iter.read_lines:
+
+
+``@classmethod Iter.read_lines(cls, stream: IO[str])``
+======================================================
+
+>>> import tempfile
+>>> with tempfile.TemporaryDirectory() as td:
+...     # Put some random text into a temporary file
+...     with open(td + 'text.txt', 'w') as f:
+...         f.writelines(['abc\n', 'def\n', 'ghi\n'])
+...
+...     # Use read_lines to process the file data
+...     with open(td + 'text.txt') as f:
+...         Iter.read_lines(f).filter(lambda line: 'def' in line).collect()
+['def\n']
+
+
+
+.. _Iter.read_bytes:
+
+
+``@classmethod Iter.read_bytes(cls, stream: IO[bytes], size: Union[Callable[[], int], int] = -1)``
+==================================================================================================
+
+The ``size`` parameter can be used to control how many bytes are
+read for each advancement of the iterator chain. Here we set ``size=1``
+which means we'll get back one byte at a time.
+
+>>> import tempfile
+>>> td = tempfile.TemporaryDirectory()
+
+Put some random text into a temporary file
+>>> with open(td.name + 'bytes.bin', 'wb') as f:
+...     x = f.write(b'\x00' * 100)
+...
+>>> with open(td.name + 'bytes.bin', 'rb') as f:
+...     data = Iter.read_bytes(f, size=1).collect()
+...     len(data)
+100
+>>> with open(td.name + 'bytes.bin', 'rb') as f:
+...     data = Iter.read_bytes(f).collect()
+...     len(data)
+1
+
+A little more ambitious. Because ``size`` is a callable, we can use
+a ``deque`` and a ``side_effect`` to pass information back into
+the reader to control how many bytes are read in each chunk.
+
+>>> read_sizes = deque([1])
+>>> with open(td.name + 'bytes.bin', 'rb') as f:
+...     data = (
+...         Iter
+...             .read_bytes(f, size=lambda: read_sizes.popleft())
+...             .side_effect(lambda bytes: read_sizes.append(1))
+...             .collect()
+...     )
+...     len(data)
+100
+
+
+.. _Iter.write:
+
+
+|cool| |sink| ``Iter.write(self, file, mode="w", buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, )``
+=======================================================================================================================================
+
+
+
+
+>>> import tempfile
+>>> with tempfile.TemporaryDirectory() as td:
+...     # Put some random text into a temporary file
+...     with open(td + 'text.txt', 'w') as f:
+...         f.writelines(['abc\n', 'def\n', 'ghi\n'])
+...
+...     # Open the file, transform, write out to new file.
+...     Iter.open(td + 'text.txt').map(str.upper).write(td + 'test2.txt')
+...     # Read the new file, for the test
+...     Iter.open(td + 'test2.txt').collect()
+['ABC\n', 'DEF\n', 'GHI\n']
 
 
 
@@ -3040,8 +3106,8 @@ Reference: `more_itertools.numeric_range <https://more-itertools.readthedocs.io/
 .. _Iter.side_effect:
 
 
-``Iter.side_effect(self, func, chunk_size=None, before=None, after=None)``
-==========================================================================
+``Iter.side_effect(self, func, *args, chunk_size=None, before=None, after=None)``
+=================================================================================
 
 Reference: `more_itertools.side_effect <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.side_effect>`_
 
@@ -3061,6 +3127,19 @@ Reference: `more_itertools.side_effect <https://more-itertools.readthedocs.io/en
     >>> Iter.range(2).side_effect(func).consume()
     Received 0
     Received 1
+
+This version of ``side_effect`` also allows extra args:
+
+.. code-block:: python
+
+    >>> func = lambda item, format_str='Received {}': print(format_str.format(item))
+    >>> Iter.range(2).side_effect(func).consume()
+    Received 0
+    Received 1
+    >>> func = lambda item, format_str='Received {}': print(format_str.format(item))
+    >>> Iter.range(2).side_effect(func, 'Got {}').consume()
+    Got 0
+    Got 1
 
 
 
@@ -3560,6 +3639,36 @@ The sentinel value, default ``None``, will terminate the iterator.
 
 
 
+
+Related projects
+################
+
+It turns out the idea of chaining iterators is not new. There are many
+libraries that offer similar features:
+
+* My fork of a now-missing library: `chained-iterable <https://github.com/cjrh/chained-iterable>`_.
+
+* `https://github.com/olirice/flupy <https://github.com/olirice/flupy>`_
+
+* `https://github.com/ddstte/chiter <https://github.com/ddstte/chiter>`_
+
+* `https://github.com/neverendingqs/pyiterable <https://github.com/neverendingqs/pyiterable>`_
+
+* `https://github.com/alliefitter/iterable_collections <https://github.com/alliefitter/iterable_collections>`_
+
+* `https://github.com/halprin/iterator-chain <https://github.com/halprin/iterator-chain>`_
+
+* `https://github.com/jagill/python-chainz <https://github.com/jagill/python-chainz>`_
+
+* `https://github.com/ZianVW/IterPipe <https://github.com/ZianVW/IterPipe>`_
+
+* `https://github.com/Evelyn-H/iterchain <https://github.com/Evelyn-H/iterchain>`_
+
+* `https://github.com/EntilZha/PyFunctional <https://github.com/EntilZha/PyFunctional>`_
+
+Somewhat related:
+
+* `https://github.com/jreese/aioitertools <https://github.com/jreese/aioitertools>`_
 
 Dev Instructions
 ################
