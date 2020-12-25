@@ -1114,7 +1114,7 @@ class Iter(Generic[T]):
         return cls(inner())
 
     @classmethod
-    def read_lines(cls, stream: IO[str]):
+    def read_lines(cls, stream: IO[str], rewind=True):
         """
         >>> import tempfile
         >>> with tempfile.TemporaryDirectory() as td:
@@ -1128,10 +1128,12 @@ class Iter(Generic[T]):
         ['def\\n']
 
         """
+        if rewind:
+            stream.seek(0)
         return cls(stream)
 
     @classmethod
-    def read_bytes(cls, stream: IO[bytes], size: Union[Callable[[], int], int] = -1):
+    def read_bytes(cls, stream: IO[bytes], size: Union[Callable[[], int], int] = -1, rewind=True):
         """
         The ``size`` parameter can be used to control how many bytes are
         read for each advancement of the iterator chain. Here we set ``size=1``
@@ -1168,6 +1170,9 @@ class Iter(Generic[T]):
         ...     len(data)
         100
         """
+        if rewind:
+            stream.seek(0)
+
         def inner():
             n = size if callable(size) else lambda: size
             data = stream.read(n())
@@ -1177,7 +1182,70 @@ class Iter(Generic[T]):
 
         return cls(inner())
 
-    def write(
+    def write_text_to_stream(self, stream: IO[str], insert_newlines=True, flush=True):
+        """
+        |sink|
+
+        >>> import tempfile
+        >>> data = ['a', 'b', 'c']
+        >>> with tempfile.NamedTemporaryFile('w') as f:
+        ...     Iter(data).map(str.upper).write_text_to_stream(f)
+        ...     with open(f.name) as f2:
+        ...         Iter.read_lines(f2).concat()
+        'A\\nB\\nC'
+
+        If some prior step adds newlines, or more commonly, newlines
+        originate with a data source and are simply carried through the
+        processing chain unaltered, disable the insertion of newlines:
+
+        >>> with tempfile.NamedTemporaryFile('w') as f:
+        ...     Iter(data).map(str.upper).write_text_to_stream(f, insert_newlines=False)
+        ...     with open(f.name) as f2:
+        ...         Iter.read_lines(f2).concat()
+        'ABC'
+
+        """
+        if insert_newlines:
+            stream.writelines(self.intersperse('\n'))
+        else:
+            stream.writelines(self)
+
+        if flush:
+            stream.flush()
+
+    def write_bytes_to_stream(self, stream: IO[bytes], flush=True):
+        """
+        |sink|
+
+        >>> import tempfile
+        >>> data = [b'a', b'b', b'c']
+        >>> with tempfile.NamedTemporaryFile('wb') as f:
+        ...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
+        ...     with open(f.name, 'rb') as f2:
+        ...         Iter.read_bytes(f2).collect()
+        [b'aabbcc']
+        >>> with tempfile.NamedTemporaryFile('wb') as f:
+        ...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
+        ...     with open(f.name, 'rb') as f2:
+        ...         Iter.read_bytes(f2).concat(b'')
+        b'aabbcc'
+        >>> with tempfile.NamedTemporaryFile('wb') as f:
+        ...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
+        ...     with open(f.name, 'rb') as f2:
+        ...         Iter.read_bytes(f2, size=1).collect()
+        [b'a', b'a', b'b', b'b', b'c', b'c']
+        >>> with tempfile.NamedTemporaryFile('wb') as f:
+        ...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
+        ...     with open(f.name, 'rb') as f2:
+        ...         Iter.read_bytes(f2, size=2).map(bytes.decode).collect()
+        ['aa', 'bb', 'cc']
+
+        """
+        stream.writelines(self)
+        if flush:
+            stream.flush()
+
+    def write_to_file(
         self,
         file,
         mode="w",
@@ -1199,7 +1267,7 @@ class Iter(Generic[T]):
         ...         f.writelines(['abc\\n', 'def\\n', 'ghi\\n'])
         ...
         ...     # Open the file, transform, write out to new file.
-        ...     Iter.open(td + 'text.txt').map(str.upper).write(td + 'test2.txt')
+        ...     Iter.open(td + 'text.txt').map(str.upper).write_to_file(td + 'test2.txt')
         ...     # Read the new file, for the test
         ...     Iter.open(td + 'test2.txt').collect()
         ['ABC\\n', 'DEF\\n', 'GHI\\n']
@@ -1570,12 +1638,14 @@ class Iter(Generic[T]):
         """
         return sum(self.x)
 
-    def concat(self, glue: AnyStr) -> "AnyStr":
+    def concat(self, glue: AnyStr = '') -> "AnyStr":
         """
         |sink|
 
         Joining strings.
 
+        >>> Iter(['hello', 'there']).concat()
+        'hellothere'
         >>> Iter(['hello', 'there']).concat(' ')
         'hello there'
         >>> Iter(['hello', 'there']).concat(',')
