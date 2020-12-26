@@ -1141,16 +1141,17 @@ class Iter(Generic[T]):
 
         >>> import tempfile
         >>> td = tempfile.TemporaryDirectory()
+        >>> filename = td.name + 'bytes.bin'
 
         Put some random text into a temporary file
-        >>> with open(td.name + 'bytes.bin', 'wb') as f:
+        >>> with open(filename, 'wb') as f:
         ...     x = f.write(b'\\x00' * 100)
         ...
-        >>> with open(td.name + 'bytes.bin', 'rb') as f:
+        >>> with open(filename, 'rb') as f:
         ...     data = Iter.read_bytes(f, size=1).collect()
         ...     len(data)
         100
-        >>> with open(td.name + 'bytes.bin', 'rb') as f:
+        >>> with open(filename, 'rb') as f:
         ...     data = Iter.read_bytes(f).collect()
         ...     len(data)
         1
@@ -1160,7 +1161,7 @@ class Iter(Generic[T]):
         the reader to control how many bytes are read in each chunk.
 
         >>> read_sizes = deque([1])
-        >>> with open(td.name + 'bytes.bin', 'rb') as f:
+        >>> with open(filename, 'rb') as f:
         ...     data = (
         ...         Iter
         ...             .read_bytes(f, size=lambda: read_sizes.popleft())
@@ -1169,7 +1170,6 @@ class Iter(Generic[T]):
         ...     )
         ...     len(data)
         100
-
         >>> td.cleanup()
         """
         if rewind:
@@ -1189,10 +1189,13 @@ class Iter(Generic[T]):
         |sink|
 
         >>> import tempfile
+        >>> td = tempfile.TemporaryDirectory()
+        >>> filename = td.name + 'text.txt'
+
         >>> data = ['a', 'b', 'c']
-        >>> with tempfile.NamedTemporaryFile('w') as f:
+        >>> with open(filename, 'w') as f:
         ...     Iter(data).map(str.upper).write_text_to_stream(f)
-        ...     with open(f.name) as f2:
+        ...     with open(filename) as f2:
         ...         Iter.read_lines(f2).concat()
         'A\\nB\\nC'
 
@@ -1200,9 +1203,9 @@ class Iter(Generic[T]):
         originate with a data source and are simply carried through the
         processing chain unaltered, disable the insertion of newlines:
 
-        >>> with tempfile.NamedTemporaryFile('w') as f:
+        >>> with open(filename, 'w') as f:
         ...     Iter(data).map(str.upper).write_text_to_stream(f, insert_newlines=False)
-        ...     with open(f.name) as f2:
+        ...     with open(filename) as f2:
         ...         Iter.read_lines(f2).concat()
         'ABC'
 
@@ -1220,25 +1223,27 @@ class Iter(Generic[T]):
         |sink|
 
         >>> import tempfile
+        >>> td = tempfile.TemporaryDirectory()
+        >>> filename = td.name + 'bytes.bin'
         >>> data = [b'a', b'b', b'c']
-        >>> with tempfile.NamedTemporaryFile('wb') as f:
+        >>> with open(filename, 'wb') as f:
         ...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
-        ...     with open(f.name, 'rb') as f2:
+        ...     with open(filename, 'rb') as f2:
         ...         Iter.read_bytes(f2).collect()
         [b'aabbcc']
-        >>> with tempfile.NamedTemporaryFile('wb') as f:
+        >>> with open(filename, 'wb') as f:
         ...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
-        ...     with open(f.name, 'rb') as f2:
+        ...     with open(filename, 'rb') as f2:
         ...         Iter.read_bytes(f2).concat(b'')
         b'aabbcc'
-        >>> with tempfile.NamedTemporaryFile('wb') as f:
+        >>> with open(filename, 'wb') as f:
         ...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
-        ...     with open(f.name, 'rb') as f2:
+        ...     with open(filename, 'rb') as f2:
         ...         Iter.read_bytes(f2, size=1).collect()
         [b'a', b'a', b'b', b'b', b'c', b'c']
-        >>> with tempfile.NamedTemporaryFile('wb') as f:
+        >>> with open(filename, 'wb') as f:
         ...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
-        ...     with open(f.name, 'rb') as f2:
+        ...     with open(filename, 'rb') as f2:
         ...         Iter.read_bytes(f2, size=2).map(bytes.decode).collect()
         ['aa', 'bb', 'cc']
 
