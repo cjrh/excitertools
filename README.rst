@@ -46,8 +46,40 @@ excitertools
 
 Note that nearly all of the ``more-itertools`` extension library is included.
 
+Demo
+****
+
+.. code-block:: python
+
+    >>> range(10).map(lambda x: x*7).filter(lambda x: x % 3 == 0).collect()
+    [0, 21, 42, 63]
+    >>> range(10).map(lambda x: x*7).filter(lambda x: x > 0 and x % 3 == 0).collect()
+    [21, 42, 63]
+
+When the lines get long, parens can be used to split up each instruction:
+
+.. code-block:: python
+
+    >>> (
+    ...     range(10)
+    ...         .map(lambda x: x*7)
+    ...         .filter(lambda x: x % 3 == 0)
+    ...         .collect()
+    ... )
+    [0, 21, 42, 63]
+
+The operator module makes ``reduce`` quite useful for simple cases:
+
+.. code-block:: python
+
+    >>> from operator import add, mul
+    >>> range(10).map(lambda x: x*7).filter(lambda x: x > 0 and x % 3 == 0).reduce(add)
+    126
+    >>> range(10).map(lambda x: x*7).filter(lambda x: x > 0 and x % 3 == 0).reduce(mul)
+    55566
+
 .. contents::
-    :depth: 1
+    :depth: 2
 
 
 .. |warning| unicode:: U+26A0
@@ -58,8 +90,8 @@ Note that nearly all of the ``more-itertools`` extension library is included.
 .. |inf| unicode:: U+267E
 
 
-API Documentation
-#################
+How to Understand the API Documentation
+#######################################
 
 Several symbols are used to indicate things about parts of the API:
 
@@ -83,20 +115,23 @@ The API includes wrappers for the stdlib *itertools* module, including
 the "recipes" given in the *itertools* docs, as well as wrappers for
 the iterators from the more-itertools_ 3rd-party package.
 
+Module-level Replacements for Builtins
+######################################
+
+The following module-level functions, like range_, zip_ and so on, are
+intended to be used as replacements for their homonymous builtins. The
+only difference between these and the builtin versions is that these
+return instances of the Iter_ class. Note that because Iter_ is itself
+iterable, it means that the functions here can be used as drop-in
+replacements.
+
+Once you have an Iter_ instance, all of its methods become available
+via function call chaining, so these toplevel functions are really only
+a convenience to "get started" using the chaining syntax with minimal
+upfront cost in your own code.
+
 .. contents::
     :local:
-
-
-
-
------
-
-The following module-level functions, like range_, zip_ and so on, are 
-intended to be used as replacements for their homonymous builtins. The
-only difference between these and the builtin versions is that these 
-return instances of the Iter_ class. Note that because Iter_ is itself
-iterable, it means that the functions here can be used as drop-in 
-replacements.
 
 
 
@@ -629,6 +664,112 @@ Lazy splitting at newlines
 
 
 
+.. _concat:
+
+
+``concat(iterable: Iterable[AnyStr], glue: AnyStr) -> "AnyStr"``
+****************************************************************
+Concatenate strings, bytes and bytearrays. It is careful to avoid the
+problem with single bytes becoming integers, and it looks at the value
+of `glue` to know whether to handle bytes or strings.
+
+This function can raise ``ValueError`` if called with something
+other than ``bytes``, ``bytearray`` or ``str``.
+
+.. _from_queue:
+
+
+|cool| |source| ``from_queue(q: queue.Queue, timeout=None, sentinel=None) -> "Iter"``
+*************************************************************************************
+
+
+
+
+Wrap a queue with an iterator interface. This allows it to participate
+in chaining operations. The iterator will block while waiting for
+new values to appear on the queue. This is useful: it allows you
+to easily and safely pass data between threads or processes, and
+feed the incoming data into a pipeline.
+
+The sentinel value, default ``None``, will terminate the iterator.
+
+.. code-block:: python
+
+    >>> q = queue.Queue()
+    >>> # This line puts stuff onto a queue
+    >>> range(10).chain([None]).map(q.put).consume()
+    >>> from_queue(q).filter(lambda x: 2 < x < 9).collect()
+    [3, 4, 5, 6, 7, 8]
+
+This can be used in the same way you would normally use a queue, in
+that it will block while waiting for future input. This makes it
+convenient to run in a thread and wait for work. Below is a rough
+sketch of how one might cobble together a thread pool using this
+feature. Note the use of Iter.side_effect_ to call ``task_done()``
+on the queue.
+
+.. code-block:: python
+
+    import queue
+    from threading import Thread
+    import logging
+    from excitertools import from_queue
+
+    logger = logging.getLogger(__name__)
+
+    def process_job(job):
+        result = ...
+        return result
+
+    def worker(inputs: Queue, results: Queue):
+        (
+            from_queue(inputs)
+            .side_effect(lambda job: logger.info(f"Received job {job}")
+            .map(process_job)
+            .side_effect(lambda result: logger.info(f"Got result {job}")
+            .into_queue(results)
+            # Note that we only mark the task as done after the result
+            # is added to the results queue.
+            .side_effect(lambda _: inputs.task_done()
+        )
+
+    def create_job_pool(n: int) -> Tuple[Queue, Queue, Callable]:
+        """Returns two queues, and a pool shutdown method. The
+        shutdown function can be called to shut down the pool and
+        the ``inputs`` queue. Caller is responsible for draining
+        the ``results`` queue."""
+
+        # Independent control of the sizes of the input and output
+        # queues is interesting: it lets you decide how to bias
+        # backpressure depending on the details of your workload.
+        inputs, results = Queue(maxsize=100), Queue(maxsize=3)
+
+        kwargs = dict(target=worker, args=(inputs, results), daemon=True)
+        threads = repeat(Thread).map(lambda T: T(**kwargs)).take(n).collect()
+
+        def shutdown():
+            # Shut down each thread
+            repeat(None).map(inputs.put).take(n).consume()
+            inputs.join()
+            Iter(threads).map(lambda t: t.join()).consume()
+
+        return inputs, results, shutdown
+
+Now the two queues ``inputs`` and ``results`` can be used in various
+other threads to supply and consume data.
+
+
+
+
+The ``Iter`` Class
+##################
+
+.. contents::
+    :backlinks: entry
+    :local:
+
+
+
 .. _Iter:
 
 
@@ -703,10 +844,10 @@ pointing out the mistake:
     TypeError: It seems you passed a generator function, but you
     probably intended to pass a generator. Remember to evaluate the
     function to obtain a generator instance:
-    <BLANKLINE>
+               
     def mygen():
         yield 123
-    <BLANKLINE>
+               
     Iter(mygen)    # ERROR - a generator function object is not iterable
     Iter(mygen())  # CORRECT - a generator instance is iterable.
     >>> Iter(mygen()).collect()
@@ -977,8 +1118,10 @@ only reading is supported.
 .. _Iter.read_lines:
 
 
-``@classmethod Iter.read_lines(cls, stream: IO[str])``
-======================================================
+|source| ``@classmethod Iter.read_lines(cls, stream: IO[str], rewind=True)``
+============================================================================
+
+
 
 >>> import tempfile
 >>> with tempfile.TemporaryDirectory() as td:
@@ -996,8 +1139,10 @@ only reading is supported.
 .. _Iter.read_bytes:
 
 
-``@classmethod Iter.read_bytes(cls, stream: IO[bytes], size: Union[Callable[[], int], int] = -1)``
-==================================================================================================
+|source| ``@classmethod Iter.read_bytes(cls, stream: IO[bytes], size: Union[Callable[[], int], int] = -1, rewind=True)``
+========================================================================================================================
+
+
 
 The ``size`` parameter can be used to control how many bytes are
 read for each advancement of the iterator chain. Here we set ``size=1``
@@ -1005,16 +1150,17 @@ which means we'll get back one byte at a time.
 
 >>> import tempfile
 >>> td = tempfile.TemporaryDirectory()
+>>> filename = td.name + 'bytes.bin'
 
 Put some random text into a temporary file
->>> with open(td.name + 'bytes.bin', 'wb') as f:
+>>> with open(filename, 'wb') as f:
 ...     x = f.write(b'\x00' * 100)
 ...
->>> with open(td.name + 'bytes.bin', 'rb') as f:
+>>> with open(filename, 'rb') as f:
 ...     data = Iter.read_bytes(f, size=1).collect()
 ...     len(data)
 100
->>> with open(td.name + 'bytes.bin', 'rb') as f:
+>>> with open(filename, 'rb') as f:
 ...     data = Iter.read_bytes(f).collect()
 ...     len(data)
 1
@@ -1024,7 +1170,7 @@ a ``deque`` and a ``side_effect`` to pass information back into
 the reader to control how many bytes are read in each chunk.
 
 >>> read_sizes = deque([1])
->>> with open(td.name + 'bytes.bin', 'rb') as f:
+>>> with open(filename, 'rb') as f:
 ...     data = (
 ...         Iter
 ...             .read_bytes(f, size=lambda: read_sizes.popleft())
@@ -1033,13 +1179,80 @@ the reader to control how many bytes are read in each chunk.
 ...     )
 ...     len(data)
 100
+>>> td.cleanup()
 
 
-.. _Iter.write:
+.. _Iter.write_text_to_stream:
 
 
-|cool| |sink| ``Iter.write(self, file, mode="w", buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, )``
-=======================================================================================================================================
+|sink| ``Iter.write_text_to_stream(self, stream: IO[str], insert_newlines=True, flush=True)``
+=============================================================================================
+
+
+
+>>> import tempfile
+>>> td = tempfile.TemporaryDirectory()
+>>> filename = td.name + 'text.txt'
+
+>>> data = ['a', 'b', 'c']
+>>> with open(filename, 'w') as f:
+...     Iter(data).map(str.upper).write_text_to_stream(f)
+...     with open(filename) as f2:
+...         Iter.read_lines(f2).concat()
+'A\nB\nC'
+
+If some prior step adds newlines, or more commonly, newlines
+originate with a data source and are simply carried through the
+processing chain unaltered, disable the insertion of newlines:
+
+>>> with open(filename, 'w') as f:
+...     Iter(data).map(str.upper).write_text_to_stream(f, insert_newlines=False)
+...     with open(filename) as f2:
+...         Iter.read_lines(f2).concat()
+'ABC'
+
+
+
+.. _Iter.write_bytes_to_stream:
+
+
+|sink| ``Iter.write_bytes_to_stream(self, stream: IO[bytes], flush=True)``
+==========================================================================
+
+
+
+>>> import tempfile
+>>> td = tempfile.TemporaryDirectory()
+>>> filename = td.name + 'bytes.bin'
+>>> data = [b'a', b'b', b'c']
+>>> with open(filename, 'wb') as f:
+...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
+...     with open(filename, 'rb') as f2:
+...         Iter.read_bytes(f2).collect()
+[b'aabbcc']
+>>> with open(filename, 'wb') as f:
+...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
+...     with open(filename, 'rb') as f2:
+...         Iter.read_bytes(f2).concat(b'')
+b'aabbcc'
+>>> with open(filename, 'wb') as f:
+...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
+...     with open(filename, 'rb') as f2:
+...         Iter.read_bytes(f2, size=1).collect()
+[b'a', b'a', b'b', b'b', b'c', b'c']
+>>> with open(filename, 'wb') as f:
+...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
+...     with open(filename, 'rb') as f2:
+...         Iter.read_bytes(f2, size=2).map(bytes.decode).collect()
+['aa', 'bb', 'cc']
+
+
+
+.. _Iter.write_to_file:
+
+
+|cool| |sink| ``Iter.write_to_file(self, file, mode="w", buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, )``
+===============================================================================================================================================
 
 
 
@@ -1051,7 +1264,7 @@ the reader to control how many bytes are read in each chunk.
 ...         f.writelines(['abc\n', 'def\n', 'ghi\n'])
 ...
 ...     # Open the file, transform, write out to new file.
-...     Iter.open(td + 'text.txt').map(str.upper).write(td + 'test2.txt')
+...     Iter.open(td + 'text.txt').map(str.upper).write_to_file(td + 'test2.txt')
 ...     # Read the new file, for the test
 ...     Iter.open(td + 'test2.txt').collect()
 ['ABC\n', 'DEF\n', 'GHI\n']
@@ -1188,7 +1401,7 @@ Yup, *that* ``enumerate``.
 
 In Python a dict can be constructed through an iterable of tuples:
 
->>> dict([('a', 0), ('b', 1)])  # doctest: +SKIP
+>>> dict([('a', 0), ('b', 1)])                  
 {'a': 0, 'b': 1}
 
 In *excitertools* we prefer chaining so this method is a shortcut
@@ -1438,13 +1651,15 @@ Exactly what you expect:
 .. _Iter.concat:
 
 
-|sink| ``Iter.concat(self, glue: AnyStr) -> "AnyStr"``
-======================================================
+|sink| ``Iter.concat(self, glue: AnyStr = '') -> "AnyStr"``
+===========================================================
 
 
 
 Joining strings.
 
+>>> Iter(['hello', 'there']).concat()
+'hellothere'
 >>> Iter(['hello', 'there']).concat(' ')
 'hello there'
 >>> Iter(['hello', 'there']).concat(',')
@@ -2272,17 +2487,17 @@ Reference: `more_itertools.sample <https://more-itertools.readthedocs.io/en/stab
 .. code-block:: python
 
     >>> iterable = range(100)
-    >>> Iter(iterable).sample(5).collect()  # doctest: +SKIP
+    >>> Iter(iterable).sample(5).collect()                  
     [81, 60, 96, 16, 4]
 
     >>> iterable = range(100)
     >>> weights = (i * i + 1 for i in range(100))
-    >>> Iter(iterable).sample(5, weights=weights)  # doctest: +SKIP
+    >>> Iter(iterable).sample(5, weights=weights)                  
     [79, 67, 74, 66, 78]
 
     >>> data = "abcdefgh"
     >>> weights = range(1, len(data) + 1)
-    >>> Iter(data).sample(k=len(data), weights=weights)  # doctest: +SKIP
+    >>> Iter(data).sample(k=len(data), weights=weights)                  
     ['c', 'a', 'b', 'e', 'g', 'd', 'h', 'f']
 
 
@@ -2793,9 +3008,9 @@ Reference: `more_itertools.powerset <https://more-itertools.readthedocs.io/en/st
 
 Reference: `more_itertools.random_product <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_product>`_
 
->>> Iter('abc').random_product(range(4), 'XYZ').collect()  # doctest: +SKIP
+>>> Iter('abc').random_product(range(4), 'XYZ').collect()                  
 ['c', 3, 'X']
->>> Iter.random_product('abc', range(4), 'XYZ').collect()  # doctest: +SKIP
+>>> Iter.random_product('abc', range(4), 'XYZ').collect()                  
 ['c', 0, 'Z']
 >>> Iter('abc').random_product(range(0)).collect()
 Traceback (most recent call last):
@@ -2816,7 +3031,7 @@ IndexError: Cannot choose from an empty sequence
 
 Reference: `more_itertools.random_permutation <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_permutation>`_
 
->>> Iter(range(5)).random_permutation().collect()  # doctest: +SKIP
+>>> Iter(range(5)).random_permutation().collect()                  
 [2, 0, 4, 3, 1]
 >>> Iter(range(0)).random_permutation().collect()
 []
@@ -2831,7 +3046,7 @@ Reference: `more_itertools.random_permutation <https://more-itertools.readthedoc
 
 Reference: `more_itertools.random_combination <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_combination>`_
 
->>> Iter(range(5)).random_combination(3).collect()  # doctest: +SKIP
+>>> Iter(range(5)).random_combination(3).collect()                  
 [0, 1, 4]
 >>> Iter(range(5)).random_combination(0).collect()
 []
@@ -2846,7 +3061,7 @@ Reference: `more_itertools.random_combination <https://more-itertools.readthedoc
 
 Reference: `more_itertools.random_combination_with_replacement <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_combination_with_replacement>`_
 
->>> Iter(range(3)).random_combination_with_replacement(5).collect()  # doctest: +SKIP
+>>> Iter(range(3)).random_combination_with_replacement(5).collect()                  
 [0, 0, 1, 2, 2]
 >>> Iter(range(3)).random_combination_with_replacement(0).collect()
 []
@@ -3345,9 +3560,8 @@ have waited in Iter.collect_ forever.
 .. _Iter.into_queue:
 
 
-|sink| ``Iter.into_queue(self, q: queue.Queue)``
-================================================
-
+``Iter.into_queue(self, q: queue.Queue) -> "Iter[T]"``
+======================================================
 
 This is a sink, like Iter.collect_, that consumes data from
 an iterator chain and puts the data into the given queue.
@@ -3356,7 +3570,7 @@ an iterator chain and puts the data into the given queue.
 
     >>> q = queue.Queue()
     >>> # This demonstrates the queue sink
-    >>> range(5).into_queue(q)
+    >>> range(5).into_queue(q).consume()
     >>> # Code below is only for verification
     >>> out = []
     >>> finished = False
@@ -3486,7 +3700,7 @@ you'll get an exception (Python 3.7+):
     >>> def collector():
     ...   for i in builtins.range(3):
     ...       output.append((yield))
-    >>> Iter.range(50).send_also(collector()).collect()  # doctest: +SKIP
+    >>> Iter.range(50).send_also(collector()).collect()                  
     Traceback (most recent call last):
         ...
     RuntimeError
@@ -3541,6 +3755,12 @@ results.
 
 >>> Iter(range(4)).reversed().collect()
 [3, 2, 1, 0]
+
+
+
+
+Experiments and Provisional Ideas
+#################################
 
 
 
@@ -3600,43 +3820,6 @@ has arrived.
 It can handle strings without any special considerations, but it doesn't
 do any special handling for bytes and bytearrays. For that, rather
 look at `concat()`.
-
-
-.. _concat:
-
-
-``concat(iterable: Iterable[AnyStr], glue: AnyStr) -> "AnyStr"``
-****************************************************************
-Concatenate strings, bytes and bytearrays. It is careful to avoid the
-problem with single bytes becoming integers, and it looks at the value
-of `glue` to know whether to handle bytes or strings.
-
-This function can raise ``ValueError`` if called with something
-other than ``bytes``, ``bytearray`` or ``str``.
-
-.. _from_queue:
-
-
-|source| ``from_queue(q: queue.Queue, timeout=None, sentinel=None) -> "Iter"``
-******************************************************************************
-
-
-Wrap a queue with an iterator interface. This allows it to participate
-in chaining operations. The iterator will block while waiting for
-new values to appear on the queue. This is useful: it allows you
-to easily and safely pass data between threads or processes, and
-feed the incoming data into a pipeline.
-
-The sentinel value, default ``None``, will terminate the iterator.
-
-.. code-block:: python
-
-    >>> q = queue.Queue()
-    >>> # This line puts stuff onto a queue
-    >>> range(10).chain([None]).map(q.put).consume()
-    >>> from_queue(q).filter(lambda x: 2 < x < 9).collect()
-    [3, 4, 5, 6, 7, 8]
-
 
 
 

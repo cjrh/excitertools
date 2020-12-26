@@ -46,8 +46,40 @@ excitertools
 
 Note that nearly all of the ``more-itertools`` extension library is included.
 
+Demo
+****
+
+.. code-block:: python
+
+    >>> range(10).map(lambda x: x*7).filter(lambda x: x % 3 == 0).collect()
+    [0, 21, 42, 63]
+    >>> range(10).map(lambda x: x*7).filter(lambda x: x > 0 and x % 3 == 0).collect()
+    [21, 42, 63]
+
+When the lines get long, parens can be used to split up each instruction:
+
+.. code-block:: python
+
+    >>> (
+    ...     range(10)
+    ...         .map(lambda x: x*7)
+    ...         .filter(lambda x: x % 3 == 0)
+    ...         .collect()
+    ... )
+    [0, 21, 42, 63]
+
+The operator module makes ``reduce`` quite useful for simple cases:
+
+.. code-block:: python
+
+    >>> from operator import add, mul
+    >>> range(10).map(lambda x: x*7).filter(lambda x: x > 0 and x % 3 == 0).reduce(add)
+    126
+    >>> range(10).map(lambda x: x*7).filter(lambda x: x > 0 and x % 3 == 0).reduce(mul)
+    55566
+
 .. contents::
-    :depth: 1
+    :depth: 2
 
 
 .. |warning| unicode:: U+26A0
@@ -58,8 +90,8 @@ Note that nearly all of the ``more-itertools`` extension library is included.
 .. |inf| unicode:: U+267E
 
 
-API Documentation
-#################
+How to Understand the API Documentation
+#######################################
 
 Several symbols are used to indicate things about parts of the API:
 
@@ -82,6 +114,21 @@ why they're presented first.
 The API includes wrappers for the stdlib *itertools* module, including
 the "recipes" given in the *itertools* docs, as well as wrappers for
 the iterators from the more-itertools_ 3rd-party package.
+
+Module-level Replacements for Builtins
+######################################
+
+The following module-level functions, like range_, zip_ and so on, are
+intended to be used as replacements for their homonymous builtins. The
+only difference between these and the builtin versions is that these
+return instances of the Iter_ class. Note that because Iter_ is itself
+iterable, it means that the functions here can be used as drop-in
+replacements.
+
+Once you have an Iter_ instance, all of its methods become available
+via function call chaining, so these toplevel functions are really only
+a convenience to "get started" using the chaining syntax with minimal
+upfront cost in your own code.
 
 .. contents::
     :local:
@@ -176,20 +223,6 @@ _zip = builtins.zip
 _enumerate = builtins.enumerate
 _map = builtins.map
 _filter = builtins.filter
-
-"""
-
------
-
-The following module-level functions, like range_, zip_ and so on, are 
-intended to be used as replacements for their homonymous builtins. The
-only difference between these and the builtin versions is that these 
-return instances of the Iter_ class. Note that because Iter_ is itself
-iterable, it means that the functions here can be used as drop-in 
-replacements.
-
-"""
-
 
 def range(*args) -> "Iter[int]":
     """
@@ -712,6 +745,121 @@ def splititer_regex(
     return Iter(inner())
 
 
+def concat(iterable: Iterable[AnyStr], glue: AnyStr) -> "AnyStr":
+    """Concatenate strings, bytes and bytearrays. It is careful to avoid the
+     problem with single bytes becoming integers, and it looks at the value
+     of `glue` to know whether to handle bytes or strings."""
+    if isinstance(glue, (bytes, bytearray)):
+        return glue.join(
+            # TODO: this seems like a really inefficient way to do this.
+            #  it might be better to use interleave/intersperse and just
+            #  call bytes() on the result
+            int.to_bytes(v, 1, 'little') if isinstance(v, int) else v
+            for v in iterable
+        )
+
+    elif isinstance(glue, str):
+        return glue.join(iterable)
+
+    else:
+        """ 
+        This function can raise ``ValueError`` if called with something
+        other than ``bytes``, ``bytearray`` or ``str``."""
+        raise ValueError("Must be called with bytes, bytearray or str")
+
+
+def from_queue(q: queue.Queue, timeout=None, sentinel=None) -> "Iter":
+    """
+    |cool|
+    |source|
+
+    Wrap a queue with an iterator interface. This allows it to participate
+    in chaining operations. The iterator will block while waiting for
+    new values to appear on the queue. This is useful: it allows you
+    to easily and safely pass data between threads or processes, and
+    feed the incoming data into a pipeline.
+
+    The sentinel value, default ``None``, will terminate the iterator.
+
+    .. code-block:: python
+
+        >>> q = queue.Queue()
+        >>> # This line puts stuff onto a queue
+        >>> range(10).chain([None]).map(q.put).consume()
+        >>> from_queue(q).filter(lambda x: 2 < x < 9).collect()
+        [3, 4, 5, 6, 7, 8]
+
+    This can be used in the same way you would normally use a queue, in
+    that it will block while waiting for future input. This makes it
+    convenient to run in a thread and wait for work. Below is a rough
+    sketch of how one might cobble together a thread pool using this
+    feature. Note the use of Iter.side_effect_ to call ``task_done()``
+    on the queue.
+
+    .. code-block:: python
+
+        import queue
+        from threading import Thread
+        import logging
+        from excitertools import from_queue
+
+        logger = logging.getLogger(__name__)
+
+        def process_job(job):
+            result = ...
+            return result
+
+        def worker(inputs: Queue, results: Queue):
+            (
+                from_queue(inputs)
+                .side_effect(lambda job: logger.info(f"Received job {job}")
+                .map(process_job)
+                .side_effect(lambda result: logger.info(f"Got result {job}")
+                .into_queue(results)
+                # Note that we only mark the task as done after the result
+                # is added to the results queue.
+                .side_effect(lambda _: inputs.task_done()
+            )
+
+        def create_job_pool(n: int) -> Tuple[Queue, Queue, Callable]:
+            \"\"\"Returns two queues, and a pool shutdown method. The
+            shutdown function can be called to shut down the pool and
+            the ``inputs`` queue. Caller is responsible for draining
+            the ``results`` queue.\"\"\"
+
+            # Independent control of the sizes of the input and output
+            # queues is interesting: it lets you decide how to bias
+            # backpressure depending on the details of your workload.
+            inputs, results = Queue(maxsize=100), Queue(maxsize=3)
+
+            kwargs = dict(target=worker, args=(inputs, results), daemon=True)
+            threads = repeat(Thread).map(lambda T: T(**kwargs)).take(n).collect()
+
+            def shutdown():
+                # Shut down each thread
+                repeat(None).map(inputs.put).take(n).consume()
+                inputs.join()
+                Iter(threads).map(lambda t: t.join()).consume()
+
+            return inputs, results, shutdown
+
+    Now the two queues ``inputs`` and ``results`` can be used in various
+    other threads to supply and consume data.
+
+    """
+    return Iter.from_queue(q, timeout=timeout, sentinel=sentinel)
+
+"""
+
+The ``Iter`` Class
+##################
+
+.. contents::
+    :backlinks: entry
+    :local:
+
+"""
+
 class Iter(Generic[T]):
     """
     |cool|
@@ -1116,6 +1264,8 @@ class Iter(Generic[T]):
     @classmethod
     def read_lines(cls, stream: IO[str], rewind=True):
         """
+        |source|
+
         >>> import tempfile
         >>> with tempfile.TemporaryDirectory() as td:
         ...     # Put some random text into a temporary file
@@ -1135,6 +1285,8 @@ class Iter(Generic[T]):
     @classmethod
     def read_bytes(cls, stream: IO[bytes], size: Union[Callable[[], int], int] = -1, rewind=True):
         """
+        |source|
+
         The ``size`` parameter can be used to control how many bytes are
         read for each advancement of the iterator chain. Here we set ``size=1``
         which means we'll get back one byte at a time.
@@ -3368,9 +3520,8 @@ class Iter(Generic[T]):
         """
         return Iter.repeatfunc(q.get, timeout).takewhile(lambda v: v is not None)
 
-    def into_queue(self, q: queue.Queue):
+    def into_queue(self, q: queue.Queue) -> "Iter[T]":
         """
-        |sink|
         This is a sink, like Iter.collect_, that consumes data from
         an iterator chain and puts the data into the given queue.
 
@@ -3378,7 +3529,7 @@ class Iter(Generic[T]):
 
             >>> q = queue.Queue()
             >>> # This demonstrates the queue sink
-            >>> range(5).into_queue(q)
+            >>> range(5).into_queue(q).consume()
             >>> # Code below is only for verification
             >>> out = []
             >>> finished = False
@@ -3391,7 +3542,7 @@ class Iter(Generic[T]):
             [0, 1, 2, 3, 4]
 
         """
-        self.map(q.put).consume()
+        return self.map(q.put)
 
     def send(self, collector: Generator, close_collector_when_done=False) -> "None":
         """
@@ -3576,6 +3727,14 @@ class Iter(Generic[T]):
         """
         return Iter(reversed(self.collect()))
 
+"""
+
+Experiments and Provisional Ideas
+#################################
+
+"""
+
+
 
 class IterDict(UserDict):
     """
@@ -3627,52 +3786,6 @@ def insert_separator(iterable: Iterable[Any], glue: Any) -> "Iterable[Any]":
         if glue is not None:
             yield glue
         yield item
-
-
-def concat(iterable: Iterable[AnyStr], glue: AnyStr) -> "AnyStr":
-    """Concatenate strings, bytes and bytearrays. It is careful to avoid the
-     problem with single bytes becoming integers, and it looks at the value
-     of `glue` to know whether to handle bytes or strings."""
-    if isinstance(glue, (bytes, bytearray)):
-        return glue.join(
-            # TODO: this seems like a really inefficient way to do this.
-            #  it might be better to use interleave/intersperse and just
-            #  call bytes() on the result
-            int.to_bytes(v, 1, 'little') if isinstance(v, int) else v
-            for v in iterable
-        )
-
-    elif isinstance(glue, str):
-        return glue.join(iterable)
-
-    else:
-        """ 
-        This function can raise ``ValueError`` if called with something
-        other than ``bytes``, ``bytearray`` or ``str``."""
-        raise ValueError("Must be called with bytes, bytearray or str")
-
-
-def from_queue(q: queue.Queue, timeout=None, sentinel=None) -> "Iter":
-    """
-    |source|
-    Wrap a queue with an iterator interface. This allows it to participate
-    in chaining operations. The iterator will block while waiting for
-    new values to appear on the queue. This is useful: it allows you
-    to easily and safely pass data between threads or processes, and
-    feed the incoming data into a pipeline.
-
-    The sentinel value, default ``None``, will terminate the iterator.
-
-    .. code-block:: python
-
-        >>> q = queue.Queue()
-        >>> # This line puts stuff onto a queue
-        >>> range(10).chain([None]).map(q.put).consume()
-        >>> from_queue(q).filter(lambda x: 2 < x < 9).collect()
-        [3, 4, 5, 6, 7, 8]
-
-    """
-    return Iter.from_queue(q, timeout=timeout, sentinel=sentinel)
 
 
 """
