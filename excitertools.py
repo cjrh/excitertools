@@ -1169,6 +1169,8 @@ class Iter(Generic[T]):
         ...     )
         ...     len(data)
         100
+
+        >>> td.cleanup()
         """
         if rewind:
             stream.seek(0)
