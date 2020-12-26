@@ -79,7 +79,7 @@ The operator module makes ``reduce`` quite useful for simple cases:
     55566
 
 .. contents::
-    :depth: 2
+    :depth: 1
 
 
 .. |warning| unicode:: U+26A0
