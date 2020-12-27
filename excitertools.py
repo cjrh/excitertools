@@ -68,14 +68,43 @@ When the lines get long, parens can be used to split up each instruction:
     ... )
     [0, 21, 42, 63]
 
-The operator module makes ``reduce`` quite useful for simple cases:
+What's also interesting about that is how lambda's can easily contain these
+processing chains, since an entire chain is a single expression. For
+example:
+
+.. code-block:: python
+
+    >>> names = ['caleb', 'james', 'gina']
+    >>> Iter(names).map(
+    ...     lambda name: (
+    ...         Iter(name)
+    ...             .map(lambda c: c.upper() if c in 'aeiouy' else c)
+    ...             .collect(str)
+    ...     )
+    ... ).collect()
+    ['cAlEb', 'jAmEs', 'gInA']
+
+Something I've noticed is that ``reduce`` seems easier to use and reason
+about with this fluent interface, as compared to the conventional usage
+as a standalone function; also, the operator module makes ``reduce`` quite
+useful for simple cases:
 
 .. code-block:: python
 
     >>> from operator import add, mul
-    >>> range(10).map(lambda x: x*7).filter(lambda x: x > 0 and x % 3 == 0).reduce(add)
+    >>> (
+    ...     range(10)
+    ...     .map(lambda x: x*7)
+    ...     .filter(lambda x: x > 0 and x % 3 == 0)
+    ...     .reduce(add)
+    ... )
     126
-    >>> range(10).map(lambda x: x*7).filter(lambda x: x > 0 and x % 3 == 0).reduce(mul)
+    >>> (
+    ...     range(10)
+    ...     .map(lambda x: x*7)
+    ...     .filter(lambda x: x > 0 and x % 3 == 0)
+    ...     .reduce(mul)
+    ... )
     55566
 
 .. contents::
