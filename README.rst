@@ -9,6 +9,10 @@
 .. image:: https://img.shields.io/pypi/pyversions/excitertools.svg
     :target: https://pypi.python.org/pypi/excitertools
 
+.. image:: https://img.shields.io/pypi/implementation/excitertools
+    :alt: PyPI - Implementation
+    :target: https://pypi.python.org/pypi/excitertools
+
 .. image:: https://img.shields.io/github/tag/cjrh/excitertools.svg
     :target: https://github.com/cjrh/excitertools
 
