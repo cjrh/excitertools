@@ -1267,15 +1267,26 @@ class Iter(Generic[T]):
         |source|
 
         >>> import tempfile
-        >>> with tempfile.TemporaryDirectory() as td:
-        ...     # Put some random text into a temporary file
-        ...     with open(td + 'text.txt', 'w') as f:
-        ...         f.writelines(['abc\\n', 'def\\n', 'ghi\\n'])
+        >>> td = tempfile.TemporaryDirectory()
+        ... # Put some random text into a temporary file
+        >>> with open(td.name + 'text.txt', 'w') as f:
+        ...     f.writelines(['abc\\n', 'def\\n', 'ghi\\n'])
         ...
-        ...     # Use read_lines to process the file data
-        ...     with open(td + 'text.txt') as f:
-        ...         Iter.read_lines(f).filter(lambda line: 'def' in line).collect()
+
+        Use read_lines to process the file data
+        >>> with open(td.name + 'text.txt') as f:
+        ...     Iter.read_lines(f).filter(lambda line: 'def' in line).collect()
         ['def\\n']
+
+        The ``rewind`` parameter can be used to read sections of a file.
+        >>> with open(td.name + 'text.txt') as f:
+        ...     part1 = Iter.read_lines(f).take(1).collect()
+        ...     part2 = Iter.read_lines(f, rewind=False).collect()
+        >>> part1
+        ['abc\\n']
+        >>> part2
+        ['def\\n', 'ghi\\n']
+        >>> td.cleanup()
 
         """
         if rewind:
@@ -1322,6 +1333,15 @@ class Iter(Generic[T]):
         ...     )
         ...     len(data)
         100
+
+        The ``rewind`` parameter can be used to read sections of a file.
+        >>> with open(filename, 'rb') as f:
+        ...     part1 = Iter.read_bytes(f, size=10).take(1).collect()
+        ...     part2 = Iter.read_bytes(f, rewind=False).collect()
+        >>> part1
+        [b'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00']
+        >>> len(part2[0])
+        90
         >>> td.cleanup()
         """
         if rewind:
@@ -1361,6 +1381,18 @@ class Iter(Generic[T]):
         ...         Iter.read_lines(f2).concat()
         'ABC'
 
+        Multiple successive writes may be slowed down by the default
+        ``flush=True`` parameter. In this case you can delay flushing until
+        everything has been written.
+        >>> with open(filename, 'w') as f:
+        ...     Iter(data).map(str.upper).write_text_to_stream(f, flush=False)
+        ...     Iter(data).map(str.upper).write_text_to_stream(f, flush=False)
+        ...     Iter(data).map(str.upper).write_text_to_stream(f, flush=True)
+        ...     with open(filename) as f2:
+        ...         Iter.read_lines(f2).concat()
+        'A\\nB\\nCA\\nB\\nCA\\nB\\nC'
+        >>> td.cleanup()
+
         """
         if insert_newlines:
             stream.writelines(self.intersperse('\n'))
@@ -1398,6 +1430,16 @@ class Iter(Generic[T]):
         ...     with open(filename, 'rb') as f2:
         ...         Iter.read_bytes(f2, size=2).map(bytes.decode).collect()
         ['aa', 'bb', 'cc']
+
+        Flushing can be delayed if multiple parts are to be written.
+        >>> with open(filename, 'wb') as f:
+        ...     it = Iter(data)
+        ...     it.map(lambda x: x * 2 ).take(2).write_bytes_to_stream(f, flush=False)
+        ...     it.map(lambda x: x * 2 ).write_bytes_to_stream(f, flush=True)
+        ...     with open(filename, 'rb') as f2:
+        ...         Iter.read_bytes(f2, size=2).map(bytes.decode).collect()
+        ['aa', 'bb', 'cc']
+        >>> td.cleanup()
 
         """
         stream.writelines(self)
