@@ -190,6 +190,7 @@ from typing import (
     Optional,
     Generator,
     IO,
+    Sized,
 )
 import collections.abc
 import queue
@@ -1749,6 +1750,114 @@ class Iter(Generic[T]):
 
         """
         return Iter(v for v in self if function(*v))
+
+    def filter_gt(self, value) -> "Iter[T]":
+        """
+        Convenience method
+
+        .. code-block:: python
+
+            >>> Iter([1,2,3]).filter_gt(1).collect()
+            [2, 3]
+        """
+        return self.filter(lambda x: x > value)
+
+    def filter_ge(self, value) -> "Iter[T]":
+        """
+        Convenience method
+
+        .. code-block:: python
+
+            >>> Iter([1,2,3]).filter_ge(2).collect()
+            [2, 3]
+        """
+        return self.filter(lambda x: x >= value)
+
+    def filter_lt(self, value) -> "Iter[T]":
+        """
+        Convenience method
+
+        .. code-block:: python
+
+            >>> Iter([1,2,3]).filter_lt(3).collect()
+            [1, 2]
+        """
+        return self.filter(lambda x: x < value)
+
+    def filter_le(self, value) -> "Iter[T]":
+        """
+        Convenience method
+
+        .. code-block:: python
+
+            >>> Iter([1,2,3]).filter_le(2).collect()
+            [1, 2]
+        """
+        return self.filter(lambda x: x <= value)
+
+    def filter_eq(self, value) -> "Iter[T]":
+        """
+        Convenience method
+
+        .. code-block:: python
+
+            >>> Iter([1,2,3]).filter_eq(2).collect()
+            [2]
+        """
+        return self.filter(lambda x: x == value)
+
+    def filter_ne(self, value) -> "Iter[T]":
+        """
+        Convenience method
+
+        .. code-block:: python
+
+            >>> Iter([1,2,3]).filter_ne(2).collect()
+            [1, 3]
+        """
+        return self.filter(lambda x: x != value)
+
+    def filter_in(self, value: Sized) -> "Iter[T]":
+        """
+        Convenience method for membership testing. Note that the value
+        parameter must be at least ``Sized`` because it gets reused
+        over and over for each pass of the iterator chain. For example,
+        passing in things like ``range()`` will not work properly because
+        it will become progressively exhausted.
+
+        .. code-block:: python
+
+            >>> Iter([1,2,3]).filter_in([2, 3, 4, 5]).collect()
+            [2, 3]
+            >>> Iter([1,2,3]).filter_in(range(2, 8).collect()).collect()
+            [2, 3]
+            >>> Iter([1,2,3]).filter_in({2, 3, 4, 5}).collect()
+            [2, 3]
+            >>> Iter([1,2,3]).filter_in(dict.fromkeys({2, 3, 4, 5})).collect()
+            [2, 3]
+        """
+        return self.filter(lambda x: x in value)
+
+    def filter_ni(self, value) -> "Iter[T]":
+        """
+        Convenience method for membership testing. Note that the value
+        parameter must be at least ``Sized`` because it gets reused
+        over and over for each pass of the iterator chain. For example,
+        passing in things like ``range()`` will not work properly because
+        it will become progressively exhausted.
+
+        .. code-block:: python
+
+            >>> Iter([1,2,3]).filter_ni([2, 3, 4, 5]).collect()
+            [1]
+            >>> Iter([1,2,3]).filter_ni(range(2, 8).collect()).collect()
+            [1]
+            >>> Iter([1,2,3]).filter_ni({2, 3, 4, 5}).collect()
+            [1]
+            >>> Iter([1,2,3]).filter_ni(dict.fromkeys({2, 3, 4, 5})).collect()
+            [1]
+        """
+        return self.filter(lambda x: x not in value)
 
     def reduce(self, func: Callable[..., T], *args) -> "T":
         """
