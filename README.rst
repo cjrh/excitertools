@@ -9,10 +9,6 @@
 .. image:: https://img.shields.io/pypi/pyversions/excitertools.svg
     :target: https://pypi.python.org/pypi/excitertools
 
-.. image:: https://img.shields.io/pypi/implementation/excitertools
-    :alt: PyPI - Implementation
-    :target: https://pypi.python.org/pypi/excitertools
-
 .. image:: https://img.shields.io/github/tag/cjrh/excitertools.svg
     :target: https://github.com/cjrh/excitertools
 
@@ -72,14 +68,43 @@ When the lines get long, parens can be used to split up each instruction:
     ... )
     [0, 21, 42, 63]
 
-The operator module makes ``reduce`` quite useful for simple cases:
+What's also interesting about that is how lambda's can easily contain these
+processing chains, since an entire chain is a single expression. For
+example:
+
+.. code-block:: python
+
+    >>> names = ['caleb', 'james', 'gina']
+    >>> Iter(names).map(
+    ...     lambda name: (
+    ...         Iter(name)
+    ...             .map(lambda c: c.upper() if c in 'aeiouy' else c)
+    ...             .collect(str)
+    ...     )
+    ... ).collect()
+    ['cAlEb', 'jAmEs', 'gInA']
+
+Something I've noticed is that ``reduce`` seems easier to use and reason
+about with this fluent interface, as compared to the conventional usage
+as a standalone function; also, the operator module makes ``reduce`` quite
+useful for simple cases:
 
 .. code-block:: python
 
     >>> from operator import add, mul
-    >>> range(10).map(lambda x: x*7).filter(lambda x: x > 0 and x % 3 == 0).reduce(add)
+    >>> (
+    ...     range(10)
+    ...     .map(lambda x: x*7)
+    ...     .filter(lambda x: x > 0 and x % 3 == 0)
+    ...     .reduce(add)
+    ... )
     126
-    >>> range(10).map(lambda x: x*7).filter(lambda x: x > 0 and x % 3 == 0).reduce(mul)
+    >>> (
+    ...     range(10)
+    ...     .map(lambda x: x*7)
+    ...     .filter(lambda x: x > 0 and x % 3 == 0)
+    ...     .reduce(mul)
+    ... )
     55566
 
 .. contents::
@@ -1128,15 +1153,26 @@ only reading is supported.
 
 
 >>> import tempfile
->>> with tempfile.TemporaryDirectory() as td:
-...     # Put some random text into a temporary file
-...     with open(td + 'text.txt', 'w') as f:
-...         f.writelines(['abc\n', 'def\n', 'ghi\n'])
+>>> td = tempfile.TemporaryDirectory()
+... # Put some random text into a temporary file
+>>> with open(td.name + 'text.txt', 'w') as f:
+...     f.writelines(['abc\n', 'def\n', 'ghi\n'])
 ...
-...     # Use read_lines to process the file data
-...     with open(td + 'text.txt') as f:
-...         Iter.read_lines(f).filter(lambda line: 'def' in line).collect()
+
+Use read_lines to process the file data
+>>> with open(td.name + 'text.txt') as f:
+...     Iter.read_lines(f).filter(lambda line: 'def' in line).collect()
 ['def\n']
+
+The ``rewind`` parameter can be used to read sections of a file.
+>>> with open(td.name + 'text.txt') as f:
+...     part1 = Iter.read_lines(f).take(1).collect()
+...     part2 = Iter.read_lines(f, rewind=False).collect()
+>>> part1
+['abc\n']
+>>> part2
+['def\n', 'ghi\n']
+>>> td.cleanup()
 
 
 
@@ -1183,6 +1219,15 @@ the reader to control how many bytes are read in each chunk.
 ...     )
 ...     len(data)
 100
+
+The ``rewind`` parameter can be used to read sections of a file.
+>>> with open(filename, 'rb') as f:
+...     part1 = Iter.read_bytes(f, size=10).take(1).collect()
+...     part2 = Iter.read_bytes(f, rewind=False).collect()
+>>> part1
+[b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00']
+>>> len(part2[0])
+90
 >>> td.cleanup()
 
 
@@ -1214,6 +1259,18 @@ processing chain unaltered, disable the insertion of newlines:
 ...     with open(filename) as f2:
 ...         Iter.read_lines(f2).concat()
 'ABC'
+
+Multiple successive writes may be slowed down by the default
+``flush=True`` parameter. In this case you can delay flushing until
+everything has been written.
+>>> with open(filename, 'w') as f:
+...     Iter(data).map(str.upper).write_text_to_stream(f, flush=False)
+...     Iter(data).map(str.upper).write_text_to_stream(f, flush=False)
+...     Iter(data).map(str.upper).write_text_to_stream(f, flush=True)
+...     with open(filename) as f2:
+...         Iter.read_lines(f2).concat()
+'A\nB\nCA\nB\nCA\nB\nC'
+>>> td.cleanup()
 
 
 
@@ -1249,6 +1306,16 @@ b'aabbcc'
 ...     with open(filename, 'rb') as f2:
 ...         Iter.read_bytes(f2, size=2).map(bytes.decode).collect()
 ['aa', 'bb', 'cc']
+
+Flushing can be delayed if multiple parts are to be written.
+>>> with open(filename, 'wb') as f:
+...     it = Iter(data)
+...     it.map(lambda x: x * 2 ).take(2).write_bytes_to_stream(f, flush=False)
+...     it.map(lambda x: x * 2 ).write_bytes_to_stream(f, flush=True)
+...     with open(filename, 'rb') as f2:
+...         Iter.read_bytes(f2, size=2).map(bytes.decode).collect()
+['aa', 'bb', 'cc']
+>>> td.cleanup()
 
 
 
