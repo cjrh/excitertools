@@ -2193,7 +2193,22 @@ class Iter(Generic[T]):
         return Iter(more_itertools.split_when(self.x, pred))
 
     def bucket(self, key, validator=None):
-        """ Docstring TBD """
+        """ 
+        This is the basic example, copied from the more-itertools
+        docs:
+
+        .. code-block:: python
+
+            >>> iterable = ['a1', 'b1', 'c1', 'a2', 'b2', 'c2', 'b3']
+            >>> b = Iter(iterable).bucket(key=lambda x: x[0])
+            >>> sorted(b)
+            ['a', 'b', 'c']
+            >>> list(b['a'])
+            ['a1', 'a2']
+
+        Note that once consumed, you can't iterate over the contents
+        of a group again.
+        """
 
         class _bucket(more_itertools.bucket):
             def __iter__(self):
