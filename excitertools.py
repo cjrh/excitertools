@@ -3814,15 +3814,11 @@ class Iter(Generic[T]):
         Note that Iter.send_ is a sink, so no further chaining is allowed.
 
         """
+        if inspect.getgeneratorstate(collector) == 'GEN_CREATED':
+            next(collector)
+
         for v in self:
-            try:
-                collector.send(v)
-            except TypeError as e:
-                if "just-started generator" in str(e):
-                    next(collector)
-                    collector.send(v)
-                else:  # pragma: no cover
-                    raise
+            collector.send(v) 
 
         if close_collector_when_done:
             collector.close()
@@ -3875,14 +3871,10 @@ class Iter(Generic[T]):
 
         """
         def func(v):
-            try:
-                collector.send(v)
-            except TypeError as e:
-                if "just-started generator" in str(e):
-                    next(collector)
-                    collector.send(v)
-                else:  # pragma: no cover
-                    raise
+            if inspect.getgeneratorstate(collector) == 'GEN_CREATED':
+                next(collector)
+
+            collector.send(v)
 
         return self.side_effect(func)
 
