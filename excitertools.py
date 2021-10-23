@@ -3870,10 +3870,10 @@ class Iter(Generic[T]):
         live at least as long as the iterator feeding it.
 
         """
-        def func(v):
-            if inspect.getgeneratorstate(collector) == 'GEN_CREATED':
-                next(collector)
+        if inspect.getgeneratorstate(collector) == 'GEN_CREATED':
+            next(collector)
 
+        def func(v):
             collector.send(v)
 
         return self.side_effect(func)
