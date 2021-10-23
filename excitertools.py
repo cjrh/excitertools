@@ -3814,15 +3814,11 @@ class Iter(Generic[T]):
         Note that Iter.send_ is a sink, so no further chaining is allowed.
 
         """
+        if inspect.getgeneratorstate(collector) == 'GEN_CREATED':
+            next(collector)
+
         for v in self:
-            try:
-                collector.send(v)
-            except TypeError as e:
-                if "just-started generator" in str(e):
-                    next(collector)
-                    collector.send(v)
-                else:  # pragma: no cover
-                    raise
+            collector.send(v) 
 
         if close_collector_when_done:
             collector.close()
@@ -3831,11 +3827,10 @@ class Iter(Generic[T]):
         """
         Reference: `more_itertools.consumer <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.consumer>`_
 
-        Some ideas around a reverse iterator as a sink. The requirement to
-        first "next" a just-started generator before you can send values
-        into it is irritating, but not insurmountable. This method will
-        automatically detect the "just-started generator" situation, do the
-        ``next()``, and then send in the first value as necessary.
+        Some ideas around a reverse iterator as a sink. Usually you have
+        first to "send" a ``None`` into a generator if you want to send
+        more values into it (or call ``next()`` on it), but we handle 
+        that automatically.
 
         Simple case:
 
@@ -3846,6 +3841,22 @@ class Iter(Generic[T]):
             ...     while True:
             ...         output.append((yield))
             >>> Iter.range(3).send_also(collector()).collect()
+            [0, 1, 2]
+            >>> output
+            [0, 1, 2]
+
+        However, if the caller already started the generator, that 
+        works too:
+
+        .. code-block:: python
+
+            >>> output = []
+            >>> def collector():
+            ...     while True:
+            ...         output.append((yield))
+            >>> g = collector()
+            >>> next(g)  # This "starts" the generator
+            >>> Iter.range(3).send_also(g).collect()
             [0, 1, 2]
             >>> output
             [0, 1, 2]
@@ -3874,15 +3885,11 @@ class Iter(Generic[T]):
         live at least as long as the iterator feeding it.
 
         """
+        if inspect.getgeneratorstate(collector) == 'GEN_CREATED':
+            next(collector)
+
         def func(v):
-            try:
-                collector.send(v)
-            except TypeError as e:
-                if "just-started generator" in str(e):
-                    next(collector)
-                    collector.send(v)
-                else:  # pragma: no cover
-                    raise
+            collector.send(v)
 
         return self.side_effect(func)
 
