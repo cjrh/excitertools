@@ -188,10 +188,10 @@ the original function.
     >>> range(1, 101, 3).filter(lambda x: x % 7 == 0).collect()
     [7, 28, 49, 70, 91]
 
-This example multiples, element by element, the series [0:5] with the
-series [1:6]. Two things to note: Firstly, Iter.zip_ is used to emit
+This example multiples, element by element, the series ``[0:5]`` with the
+series ``[1:6]``. Two things to note: Firstly, Iter.zip_ is used to emit
 the tuples from each series. Secondly, Iter.starmap_ is used to receive
-those tuples into separate arguments in the lambda.
+those tuples into separate arguments in the ``lambda``.
 
 .. code-block:: python
 
@@ -621,19 +621,20 @@ an instance of Iter_ to allow further iterable chaining.
 Wrapper for ``re.finditer``. Returns an instance of Iter_ to allow
 chaining.
 
->>> pat = r"\w+"
->>> text = "Well hello there! How ya doin!"
->>> finditer_regex(pat, text).map(str.lower).filter(lambda w: 'o' in w).collect()
-['hello', 'how', 'doin']
+.. code-block:: python
 
->>> finditer_regex(r"[A-Za-z']+", "A programmer's RegEx test.").collect()
-['A', "programmer's", 'RegEx', 'test']
->>> finditer_regex(r"[A-Za-z']+", "").collect()
-[]
->>> finditer_regex("", "").collect()
-['']
->>> finditer_regex("", "").filter(None).collect()
-[]
+    >>> pat = r"\w+"
+    >>> text = "Well hello there! How ya doin!"
+    >>> finditer_regex(pat, text).map(str.lower).filter(lambda w: 'o' in w).collect()
+    ['hello', 'how', 'doin']
+    >>> finditer_regex(r"[A-Za-z']+", "A programmer's RegEx test.").collect()
+    ['A', "programmer's", 'RegEx', 'test']
+    >>> finditer_regex(r"[A-Za-z']+", "").collect()
+    []
+    >>> finditer_regex("", "").collect()
+    ['']
+    >>> finditer_regex("", "").filter(None).collect()
+    []
 
 
 
@@ -655,41 +656,55 @@ kind of programming model, rather than performance.
 
 See more discussion `here <https://stackoverflow.com/questions/3862010/is-there-a-generator-version-of-string-split-in-python>`_.
 
->>> splititer_regex(r"\s", "A programmer's RegEx test.").collect()
-['A', "programmer's", 'RegEx', 'test.']
+.. code-block:: python
+
+    >>> splititer_regex(r"\s", "A programmer's RegEx test.").collect()
+    ['A', "programmer's", 'RegEx', 'test.']
 
 Note that splitting at a single whitespace character will return blanks
 for each found. This is different to how ``str.split()`` works.
 
->>> splititer_regex(r"\s", "aaa     bbb  \n  ccc\nddd\teee").collect()
-['aaa', '', '', '', '', 'bbb', '', '', '', '', 'ccc', 'ddd', 'eee']
+.. code-block:: python
+
+    >>> splititer_regex(r"\s", "aaa     bbb  \n  ccc\nddd\teee").collect()
+    ['aaa', '', '', '', '', 'bbb', '', '', '', '', 'ccc', 'ddd', 'eee']
 
 To match ``str.split()``, specify a sequence of whitespace as the
 regex pattern.
 
->>> splititer_regex(r"\s+", "aaa     bbb  \n  ccc\nddd\teee").collect()
-['aaa', 'bbb', 'ccc', 'ddd', 'eee']
+.. code-block:: python
+
+    >>> splititer_regex(r"\s+", "aaa     bbb  \n  ccc\nddd\teee").collect()
+    ['aaa', 'bbb', 'ccc', 'ddd', 'eee']
 
 Counting the whitespace
 
->>> splititer_regex(r"\s", "aaa     bbb  \n  ccc\nddd\teee").collect(Counter)
-Counter({'': 8, 'aaa': 1, 'bbb': 1, 'ccc': 1, 'ddd': 1, 'eee': 1})
+.. code-block:: python
+
+    >>> splititer_regex(r"\s", "aaa     bbb  \n  ccc\nddd\teee").collect(Counter)
+    Counter({'': 8, 'aaa': 1, 'bbb': 1, 'ccc': 1, 'ddd': 1, 'eee': 1})
 
 Lazy splitting at newlines
 
->>> splititer_regex(r"\n", "aaa     bbb  \n  ccc\nddd\teee").collect()
-['aaa     bbb  ', '  ccc', 'ddd\teee']
+.. code-block:: python
 
->>> splititer_regex(r"", "aaa").collect()
-['', 'a', 'a', 'a', '']
->>> splititer_regex(r"", "").collect()
-['', '']
->>> splititer_regex(r"\s", "").collect()
-['']
->>> splititer_regex(r"a", "").collect()
-['']
->>> splititer_regex(r"\s", "aaa").collect()
-['aaa']
+    >>> splititer_regex(r"\n", "aaa     bbb  \n  ccc\nddd\teee").collect()
+    ['aaa     bbb  ', '  ccc', 'ddd\teee']
+
+A few more examples:
+
+.. code-block:: python
+
+    >>> splititer_regex(r"", "aaa").collect()
+    ['', 'a', 'a', 'a', '']
+    >>> splititer_regex(r"", "").collect()
+    ['', '']
+    >>> splititer_regex(r"\s", "").collect()
+    ['']
+    >>> splititer_regex(r"a", "").collect()
+    ['']
+    >>> splititer_regex(r"\s", "aaa").collect()
+    ['aaa']
 
 
 
@@ -1152,27 +1167,40 @@ only reading is supported.
 
 
 
->>> import tempfile
->>> td = tempfile.TemporaryDirectory()
-... # Put some random text into a temporary file
->>> with open(td.name + 'text.txt', 'w') as f:
-...     f.writelines(['abc\n', 'def\n', 'ghi\n'])
-...
+Read lines from a file-like object.
+
+First, let's put some data in a file. We'll be using that
+file in the examples that follow.
+
+.. code-block:: python
+
+    >>> import tempfile
+    >>> td = tempfile.TemporaryDirectory()
+    ... # Put some random text into a temporary file
+    >>> with open(td.name + 'text.txt', 'w') as f:
+    ...     f.writelines(['abc\n', 'def\n', 'ghi\n'])
+    ...
 
 Use read_lines to process the file data
->>> with open(td.name + 'text.txt') as f:
-...     Iter.read_lines(f).filter(lambda line: 'def' in line).collect()
-['def\n']
+
+.. code-block:: python
+
+    >>> with open(td.name + 'text.txt') as f:
+    ...     Iter.read_lines(f).filter(lambda line: 'def' in line).collect()
+    ['def\n']
 
 The ``rewind`` parameter can be used to read sections of a file.
->>> with open(td.name + 'text.txt') as f:
-...     part1 = Iter.read_lines(f).take(1).collect()
-...     part2 = Iter.read_lines(f, rewind=False).collect()
->>> part1
-['abc\n']
->>> part2
-['def\n', 'ghi\n']
->>> td.cleanup()
+
+.. code-block:: python
+
+    >>> with open(td.name + 'text.txt') as f:
+    ...     part1 = Iter.read_lines(f).take(1).collect()
+    ...     part2 = Iter.read_lines(f, rewind=False).collect()
+    >>> part1
+    ['abc\n']
+    >>> part2
+    ['def\n', 'ghi\n']
+    >>> td.cleanup()
 
 
 
@@ -1188,47 +1216,64 @@ The ``size`` parameter can be used to control how many bytes are
 read for each advancement of the iterator chain. Here we set ``size=1``
 which means we'll get back one byte at a time.
 
->>> import tempfile
->>> td = tempfile.TemporaryDirectory()
->>> filename = td.name + 'bytes.bin'
+.. code-block:: python
 
-Put some random text into a temporary file
->>> with open(filename, 'wb') as f:
-...     x = f.write(b'\x00' * 100)
-...
->>> with open(filename, 'rb') as f:
-...     data = Iter.read_bytes(f, size=1).collect()
-...     len(data)
-100
->>> with open(filename, 'rb') as f:
-...     data = Iter.read_bytes(f).collect()
-...     len(data)
-1
+    >>> import tempfile
+    >>> td = tempfile.TemporaryDirectory()
+    >>> filename = td.name + 'bytes.bin'
+
+Put some random text into a temporary file:
+
+.. code-block:: python
+
+    >>> with open(filename, 'wb') as f:
+    ...     x = f.write(b'\x00' * 100)
+    ...
+    >>> with open(filename, 'rb') as f:
+    ...     data = Iter.read_bytes(f, size=1).collect()
+    ...     len(data)
+    100
+    >>> with open(filename, 'rb') as f:
+    ...     data = Iter.read_bytes(f).collect()
+    ...     len(data)
+    1
 
 A little more ambitious. Because ``size`` is a callable, we can use
 a ``deque`` and a ``side_effect`` to pass information back into
 the reader to control how many bytes are read in each chunk.
 
->>> read_sizes = deque([1])
->>> with open(filename, 'rb') as f:
-...     data = (
-...         Iter
-...             .read_bytes(f, size=lambda: read_sizes.popleft())
-...             .side_effect(lambda bytes: read_sizes.append(1))
-...             .collect()
-...     )
-...     len(data)
-100
+In this example we're reading 1 byte at a time. In a real example
+you might have a sequence of headers and bodies, where headers
+give size information about how many bytes are in the body
+corresponding to that header. Then you can precisely read 
+each body in sequence.
+
+.. code-block:: python
+
+    >>> read_sizes = deque([1])
+    >>> with open(filename, 'rb') as f:
+    ...     data = (
+    ...         Iter
+    ...             .read_bytes(f, size=lambda: read_sizes.popleft())
+    ...             .side_effect(lambda bytes: read_sizes.append(1))
+    ...             .collect()
+    ...     )
+    ...     len(data)
+    100
 
 The ``rewind`` parameter can be used to read sections of a file.
->>> with open(filename, 'rb') as f:
-...     part1 = Iter.read_bytes(f, size=10).take(1).collect()
-...     part2 = Iter.read_bytes(f, rewind=False).collect()
->>> part1
-[b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00']
->>> len(part2[0])
-90
->>> td.cleanup()
+
+.. code-block:: python
+
+    >>> with open(filename, 'rb') as f:
+    ...     part1 = Iter.read_bytes(f, size=10).take(1).collect()
+    ...     part2 = Iter.read_bytes(f, rewind=False).collect()
+    >>> part1
+    [b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00']
+    >>> len(part2[0])
+    90
+    >>> td.cleanup()
+
 
 
 .. _Iter.write_text_to_stream:
@@ -1239,38 +1284,45 @@ The ``rewind`` parameter can be used to read sections of a file.
 
 
 
->>> import tempfile
->>> td = tempfile.TemporaryDirectory()
->>> filename = td.name + 'text.txt'
+.. code-block:: python
 
->>> data = ['a', 'b', 'c']
->>> with open(filename, 'w') as f:
-...     Iter(data).map(str.upper).write_text_to_stream(f)
-...     with open(filename) as f2:
-...         Iter.read_lines(f2).concat()
-'A\nB\nC'
+    >>> import tempfile
+    >>> td = tempfile.TemporaryDirectory()
+    >>> filename = td.name + 'text.txt'
+
+    >>> data = ['a', 'b', 'c']
+    >>> with open(filename, 'w') as f:
+    ...     Iter(data).map(str.upper).write_text_to_stream(f)
+    ...     with open(filename) as f2:
+    ...         Iter.read_lines(f2).concat()
+    'A\nB\nC'
 
 If some prior step adds newlines, or more commonly, newlines
 originate with a data source and are simply carried through the
 processing chain unaltered, disable the insertion of newlines:
 
->>> with open(filename, 'w') as f:
-...     Iter(data).map(str.upper).write_text_to_stream(f, insert_newlines=False)
-...     with open(filename) as f2:
-...         Iter.read_lines(f2).concat()
-'ABC'
+.. code-block:: python
+
+    >>> with open(filename, 'w') as f:
+    ...     Iter(data).map(str.upper).write_text_to_stream(f, insert_newlines=False)
+    ...     with open(filename) as f2:
+    ...         Iter.read_lines(f2).concat()
+    'ABC'
 
 Multiple successive writes may be slowed down by the default
 ``flush=True`` parameter. In this case you can delay flushing until
 everything has been written.
->>> with open(filename, 'w') as f:
-...     Iter(data).map(str.upper).write_text_to_stream(f, flush=False)
-...     Iter(data).map(str.upper).write_text_to_stream(f, flush=False)
-...     Iter(data).map(str.upper).write_text_to_stream(f, flush=True)
-...     with open(filename) as f2:
-...         Iter.read_lines(f2).concat()
-'A\nB\nCA\nB\nCA\nB\nC'
->>> td.cleanup()
+
+.. code-block:: python
+
+    >>> with open(filename, 'w') as f:
+    ...     Iter(data).map(str.upper).write_text_to_stream(f, flush=False)
+    ...     Iter(data).map(str.upper).write_text_to_stream(f, flush=False)
+    ...     Iter(data).map(str.upper).write_text_to_stream(f, flush=True)
+    ...     with open(filename) as f2:
+    ...         Iter.read_lines(f2).concat()
+    'A\nB\nCA\nB\nCA\nB\nC'
+    >>> td.cleanup()
 
 
 
@@ -1282,40 +1334,45 @@ everything has been written.
 
 
 
->>> import tempfile
->>> td = tempfile.TemporaryDirectory()
->>> filename = td.name + 'bytes.bin'
->>> data = [b'a', b'b', b'c']
->>> with open(filename, 'wb') as f:
-...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
-...     with open(filename, 'rb') as f2:
-...         Iter.read_bytes(f2).collect()
-[b'aabbcc']
->>> with open(filename, 'wb') as f:
-...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
-...     with open(filename, 'rb') as f2:
-...         Iter.read_bytes(f2).concat(b'')
-b'aabbcc'
->>> with open(filename, 'wb') as f:
-...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
-...     with open(filename, 'rb') as f2:
-...         Iter.read_bytes(f2, size=1).collect()
-[b'a', b'a', b'b', b'b', b'c', b'c']
->>> with open(filename, 'wb') as f:
-...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
-...     with open(filename, 'rb') as f2:
-...         Iter.read_bytes(f2, size=2).map(bytes.decode).collect()
-['aa', 'bb', 'cc']
+.. code-block:: python
+
+    >>> import tempfile
+    >>> td = tempfile.TemporaryDirectory()
+    >>> filename = td.name + 'bytes.bin'
+    >>> data = [b'a', b'b', b'c']
+    >>> with open(filename, 'wb') as f:
+    ...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
+    ...     with open(filename, 'rb') as f2:
+    ...         Iter.read_bytes(f2).collect()
+    [b'aabbcc']
+    >>> with open(filename, 'wb') as f:
+    ...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
+    ...     with open(filename, 'rb') as f2:
+    ...         Iter.read_bytes(f2).concat(b'')
+    b'aabbcc'
+    >>> with open(filename, 'wb') as f:
+    ...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
+    ...     with open(filename, 'rb') as f2:
+    ...         Iter.read_bytes(f2, size=1).collect()
+    [b'a', b'a', b'b', b'b', b'c', b'c']
+    >>> with open(filename, 'wb') as f:
+    ...     Iter(data).map(lambda x: x * 2 ).write_bytes_to_stream(f)
+    ...     with open(filename, 'rb') as f2:
+    ...         Iter.read_bytes(f2, size=2).map(bytes.decode).collect()
+    ['aa', 'bb', 'cc']
 
 Flushing can be delayed if multiple parts are to be written.
->>> with open(filename, 'wb') as f:
-...     it = Iter(data)
-...     it.map(lambda x: x * 2 ).take(2).write_bytes_to_stream(f, flush=False)
-...     it.map(lambda x: x * 2 ).write_bytes_to_stream(f, flush=True)
-...     with open(filename, 'rb') as f2:
-...         Iter.read_bytes(f2, size=2).map(bytes.decode).collect()
-['aa', 'bb', 'cc']
->>> td.cleanup()
+
+.. code-block:: python
+
+    >>> with open(filename, 'wb') as f:
+    ...     it = Iter(data)
+    ...     it.map(lambda x: x * 2 ).take(2).write_bytes_to_stream(f, flush=False)
+    ...     it.map(lambda x: x * 2 ).write_bytes_to_stream(f, flush=True)
+    ...     with open(filename, 'rb') as f2:
+    ...         Iter.read_bytes(f2, size=2).map(bytes.decode).collect()
+    ['aa', 'bb', 'cc']
+    >>> td.cleanup()
 
 
 
@@ -1328,17 +1385,19 @@ Flushing can be delayed if multiple parts are to be written.
 
 
 
->>> import tempfile
->>> with tempfile.TemporaryDirectory() as td:
-...     # Put some random text into a temporary file
-...     with open(td + 'text.txt', 'w') as f:
-...         f.writelines(['abc\n', 'def\n', 'ghi\n'])
-...
-...     # Open the file, transform, write out to new file.
-...     Iter.open(td + 'text.txt').map(str.upper).write_to_file(td + 'test2.txt')
-...     # Read the new file, for the test
-...     Iter.open(td + 'test2.txt').collect()
-['ABC\n', 'DEF\n', 'GHI\n']
+.. code-block:: python
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as td:
+    ...     # Put some random text into a temporary file
+    ...     with open(td + 'text.txt', 'w') as f:
+    ...         f.writelines(['abc\n', 'def\n', 'ghi\n'])
+    ...
+    ...     # Open the file, transform, write out to new file.
+    ...     Iter.open(td + 'text.txt').map(str.upper).write_to_file(td + 'test2.txt')
+    ...     # Read the new file, for the test
+    ...     Iter.open(td + 'test2.txt').collect()
+    ['ABC\n', 'DEF\n', 'GHI\n']
 
 
 
@@ -1352,10 +1411,12 @@ Flushing can be delayed if multiple parts are to be written.
 
 The ``range`` function you all know and love.
 
->>> Iter.range(3).collect()
-[0, 1, 2]
->>> Iter.range(0).collect()
-[]
+.. code-block:: python
+
+    >>> Iter.range(3).collect()
+    [0, 1, 2]
+    >>> Iter.range(0).collect()
+    []
 
 
 
@@ -1373,29 +1434,37 @@ other iterables.
 
 Make an Iter_ instance, then call ``zip`` on that.
 
->>> Iter('caleb').zip(range(10)).collect()
-[('c', 0), ('a', 1), ('l', 2), ('e', 3), ('b', 4)]
+.. code-block:: python
+
+    >>> Iter('caleb').zip(range(10)).collect()
+    [('c', 0), ('a', 1), ('l', 2), ('e', 3), ('b', 4)]
 
 Use a classmethod to get an infinite stream using Iter.count_
 and zip against that with more finite iterators.
 
->>> Iter.count().zip(range(5), range(3, 100, 2)).collect()
-[(0, 0, 3), (1, 1, 5), (2, 2, 7), (3, 3, 9), (4, 4, 11)]
+.. code-block:: python
+
+    >>> Iter.count().zip(range(5), range(3, 100, 2)).collect()
+    [(0, 0, 3), (1, 1, 5), (2, 2, 7), (3, 3, 9), (4, 4, 11)]
 
 It takes a few minutes to get used to that but feels comfortable
 pretty quickly.
 
 Iter.take_ can be used to stop infinite zip sequences:
 
->>> Iter('caleb').cycle().enumerate().take(8).collect()
-[(0, 'c'), (1, 'a'), (2, 'l'), (3, 'e'), (4, 'b'), (5, 'c'), (6, 'a'), (7, 'l')]
+.. code-block:: python
+
+    >>> Iter('caleb').cycle().enumerate().take(8).collect()
+    [(0, 'c'), (1, 'a'), (2, 'l'), (3, 'e'), (4, 'b'), (5, 'c'), (6, 'a'), (7, 'l')]
 
 While we're here (assuming you worked through the previous
 example), note the difference if you switch the order of the
 Iter.cycle_ and Iter.enumerate_ calls:
 
->>> Iter('caleb').enumerate().cycle().take(8).collect()
-[(0, 'c'), (1, 'a'), (2, 'l'), (3, 'e'), (4, 'b'), (0, 'c'), (1, 'a'), (2, 'l')]
+.. code-block:: python
+
+    >>> Iter('caleb').enumerate().cycle().take(8).collect()
+    [(0, 'c'), (1, 'a'), (2, 'l'), (3, 'e'), (4, 'b'), (0, 'c'), (1, 'a'), (2, 'l')]
 
 If you understand how this works, everything else in _excitertools_
 will be intuitive to use.
@@ -1410,12 +1479,14 @@ will be intuitive to use.
 
 
 
->>> Iter([0, 0, 0]).any()
-False
->>> Iter([0, 0, 1]).any()
-True
->>> Iter([]).any()
-False
+.. code-block:: python
+
+    >>> Iter([0, 0, 0]).any()
+    False
+    >>> Iter([0, 0, 1]).any()
+    True
+    >>> Iter([]).any()
+    False
 
 
 
@@ -1428,17 +1499,21 @@ False
 
 
 
->>> Iter([0, 0, 0]).all()
-False
->>> Iter([0, 0, 1]).all()
-False
->>> Iter([1, 1, 1]).all()
-True
+.. code-block:: python
+
+    >>> Iter([0, 0, 0]).all()
+    False
+    >>> Iter([0, 0, 1]).all()
+    False
+    >>> Iter([1, 1, 1]).all()
+    True
 
 Now pay attention:
 
->>> Iter([]).all()
-True
+.. code-block:: python
+
+    >>> Iter([]).all()
+    True
 
 This behaviour has some controversy around it, but that's how the
 ``all()`` builtin works so that's what we do too. The way to
@@ -1455,12 +1530,13 @@ it follows that there are no elements that are falsy and that's why
 ``Iter.enumerate(self) -> "Iter[Tuple[int, T]]"``
 =================================================
 
-Yup, *that* ``enumerate``.
 
->>> Iter('abc').enumerate().collect()
-[(0, 'a'), (1, 'b'), (2, 'c')]
->>> Iter([]).enumerate().collect()
-[]
+.. code-block:: python
+
+    >>> Iter('abc').enumerate().collect()
+    [(0, 'a'), (1, 'b'), (2, 'c')]
+    >>> Iter([]).enumerate().collect()
+    []
 
 
 
@@ -1470,16 +1546,21 @@ Yup, *that* ``enumerate``.
 ``Iter.dict(self) -> "Dict"``
 =============================
 
-In Python a dict can be constructed through an iterable of tuples:
+In regular Python a dict can be constructed through an iterable 
+of tuples:
 
->>> dict([('a', 0), ('b', 1)])                  
-{'a': 0, 'b': 1}
+.. code-block:: python
+
+    >>> dict([('a', 0), ('b', 1)])                  
+    {'a': 0, 'b': 1}
 
 In *excitertools* we prefer chaining so this method is a shortcut
 for that:
 
->>> d = Iter('abc').zip(count()).dict()
->>> assert d == {'a': 0, 'b': 1, 'c': 2}
+.. code-block:: python
+
+    >>> d = Iter('abc').zip(count()).dict()
+    >>> assert d == {'a': 0, 'b': 1, 'c': 2}
 
 
 
@@ -1491,26 +1572,32 @@ for that:
 
 The ``map`` function you all know and love.
 
->>> Iter('abc').map(str.upper).collect()
-['A', 'B', 'C']
->>> Iter(['abc', 'def']).map(str.upper).collect()
-['ABC', 'DEF']
+.. code-block:: python
+
+    >>> Iter('abc').map(str.upper).collect()
+    ['A', 'B', 'C']
+    >>> Iter(['abc', 'def']).map(str.upper).collect()
+    ['ABC', 'DEF']
 
 Using lambdas might seem convenient but in practice it turns
 out that they make code difficult to read:
 
->>> result = Iter('caleb').map(lambda x: (x, ord(x))).dict()
->>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
+.. code-block:: python
+
+    >>> result = Iter('caleb').map(lambda x: (x, ord(x))).dict()
+    >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
 
 It's recommended that you make a separate function instead:
 
->>> def f(x):
-...     return x, ord(x)
->>> result = Iter('caleb').map(f).dict()
->>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
+.. code-block:: python
+
+    >>> def f(x):
+    ...     return x, ord(x)
+    >>> result = Iter('caleb').map(f).dict()
+    >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
 
 I know many people prefer anonymous functions (often on
-philosphical grouds) but in practice it's just easier to make
+philosphical grounds) but in practice it's just easier to make
 a separate, named function.
 
 I've experimented with passing a string into the map, and using
@@ -1518,8 +1605,11 @@ I've experimented with passing a string into the map, and using
 very slightly, at the cost of using strings-as-code. I'm pretty
 sure this feature will be removed so don't use it.
 
->>> result = Iter('caleb').map('x, ord(x)').dict()
->>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
+.. code-block:: python
+
+    >>> result = Iter('caleb').map('x, ord(x)').dict()
+    >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
+
 
 
 .. _Iter.filter:
@@ -1530,8 +1620,10 @@ sure this feature will be removed so don't use it.
 
 The ``map`` function you all know and love.
 
->>> Iter('caleb').filter(lambda x: x in 'aeiou').collect()
-['a', 'e']
+.. code-block:: python
+
+    >>> Iter('caleb').filter(lambda x: x in 'aeiou').collect()
+    ['a', 'e']
 
 There is a slight difference between this method signature and
 the builtin ``filter``:  how the identity function is handled.
@@ -1546,28 +1638,34 @@ first.
 This is a long way of saying: if you just want to filter out
 falsy values, no parameter is needed:
 
->>> Iter([0, 1, 0, 0, 0, 1, 1, 1, 0, 0]).filter().collect()
-[1, 1, 1, 1]
+.. code-block:: python
+
+    >>> Iter([0, 1, 0, 0, 0, 1, 1, 1, 0, 0]).filter().collect()
+    [1, 1, 1, 1]
 
 Using the builtin, you'd have to do ``filter(None, iterable)``.
 
 You'll find that Iter.map_ and Iter.filter_
 (and Iter.reduce_, up next) work together very nicely:
 
->>> def not_eve(x):
-...    return x != 'eve'
->>> Iter(['bob', 'eve', 'alice']).filter(not_eve).map(str.upper).collect()
-['BOB', 'ALICE']
+.. code-block:: python
+
+    >>> def not_eve(x):
+    ...    return x != 'eve'
+    >>> Iter(['bob', 'eve', 'alice']).filter(not_eve).map(str.upper).collect()
+    ['BOB', 'ALICE']
 
 The long chains get unwieldy so let's rewrite that:
 
->>> (
-...     Iter(['bob', 'eve', 'alice'])
-...         .filter(not_eve)
-...         .map(str.upper)
-...         .collect()
-... )
-['BOB', 'ALICE']
+.. code-block:: python
+
+    >>> (
+    ...     Iter(['bob', 'eve', 'alice'])
+    ...         .filter(not_eve)
+    ...         .map(str.upper)
+    ...         .collect()
+    ... )
+    ['BOB', 'ALICE']
 
 
 
@@ -1582,17 +1680,155 @@ Like Iter.filter_, but arg unpacking in lambdas will work.
 
 With the normal ``filter``, this fails:
 
->>> Iter('caleb').enumerate().filter(lambda i, x: i > 2).collect()
-Traceback (most recent call last):
-    ...
-TypeError: <lambda>() missing 1 required positional argument: 'x'
+.. code-block:: python
 
-This is a real buzzkill. ``starfilter`` is very to ``starmap`` in
-that tuples are unpacked when calling the function:
+    >>> Iter('caleb').enumerate().filter(lambda i, x: i > 2).collect()
+    Traceback (most recent call last):
+        ...
+    TypeError: <lambda>() missing 1 required positional argument: 'x'
 
->>> Iter('caleb').enumerate().starfilter(lambda i, x: i > 2).collect()
-[(3, 'e'), (4, 'b')]
+This is a real buzzkill. ``starfilter`` is very similar to 
+``starmap`` in that tuples are unpacked when calling the function:
 
+.. code-block:: python
+
+    >>> Iter('caleb').enumerate().starfilter(lambda i, x: i > 2).collect()
+    [(3, 'e'), (4, 'b')]
+
+
+
+.. _Iter.filter_gt:
+
+
+``Iter.filter_gt(self, value) -> "Iter[T]"``
+============================================
+
+Convenience method
+
+.. code-block:: python
+
+    >>> Iter([1,2,3]).filter_gt(1).collect()
+    [2, 3]
+
+
+
+.. _Iter.filter_ge:
+
+
+``Iter.filter_ge(self, value) -> "Iter[T]"``
+============================================
+
+Convenience method
+
+.. code-block:: python
+
+    >>> Iter([1,2,3]).filter_ge(2).collect()
+    [2, 3]
+
+
+
+.. _Iter.filter_lt:
+
+
+``Iter.filter_lt(self, value) -> "Iter[T]"``
+============================================
+
+Convenience method
+
+.. code-block:: python
+
+    >>> Iter([1,2,3]).filter_lt(3).collect()
+    [1, 2]
+
+
+.. _Iter.filter_le:
+
+
+``Iter.filter_le(self, value) -> "Iter[T]"``
+============================================
+
+Convenience method
+
+.. code-block:: python
+
+    >>> Iter([1,2,3]).filter_le(2).collect()
+    [1, 2]
+
+
+.. _Iter.filter_eq:
+
+
+``Iter.filter_eq(self, value) -> "Iter[T]"``
+============================================
+
+Convenience method
+
+.. code-block:: python
+
+    >>> Iter([1,2,3]).filter_eq(2).collect()
+    [2]
+
+
+.. _Iter.filter_ne:
+
+
+``Iter.filter_ne(self, value) -> "Iter[T]"``
+============================================
+
+Convenience method
+
+.. code-block:: python
+
+    >>> Iter([1,2,3]).filter_ne(2).collect()
+    [1, 3]
+
+
+.. _Iter.filter_in:
+
+
+``Iter.filter_in(self, value: Sized) -> "Iter[T]"``
+===================================================
+
+Convenience method for membership testing. Note that the value
+parameter must be at least ``Sized`` because it gets reused
+over and over for each pass of the iterator chain. For example,
+passing in things like ``range()`` will not work properly because
+it will become progressively exhausted.
+
+.. code-block:: python
+
+    >>> Iter([1,2,3]).filter_in([2, 3, 4, 5]).collect()
+    [2, 3]
+    >>> Iter([1,2,3]).filter_in(range(2, 8).collect()).collect()
+    [2, 3]
+    >>> Iter([1,2,3]).filter_in({2, 3, 4, 5}).collect()
+    [2, 3]
+    >>> Iter([1,2,3]).filter_in(dict.fromkeys({2, 3, 4, 5})).collect()
+    [2, 3]
+
+
+.. _Iter.filter_ni:
+
+
+``Iter.filter_ni(self, value) -> "Iter[T]"``
+============================================
+
+Convenience method for membership testing. Note that the value
+parameter must be at least ``Sized`` because it gets reused
+over and over for each pass of the iterator chain. For example,
+passing in things like ``range()`` will not work properly because
+it will become progressively exhausted.
+
+.. code-block:: python
+
+    >>> Iter([1,2,3]).filter_ni([2, 3, 4, 5]).collect()
+    [1]
+    >>> Iter([1,2,3]).filter_ni(range(2, 8).collect()).collect()
+    [1]
+    >>> Iter([1,2,3]).filter_ni({2, 3, 4, 5}).collect()
+    [1]
+    >>> Iter([1,2,3]).filter_ni(dict.fromkeys({2, 3, 4, 5})).collect()
+    [1]
 
 
 .. _Iter.reduce:
@@ -1603,56 +1839,61 @@ that tuples are unpacked when calling the function:
 
 
 The ``reduce`` function you all know and...hang on, actually
-``reduce is rather unloved. In the past I've found it very complex
+``reduce`` is rather unloved. In the past I've found it very complex
 to reason about, when looking at a bunch of nested function calls
 in typical ``itertools`` code. Hopefully iterable chaining makes
 it easier to read code that uses ``reduce``?
 
 Let's check, does this make sense?
 
->>> payments = [
-...     ('bob', 100),
-...     ('alice', 50),
-...     ('eve', -100),
-...     ('bob', 19.95),
-...     ('bob', -5.50),
-...     ('eve', 11.95),
-...     ('eve', 200),
-...     ('alice', -45),
-...     ('alice', -67),
-...     ('bob', 1.99),
-...     ('alice', 89),
-... ]
->>> (
-...     Iter(payments)
-...         .filter(lambda entry: entry[0] == 'bob')
-...         .map(lambda entry: entry[1])
-...         .reduce(lambda total, value: total + value, 0)
-... )
-116.44
+.. code-block:: python
+
+    >>> payments = [
+    ...     ('bob', 100),
+    ...     ('alice', 50),
+    ...     ('eve', -100),
+    ...     ('bob', 19.95),
+    ...     ('bob', -5.50),
+    ...     ('eve', 11.95),
+    ...     ('eve', 200),
+    ...     ('alice', -45),
+    ...     ('alice', -67),
+    ...     ('bob', 1.99),
+    ...     ('alice', 89),
+    ... ]
+    >>> (
+    ...     Iter(payments)
+    ...         .filter(lambda entry: entry[0] == 'bob')
+    ...         .map(lambda entry: entry[1])
+    ...         .reduce(lambda total, value: total + value, 0)
+    ... )
+    116.44
 
 I intentionally omitted comments above so that you can try the
 "readability experiment", but in practice you would definitely
 want to add some comments on these chains:
 
->>> (
-...     # Iterate over all payments
-...     Iter(payments)
-...         # Only look at bob's payments
-...         .filter(lambda entry: entry[0] == 'bob')
-...         # Extract the value of the payment
-...         .map(lambda entry: entry[1])
-...         # Add all those payments together
-...         .reduce(lambda total, value: total + value, 0)
-... )
-116.44
+.. code-block:: python
+
+    >>> (
+    ...     # Iterate over all payments
+    ...     Iter(payments)
+    ...         # Only look at bob's payments
+    ...         .filter(lambda entry: entry[0] == 'bob')
+    ...         # Extract the value of the payment
+    ...         .map(lambda entry: entry[1])
+    ...         # Add all those payments together
+    ...         .reduce(lambda total, value: total + value, 0)
+    ... )
+    116.44
 
 ``reduce`` is a quite crude low-level tool. In many cases you'll
 find that there are other functions and methods better suited
-to the situations you'll encounter most often. For example, it's
-much easier to use Iter.groupby_ for grouping than to try to
-make that work with Iter.reduce_. You *can* make it work but it'll
-be easier to use Iter.groupby_.
+to the situations you'll encounter most often. For example, 
+there is already Iter.sum_ if you just want to add up numbers,
+and it's much easier to use Iter.groupby_ for grouping than 
+to try to make that work with Iter.reduce_. You *can* make it 
+work but it'll be easier to use Iter.groupby_.
 
 
 
@@ -1671,37 +1912,41 @@ We can see this using the same example shown for Iter.reduce_.
 The star unpacking makes it easier to just do the filtering
 directly inside the reducer function.
 
->>> payments = [
-...     ('bob', 100),
-...     ('alice', 50),
-...     ('eve', -100),
-...     ('bob', 19.95),
-...     ('bob', -5.50),
-...     ('eve', 11.95),
-...     ('eve', 200),
-...     ('alice', -45),
-...     ('alice', -67),
-...     ('bob', 1.99),
-...     ('alice', 89),
-... ]
->>> (
-...     Iter(payments)
-...         .starreduce(
-...             lambda tot, name, value: tot + value if name == 'bob' else tot,
-...             0
-...         )
-... )
-116.44
+.. code-block:: python
+
+    >>> payments = [
+    ...     ('bob', 100),
+    ...     ('alice', 50),
+    ...     ('eve', -100),
+    ...     ('bob', 19.95),
+    ...     ('bob', -5.50),
+    ...     ('eve', 11.95),
+    ...     ('eve', 200),
+    ...     ('alice', -45),
+    ...     ('alice', -67),
+    ...     ('bob', 1.99),
+    ...     ('alice', 89),
+    ... ]
+    >>> (
+    ...     Iter(payments)
+    ...         .starreduce(
+    ...             lambda tot, name, value: tot + value if name == 'bob' else tot,
+    ...             0
+    ...         )
+    ... )
+    116.44
 
 This is how that looks if you avoid a lambda:
 
->>> def f(tot, name, value):
-...     if name == 'bob':
-...         return tot + value
-...     else:
-...         return tot
->>> Iter(payments).starreduce(f)
-116.44
+.. code-block:: python
+
+    >>> def f(tot, name, value):
+    ...     if name == 'bob':
+    ...         return tot + value
+    ...     else:
+    ...         return tot
+    >>> Iter(payments).starreduce(f)
+    116.44
 
 
 
@@ -1714,8 +1959,10 @@ This is how that looks if you avoid a lambda:
 
 Exactly what you expect:
 
->>> Iter(range(10)).sum()
-45
+.. code-block:: python
+
+    >>> Iter(range(10)).sum()
+    45
 
 
 
@@ -1727,16 +1974,18 @@ Exactly what you expect:
 
 
 
-Joining strings.
+Joining strings (and bytes).
 
->>> Iter(['hello', 'there']).concat()
-'hellothere'
->>> Iter(['hello', 'there']).concat(' ')
-'hello there'
->>> Iter(['hello', 'there']).concat(',')
-'hello,there'
->>> Iter([b'hello', b'there']).concat(b',')
-b'hello,there'
+.. code-block:: python
+
+    >>> Iter(['hello', 'there']).concat()
+    'hellothere'
+    >>> Iter(['hello', 'there']).concat(' ')
+    'hello there'
+    >>> Iter(['hello', 'there']).concat(',')
+    'hello,there'
+    >>> Iter([b'hello', b'there']).concat(b',')
+    b'hello,there'
 
 
 
@@ -1756,12 +2005,14 @@ Docstring TBD
 
 
 
->>> Iter.count().take(3).collect()
-[0, 1, 2]
->>> Iter.count(100).take(3).collect()
-[100, 101, 102]
->>> Iter.count(100, 2).take(3).collect()
-[100, 102, 104]
+.. code-block:: python
+
+    >>> Iter.count().take(3).collect()
+    [0, 1, 2]
+    >>> Iter.count(100).take(3).collect()
+    [100, 101, 102]
+    >>> Iter.count(100, 2).take(3).collect()
+    [100, 102, 104]
 
 
 
@@ -2011,7 +2262,21 @@ Docstring TBD
 
 ``Iter.bucket(self, key, validator=None)``
 ==========================================
-Docstring TBD
+
+This is the basic example, copied from the more-itertools
+docs:
+
+.. code-block:: python
+
+    >>> iterable = ['a1', 'b1', 'c1', 'a2', 'b2', 'c2', 'b3']
+    >>> b = Iter(iterable).bucket(key=lambda x: x[0])
+    >>> sorted(b)
+    ['a', 'b', 'c']
+    >>> list(b['a'])
+    ['a1', 'a2']
+
+Note that once consumed, you can't iterate over the contents
+of a group again.
 
 
 .. _Iter.unzip:
@@ -2054,43 +2319,51 @@ Docstring TBD
 
 Docstring TBD
 
->>> p = Iter(['a', 'b']).peekable()
->>> p.peek()
-'a'
->>> next(p)
-'a'
+.. code-block:: python
+
+    >>> p = Iter(['a', 'b']).peekable()
+    >>> p.peek()
+    'a'
+    >>> next(p)
+    'a'
 
 The peekable can be used to inspect what will be coming up.
 But if you then want to resume iterator chaining, pass the
 peekable back into an Iter_ instance.
 
->>> p = Iter(range(10)).peekable()
->>> p.peek()
-0
->>> Iter(p).take(3).collect()
-[0, 1, 2]
+.. code-block:: python
+
+    >>> p = Iter(range(10)).peekable()
+    >>> p.peek()
+    0
+    >>> Iter(p).take(3).collect()
+    [0, 1, 2]
 
 A peekable is not an Iter_ instance so it doesn't provide
 the iterator chaining methods. But if you want to get into
 chaining, use the ``iter()`` method.
 
->>> p = Iter(range(5)).peekable()
->>> p.peek()
-0
->>> p[1]
-1
->>> p.iter().take(3).collect()
-[0, 1, 2]
+.. code-block:: python
+
+    >>> p = Iter(range(5)).peekable()
+    >>> p.peek()
+    0
+    >>> p[1]
+    1
+    >>> p.iter().take(3).collect()
+    [0, 1, 2]
 
 Peekables can be prepended. But then you usually want to go
 right back to iterator chaining. Thus, the ``prepend`` method
 (on the returned ``peekable`` instance) returns an Iter_ instance.
 
->>> p = Iter(range(3)).peekable()
->>> p.peek()
-0
->>> p.prepend('a', 'b').take(4).collect()
-['a', 'b', 0, 1]
+.. code-block:: python
+
+    >>> p = Iter(range(3)).peekable()
+    >>> p.peek()
+    0
+    >>> p.prepend('a', 'b').take(4).collect()
+    ['a', 'b', 0, 1]
 
 
 
@@ -2371,6 +2644,8 @@ examples in the more-itertools_ documentation:
     [(3, 2, 1), ('a', 'b', 'c')]
 
 Here is an examples using the instancemethod form:
+
+.. code-block:: python
 
     >>> iterables = [('a', 'b', 'c', 'd')]
     >>> Iter([4, 3, 2, 1]).sort_together(iterables).collect()
@@ -2939,8 +3214,10 @@ Reference: `more_itertools.take <https://more-itertools.readthedocs.io/en/stable
 
 Reference: `more_itertools.tail <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.tail>`_
 
->>> Iter('ABCDEFG').tail(3).collect()
-['E', 'F', 'G']
+.. code-block:: python
+
+    >>> Iter('ABCDEFG').tail(3).collect()
+    ['E', 'F', 'G']
 
 
 
@@ -2952,19 +3229,23 @@ Reference: `more_itertools.tail <https://more-itertools.readthedocs.io/en/stable
 
 Reference: `more_itertools.unique_everseen <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_everseen>`_
 
->>> Iter('AAAABBBCCDAABBB').unique_everseen().collect()
-['A', 'B', 'C', 'D']
->>> Iter('ABBCcAD').unique_everseen(key=str.lower).collect()
-['A', 'B', 'C', 'D']
+.. code-block:: python
+
+    >>> Iter('AAAABBBCCDAABBB').unique_everseen().collect()
+    ['A', 'B', 'C', 'D']
+    >>> Iter('ABBCcAD').unique_everseen(key=str.lower).collect()
+    ['A', 'B', 'C', 'D']
 
 Be sure to read the *more-itertools* docs whne using unhashable
 items.
 
->>> iterable = ([1, 2], [2, 3], [1, 2])
->>> Iter(iterable).unique_everseen().collect()  # Slow
-[[1, 2], [2, 3]]
->>> Iter(iterable).unique_everseen(key=tuple).collect()  # Faster
-[[1, 2], [2, 3]]
+.. code-block:: python
+
+    >>> iterable = ([1, 2], [2, 3], [1, 2])
+    >>> Iter(iterable).unique_everseen().collect()  # Slow
+    [[1, 2], [2, 3]]
+    >>> Iter(iterable).unique_everseen(key=tuple).collect()  # Faster
+    [[1, 2], [2, 3]]
 
 
 
@@ -2976,10 +3257,12 @@ items.
 
 Reference: `more_itertools.unique_justseen <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_justseen>`_
 
->>> Iter('AAAABBBCCDAABBB').unique_justseen().collect()
-['A', 'B', 'C', 'D', 'A', 'B']
->>> Iter('ABBCcAD').unique_justseen(key=str.lower).collect()
-['A', 'B', 'C', 'A', 'D']
+.. code-block:: python
+
+    >>> Iter('AAAABBBCCDAABBB').unique_justseen().collect()
+    ['A', 'B', 'C', 'D', 'A', 'B']
+    >>> Iter('ABBCcAD').unique_justseen(key=str.lower).collect()
+    ['A', 'B', 'C', 'A', 'D']
 
 
 
@@ -2991,8 +3274,10 @@ Reference: `more_itertools.unique_justseen <https://more-itertools.readthedocs.i
 
 Reference: `more_itertools.distinct_permutations <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.distinct_permutations>`_
 
->>> Iter([1, 0, 1]).distinct_permutations().sorted().collect()
-[(0, 1, 1), (1, 0, 1), (1, 1, 0)]
+.. code-block:: python
+
+    >>> Iter([1, 0, 1]).distinct_permutations().sorted().collect()
+    [(0, 1, 1), (1, 0, 1), (1, 1, 0)]
 
 
 
@@ -3004,8 +3289,10 @@ Reference: `more_itertools.distinct_permutations <https://more-itertools.readthe
 
 Reference: `more_itertools.distinct_combinations <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.distinct_combinations>`_
 
->>> Iter([0, 0, 1]).distinct_combinations(2).collect()
-[(0, 0), (0, 1)]
+.. code-block:: python
+
+    >>> Iter([0, 0, 1]).distinct_combinations(2).collect()
+    [(0, 0), (0, 1)]
 
 
 
@@ -3017,8 +3304,10 @@ Reference: `more_itertools.distinct_combinations <https://more-itertools.readthe
 
 Reference: `more_itertools.circular_shifts <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.circular_shifts>`_
 
->>> Iter(range(4)).circular_shifts().collect()
-[(0, 1, 2, 3), (1, 2, 3, 0), (2, 3, 0, 1), (3, 0, 1, 2)]
+.. code-block:: python
+
+    >>> Iter(range(4)).circular_shifts().collect()
+    [(0, 1, 2, 3), (1, 2, 3, 0), (2, 3, 0, 1), (3, 0, 1, 2)]
 
 
 
@@ -3030,18 +3319,20 @@ Reference: `more_itertools.circular_shifts <https://more-itertools.readthedocs.i
 
 Reference: `more_itertools.partitions <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.partitions>`_
 
->>> Iter('abc').partitions().collect()
-[[['a', 'b', 'c']], [['a'], ['b', 'c']], [['a', 'b'], ['c']], [['a'], ['b'], ['c']]]
->>> Iter('abc').partitions().print('{v}').consume()
-[['a', 'b', 'c']]
-[['a'], ['b', 'c']]
-[['a', 'b'], ['c']]
-[['a'], ['b'], ['c']]
->>> Iter('abc').partitions().map(lambda v: [''.join(p) for p in v]).print('{v}').consume()
-['abc']
-['a', 'bc']
-['ab', 'c']
-['a', 'b', 'c']
+.. code-block:: python
+
+    >>> Iter('abc').partitions().collect()
+    [[['a', 'b', 'c']], [['a'], ['b', 'c']], [['a', 'b'], ['c']], [['a'], ['b'], ['c']]]
+    >>> Iter('abc').partitions().print('{v}').consume()
+    [['a', 'b', 'c']]
+    [['a'], ['b', 'c']]
+    [['a', 'b'], ['c']]
+    [['a'], ['b'], ['c']]
+    >>> Iter('abc').partitions().map(lambda v: [''.join(p) for p in v]).print('{v}').consume()
+    ['abc']
+    ['a', 'bc']
+    ['ab', 'c']
+    ['a', 'b', 'c']
 
 
 
@@ -3053,8 +3344,10 @@ Reference: `more_itertools.partitions <https://more-itertools.readthedocs.io/en/
 
 Reference: `more_itertools.set_partitions <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.set_partitions>`_
 
->>> Iter('abc').set_partitions(2).collect()
-[[['a'], ['b', 'c']], [['a', 'b'], ['c']], [['b'], ['a', 'c']]]
+.. code-block:: python
+
+    >>> Iter('abc').set_partitions(2).collect()
+    [[['a'], ['b', 'c']], [['a', 'b'], ['c']], [['b'], ['a', 'c']]]
 
 
 
@@ -3066,8 +3359,10 @@ Reference: `more_itertools.set_partitions <https://more-itertools.readthedocs.io
 
 Reference: `more_itertools.powerset <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.powerset>`_
 
->>> Iter([1, 2, 3]).powerset().collect()
-[(), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3), (1, 2, 3)]
+.. code-block:: python
+
+    >>> Iter([1, 2, 3]).powerset().collect()
+    [(), (1,), (2,), (3,), (1, 2), (1, 3), (2, 3), (1, 2, 3)]
 
 
 
@@ -3079,18 +3374,20 @@ Reference: `more_itertools.powerset <https://more-itertools.readthedocs.io/en/st
 
 Reference: `more_itertools.random_product <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_product>`_
 
->>> Iter('abc').random_product(range(4), 'XYZ').collect()                  
-['c', 3, 'X']
->>> Iter.random_product('abc', range(4), 'XYZ').collect()                  
-['c', 0, 'Z']
->>> Iter('abc').random_product(range(0)).collect()
-Traceback (most recent call last):
-    ...
-IndexError: Cannot choose from an empty sequence
->>> Iter.random_product(range(0)).collect()
-Traceback (most recent call last):
-    ...
-IndexError: Cannot choose from an empty sequence
+.. code-block:: python
+
+    >>> Iter('abc').random_product(range(4), 'XYZ').collect()                  
+    ['c', 3, 'X']
+    >>> Iter.random_product('abc', range(4), 'XYZ').collect()                  
+    ['c', 0, 'Z']
+    >>> Iter('abc').random_product(range(0)).collect()
+    Traceback (most recent call last):
+        ...
+    IndexError: Cannot choose from an empty sequence
+    >>> Iter.random_product(range(0)).collect()
+    Traceback (most recent call last):
+        ...
+    IndexError: Cannot choose from an empty sequence
 
 
 
@@ -3102,10 +3399,12 @@ IndexError: Cannot choose from an empty sequence
 
 Reference: `more_itertools.random_permutation <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_permutation>`_
 
->>> Iter(range(5)).random_permutation().collect()                  
-[2, 0, 4, 3, 1]
->>> Iter(range(0)).random_permutation().collect()
-[]
+.. code-block:: python
+
+    >>> Iter(range(5)).random_permutation().collect()                  
+    [2, 0, 4, 3, 1]
+    >>> Iter(range(0)).random_permutation().collect()
+    []
 
 
 
@@ -3117,10 +3416,12 @@ Reference: `more_itertools.random_permutation <https://more-itertools.readthedoc
 
 Reference: `more_itertools.random_combination <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_combination>`_
 
->>> Iter(range(5)).random_combination(3).collect()                  
-[0, 1, 4]
->>> Iter(range(5)).random_combination(0).collect()
-[]
+.. code-block:: python
+
+    >>> Iter(range(5)).random_combination(3).collect()                  
+    [0, 1, 4]
+    >>> Iter(range(5)).random_combination(0).collect()
+    []
 
 
 
@@ -3132,10 +3433,12 @@ Reference: `more_itertools.random_combination <https://more-itertools.readthedoc
 
 Reference: `more_itertools.random_combination_with_replacement <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.random_combination_with_replacement>`_
 
->>> Iter(range(3)).random_combination_with_replacement(5).collect()                  
-[0, 0, 1, 2, 2]
->>> Iter(range(3)).random_combination_with_replacement(0).collect()
-[]
+.. code-block:: python
+
+    >>> Iter(range(3)).random_combination_with_replacement(5).collect()                  
+    [0, 0, 1, 2, 2]
+    >>> Iter(range(3)).random_combination_with_replacement(0).collect()
+    []
 
 
 
@@ -3147,16 +3450,18 @@ Reference: `more_itertools.random_combination_with_replacement <https://more-ite
 
 Reference: `more_itertools.nth_combination <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.nth_combination>`_
 
->>> Iter(range(9)).nth_combination(3, 1).collect()
-[0, 1, 3]
->>> Iter(range(9)).nth_combination(3, 2).collect()
-[0, 1, 4]
->>> Iter(range(9)).nth_combination(3, 3).collect()
-[0, 1, 5]
->>> Iter(range(9)).nth_combination(4, 3).collect()
-[0, 1, 2, 6]
->>> Iter(range(9)).nth_combination(3, 7).collect()
-[0, 2, 3]
+.. code-block:: python
+
+    >>> Iter(range(9)).nth_combination(3, 1).collect()
+    [0, 1, 3]
+    >>> Iter(range(9)).nth_combination(3, 2).collect()
+    [0, 1, 4]
+    >>> Iter(range(9)).nth_combination(3, 3).collect()
+    [0, 1, 5]
+    >>> Iter(range(9)).nth_combination(4, 3).collect()
+    [0, 1, 2, 6]
+    >>> Iter(range(9)).nth_combination(3, 7).collect()
+    [0, 2, 3]
 
 
 
@@ -3170,16 +3475,18 @@ Reference: `more_itertools.always_iterable <https://more-itertools.readthedocs.i
 
 .. code-block: python
 
->>> Iter.always_iterable([1, 2, 3]).collect()
-[1, 2, 3]
->>> Iter.always_iterable(1).collect()
-[1]
->>> Iter.always_iterable(None).collect()
-[]
->>> Iter.always_iterable('foo').collect()
-['foo']
->>> Iter.always_iterable(dict(a=1), base_type=dict).collect()
-[{'a': 1}]
+.. code-block:: python
+
+    >>> Iter.always_iterable([1, 2, 3]).collect()
+    [1, 2, 3]
+    >>> Iter.always_iterable(1).collect()
+    [1]
+    >>> Iter.always_iterable(None).collect()
+    []
+    >>> Iter.always_iterable('foo').collect()
+    ['foo']
+    >>> Iter.always_iterable(dict(a=1), base_type=dict).collect()
+    [{'a': 1}]
 
 
 
@@ -3197,10 +3504,10 @@ internal caching, so be careful with memory use.
 
 .. code-block: python
 
->>> Iter('abc').always_reversible().collect()
-['c', 'b', 'a']
->>> Iter(x for x in 'abc').always_reversible().collect()
-['c', 'b', 'a']
+    >>> Iter('abc').always_reversible().collect()
+    ['c', 'b', 'a']
+    >>> Iter(x for x in 'abc').always_reversible().collect()
+    ['c', 'b', 'a']
 
 
 
@@ -3743,11 +4050,10 @@ Note that Iter.send_ is a sink, so no further chaining is allowed.
 
 Reference: `more_itertools.consumer <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.consumer>`_
 
-Some ideas around a reverse iterator as a sink. The requirement to
-first "next" a just-started generator before you can send values
-into it is irritating, but not insurmountable. This method will
-automatically detect the "just-started generator" situation, do the
-``next()``, and then send in the first value as necessary.
+Some ideas around a reverse iterator as a sink. Usually you have
+first to "send" a ``None`` into a generator if you want to send
+more values into it (or call ``next()`` on it), but we handle 
+that automatically.
 
 Simple case:
 
@@ -3758,6 +4064,22 @@ Simple case:
     ...     while True:
     ...         output.append((yield))
     >>> Iter.range(3).send_also(collector()).collect()
+    [0, 1, 2]
+    >>> output
+    [0, 1, 2]
+
+However, if the caller already started the generator, that 
+works too:
+
+.. code-block:: python
+
+    >>> output = []
+    >>> def collector():
+    ...     while True:
+    ...         output.append((yield))
+    >>> g = collector()
+    >>> next(g)  # This "starts" the generator
+    >>> Iter.range(3).send_also(g).collect()
     [0, 1, 2]
     >>> output
     [0, 1, 2]
@@ -3801,12 +4123,14 @@ Simple wrapper for the ``sorted`` builtin.
 Calling this will read the entire stream before producing
 results.
 
->>> Iter('bac').sorted().collect()
-['a', 'b', 'c']
->>> Iter('bac').sorted(reverse=True).collect()
-['c', 'b', 'a']
->>> Iter('bac').zip([2, 1, 0]).sorted(key=lambda tup: tup[1]).collect()
-[('c', 0), ('a', 1), ('b', 2)]
+.. code-block:: python
+
+    >>> Iter('bac').sorted().collect()
+    ['a', 'b', 'c']
+    >>> Iter('bac').sorted(reverse=True).collect()
+    ['c', 'b', 'a']
+    >>> Iter('bac').zip([2, 1, 0]).sorted(key=lambda tup: tup[1]).collect()
+    [('c', 0), ('a', 1), ('b', 2)]
 
 
 
@@ -3824,8 +4148,10 @@ Simple wrapper for the ``reversed`` builtin.
 Calling this will read the entire stream before producing
 results.
 
->>> Iter(range(4)).reversed().collect()
-[3, 2, 1, 0]
+.. code-block:: python
+
+    >>> Iter(range(4)).reversed().collect()
+    [3, 2, 1, 0]
 
 
 
@@ -3880,9 +4206,11 @@ be chained. I'm not sure if this will be kept yet.
 Similar functionality can be obtained with, e.g.,
 interleave, as in
 
->>> result = Iter('caleb').interleave(Iter.repeat('x')).collect()
->>> result == list('cxaxlxexbx')
-True
+.. code-block:: python
+
+    >>> result = Iter('caleb').interleave(Iter.repeat('x')).collect()
+    >>> result == list('cxaxlxexbx')
+    True
 
 But you'll see a trailing "x" there, which join avoids. join
 makes sure to only add the glue separator if another element
