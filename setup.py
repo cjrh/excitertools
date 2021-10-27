@@ -122,6 +122,7 @@ setup(
     #
     #   py_modules=["my_module"],
     #
+    py_modules=["excitertools"],
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),  # Required
 
     # This field lists other packages that your project depends on to run.
