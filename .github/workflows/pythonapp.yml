@@ -41,7 +41,7 @@ jobs:
         PYTHONPATH: .
       run: |
         pip install pytest
-        pytest --cov
+        pytest --cov tests/
     - name: Extract branch name
       shell: bash
       run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
