@@ -4185,9 +4185,12 @@ libraries that offer similar features:
 
 * `https://github.com/EntilZha/PyFunctional <https://github.com/EntilZha/PyFunctional>`_
 
+* `https://github.com/dwt/fluent <https://github.com/dwt/fluent>`_
+
 Somewhat related:
 
 * `https://github.com/jreese/aioitertools <https://github.com/jreese/aioitertools>`_
+
 
 Dev Instructions
 ################
