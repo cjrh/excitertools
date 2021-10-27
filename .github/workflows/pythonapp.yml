@@ -39,7 +39,7 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest
-        pytest --cov excitertools tests/
+        pytest --cov excitertools excitertools.py tests/
     - name: Extract branch name
       shell: bash
       run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
