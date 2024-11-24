@@ -22,14 +22,19 @@ def test_wrap(val, wargs, jargs, result):
 
 @pytest.mark.parametrize(
     "val,wargs,jargs,result",
-    [(iter("caleb"), [(iter("abc"), iter("def"))], [""], "abccalebdef"),],
+    [
+        (iter("caleb"), [(iter("abc"), iter("def"))], [""], "abccalebdef"),
+    ],
 )
 def test_wrap_iterators(val, wargs, jargs, result):
     assert Iter(val).wrap(*wargs).concat(*jargs) == result
 
 
 @pytest.mark.parametrize(
-    "val,wargs,result", [([1, 2, 3], [([0, 0], [9, 9])], [0, 0, 1, 2, 3, 9, 9]),]
+    "val,wargs,result",
+    [
+        ([1, 2, 3], [([0, 0], [9, 9])], [0, 0, 1, 2, 3, 9, 9]),
+    ],
 )
 def test_wrap_iterators2(val, wargs, result):
     assert Iter(val).wrap(*wargs).collect() == result

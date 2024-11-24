@@ -186,7 +186,11 @@ def test_map_reduce_valuefunc():
 
 
 def test_map_reduce_reducefunc():
-    x = Iter("abbccc").map_reduce(lambda x: x.upper(), lambda x: 1, sum,)
+    x = Iter("abbccc").map_reduce(
+        lambda x: x.upper(),
+        lambda x: 1,
+        sum,
+    )
     assert sorted(x.items()) == [("A", 1), ("B", 2), ("C", 3)]
 
 
@@ -225,7 +229,9 @@ def test_windowed(iterable, n, fillvalue, step, expected):
 
 @pytest.mark.parametrize(
     "iterable,expected",
-    [("more", ["m", "o", "r", "e", "mo", "or", "re", "mor", "ore", "more"]),],
+    [
+        ("more", ["m", "o", "r", "e", "mo", "or", "re", "mor", "ore", "more"]),
+    ],
 )
 def test_substrings(iterable, expected):
     result = Iter(iterable).substrings().map(lambda s: "".join(s)).collect()

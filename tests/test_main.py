@@ -64,7 +64,13 @@ def test_piecemeal_results():
     assert next(x) == 8
 
 
-@pytest.mark.parametrize("v,expected", [(8, True), (9, False),])
+@pytest.mark.parametrize(
+    "v,expected",
+    [
+        (8, True),
+        (9, False),
+    ],
+)
 def test_any(v, expected):
     result = (
         Iter.range(10)
@@ -76,7 +82,13 @@ def test_any(v, expected):
     assert result == expected
 
 
-@pytest.mark.parametrize("v,expected", [(5, True), (6, False),])
+@pytest.mark.parametrize(
+    "v,expected",
+    [
+        (5, True),
+        (6, False),
+    ],
+)
 def test_all(v, expected):
     assert (
         len(
@@ -150,13 +162,24 @@ def test_insert():
     assert result == "cxaxlxexb"
 
 
-@pytest.mark.parametrize("elem,times,expected", [("x", 3, ["x"] * 3),])
+@pytest.mark.parametrize(
+    "elem,times,expected",
+    [
+        ("x", 3, ["x"] * 3),
+    ],
+)
 def test_repeat_finite(elem, times, expected):
     result = Iter.repeat(elem, times=times).collect()
     assert result == expected
 
 
-@pytest.mark.parametrize("elem,taken,expected", [("x", 0, []), ("x", 3, ["x"] * 3),])
+@pytest.mark.parametrize(
+    "elem,taken,expected",
+    [
+        ("x", 0, []),
+        ("x", 3, ["x"] * 3),
+    ],
+)
 def test_repeat_infinite(elem, taken, expected):
     result = Iter.repeat(elem).take(taken).collect()
     assert result == expected
@@ -175,7 +198,10 @@ def test_accumulate(arg, func, expected):
 
 
 @pytest.mark.parametrize(
-    "arg,iterables,expected", [("ABC", ["DEF"], ["A", "B", "C", "D", "E", "F"]),]
+    "arg,iterables,expected",
+    [
+        ("ABC", ["DEF"], ["A", "B", "C", "D", "E", "F"]),
+    ],
 )
 def test_chain(arg, iterables, expected):
     result = Iter(arg).chain(*iterables).collect()
@@ -183,7 +209,10 @@ def test_chain(arg, iterables, expected):
 
 
 @pytest.mark.parametrize(
-    "args,expected", [(["ABC", "DEF"], ["A", "B", "C", "D", "E", "F"]),]
+    "args,expected",
+    [
+        (["ABC", "DEF"], ["A", "B", "C", "D", "E", "F"]),
+    ],
 )
 def test_from_iterable(args, expected):
     result = Iter(args).chain_from_iterable().collect()
@@ -191,7 +220,10 @@ def test_from_iterable(args, expected):
 
 
 @pytest.mark.parametrize(
-    "arg,selectors,expected", [("ABCDEF", [1, 0, 1, 0, 1, 1], ["A", "C", "E", "F"]),]
+    "arg,selectors,expected",
+    [
+        ("ABCDEF", [1, 0, 1, 0, 1, 1], ["A", "C", "E", "F"]),
+    ],
 )
 def test_compress(arg, selectors, expected):
     result = Iter(arg).compress(selectors).collect()
@@ -199,7 +231,10 @@ def test_compress(arg, selectors, expected):
 
 
 @pytest.mark.parametrize(
-    "arg,pred,expected", [([1, 4, 6, 4, 1], lambda x: x < 5, [6, 4, 1]),]
+    "arg,pred,expected",
+    [
+        ([1, 4, 6, 4, 1], lambda x: x < 5, [6, 4, 1]),
+    ],
 )
 def test_dropwhile(arg, pred, expected):
     result = Iter(arg).dropwhile(pred).collect()
@@ -207,7 +242,10 @@ def test_dropwhile(arg, pred, expected):
 
 
 @pytest.mark.parametrize(
-    "arg,pred,expected", [(range(10), lambda x: x % 2, [0, 2, 4, 6, 8]),]
+    "arg,pred,expected",
+    [
+        (range(10), lambda x: x % 2, [0, 2, 4, 6, 8]),
+    ],
 )
 def test_filterfalse(arg, pred, expected):
     result = Iter(arg).filterfalse(pred).collect()
@@ -215,7 +253,10 @@ def test_filterfalse(arg, pred, expected):
 
 
 @pytest.mark.parametrize(
-    "arg,key,expected", [("AABCBA", None, [["A", "A", "A"], ["B", "B"], ["C"]]),]
+    "arg,key,expected",
+    [
+        ("AABCBA", None, [["A", "A", "A"], ["B", "B"], ["C"]]),
+    ],
 )
 def test_groupby(arg, key, expected):
     # NOTE: this doesn't work because the underlying iterator is shared,
@@ -271,11 +312,12 @@ def test_non_iterable_error():
     a friendlier error message for a fairly common error. I still do
     it sometimes so this helps me as much as anyone.
     """
+
     def gen():
         for x in range(5):
             yield x
 
-    with pytest.raises(TypeError, match='seems you passed'):
+    with pytest.raises(TypeError, match="seems you passed"):
         Iter(gen)
 
     with pytest.raises(TypeError, match="'object' object is not iterable"):

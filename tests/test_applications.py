@@ -1,10 +1,10 @@
 import excitertools
 from collections import Counter
-from excitertools import map, apply
+from excitertools import apply
 
 
 def stem(word):
-    """ Stem word to primitive form
+    """Stem word to primitive form
 
     This example taken from toolz: https://github.com/pytoolz/toolz
 
@@ -29,5 +29,5 @@ def test_stem2():
 
 def test_stem3():
     sentence = "This cat jumped over this other cat!"
-    wc = excitertools.splititer_regex(r'\s+', sentence).map(stem).collect(Counter)
+    wc = excitertools.splititer_regex(r"\s+", sentence).map(stem).collect(Counter)
     assert wc == Counter({"this": 2, "cat": 2, "jumped": 1, "over": 1, "other": 1})
