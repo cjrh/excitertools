@@ -1,4 +1,4 @@
-from excitertools import *
+from excitertools import Iter
 
 x = (
    Iter

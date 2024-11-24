@@ -34,7 +34,6 @@ jobs:
         pip install .
         pip install -r requirements-test.txt
     - name: Lint
-      continue-on-error: true
       run: |
         uv run ruff check
     - name: Test with pytest

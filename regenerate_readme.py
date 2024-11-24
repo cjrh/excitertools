@@ -1,7 +1,6 @@
 import sys
 import ast
 import argparse
-import importlib
 import inspect
 from textwrap import dedent
 from typing import Any
@@ -20,10 +19,10 @@ class MyVisitor(ast.NodeVisitor):
         super().__init__()
         self.source = source
         # Line number counting in ast starts at 1
-        self.source_lines = [''] + source.splitlines(keepends=False)
+        self.source_lines = [""] + source.splitlines(keepends=False)
         self.stack = []
         self.section_chars = '#*=-^"' + '"' * 1000
-        self.flair_pattern = r'^\|[a-zA-Z_-]+\|$'
+        self.flair_pattern = r"^\|[a-zA-Z_-]+\|$"
         self.all_filter = []
 
     @property
@@ -38,12 +37,10 @@ class MyVisitor(ast.NodeVisitor):
         finally:
             self.stack.pop()
 
-    def make_titletext(self, text, prefix='', suffix='') -> str:
+    def make_titletext(self, text, prefix="", suffix="") -> str:
         text = prefix + text + suffix
         underline_len = len(text.encode())
-        return (
-            '\n' + text + '\n' + self.section_chars[self.depth] * underline_len
-        )
+        return "\n" + text + "\n" + self.section_chars[self.depth] * underline_len
 
     def dig(self, node):
         with self.stacker(node):
@@ -51,18 +48,18 @@ class MyVisitor(ast.NodeVisitor):
 
     def text_from_node_to_before_body(self, node) -> str:
         # text = ' '.join(self.source_lines[node.lineno:node.body[0].lineno])
-        lines = self.source_lines[node.lineno:node.body[0].lineno]
+        lines = self.source_lines[node.lineno : node.body[0].lineno]
         lines = map(str.strip, lines)
-        lines = [re.sub(r',$', ', ', l) for l in lines]
-        text = ''.join(lines)
-        return text.strip(whitespace + ':')
+        lines = [re.sub(r",$", ", ", line) for line in lines]
+        text = "".join(lines)
+        return text.strip(whitespace + ":")
 
     def generic_visit(self, node: ast.AST) -> Any:
-        logger.info(' ' * 4 * len(self.stack) + 'visited %s', node)
+        logger.info(" " * 4 * len(self.stack) + "visited %s", node)
         self.dig(node)
 
     def visit_Module(self, node: ast.Module) -> Any:
-        logger.info('visited module', node)
+        logger.info("visited module", node)
         self.dig(node)
 
     def stack_contains_a_function_before_a_class(self) -> False:
@@ -83,7 +80,7 @@ class MyVisitor(ast.NodeVisitor):
         if docstring:
             flair_items = re.findall(self.flair_pattern, docstring, flags=re.MULTILINE)
 
-        flair_text = ' '.join(flair_items) + (' ' if flair_items else '')
+        flair_text = " ".join(flair_items) + (" " if flair_items else "")
         return flair_text
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> Any:
@@ -91,35 +88,38 @@ class MyVisitor(ast.NodeVisitor):
             # No documentation for nested functions
             return
 
-        if node.name.startswith('_'):
+        if node.name.startswith("_"):
             return
 
         if self.depth == 1 and node.name not in self.all_filter:
             return
 
         text = self.text_from_node_to_before_body(node)
-        text = re.sub(r'^def ', '', text)
+        text = re.sub(r"^def ", "", text)
 
         anchor_text = node.name
         if isinstance(self.stack[-1], ast.ClassDef):
             class_name = self.stack[-1].name
-            text = f'{class_name}.{text}'
-            anchor_text = f'{class_name}.{anchor_text}'
+            text = f"{class_name}.{text}"
+            anchor_text = f"{class_name}.{anchor_text}"
 
-        decs = ''
+        decs = ""
         if node.decorator_list:
             logger.info(node.decorator_list)
-            decs = ' '.join(
-                '@' + n.name if hasattr(n, 'name') else '@' + n.id
-                for n in node.decorator_list
-            ) + ' '
+            decs = (
+                " ".join(
+                    "@" + n.name if hasattr(n, "name") else "@" + n.id
+                    for n in node.decorator_list
+                )
+                + " "
+            )
         text = decs + text
 
         flair_text = self.scoop_flair_items_from_first_body_expr(node)
-        text = flair_text + '``' + text + '``'
+        text = flair_text + "``" + text + "``"
 
         print()
-        print(f'.. _{anchor_text}:')
+        print(f".. _{anchor_text}:")
         print()
         print(self.make_titletext(text))
 
@@ -127,12 +127,12 @@ class MyVisitor(ast.NodeVisitor):
         self.dig(node)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> Any:
-        logger.info('visited async function %s', node)
+        logger.info("visited async function %s", node)
         self.visit_FunctionDef(node)
         self.dig(node)
 
     def visit_ClassDef(self, node: ast.ClassDef) -> Any:
-        if node.name.startswith('_'):
+        if node.name.startswith("_"):
             return
 
         if self.depth == 1 and node.name not in self.all_filter:
@@ -140,45 +140,44 @@ class MyVisitor(ast.NodeVisitor):
 
         anchor_text = node.name
         print()
-        print(f'.. _{anchor_text}:')
+        print(f".. _{anchor_text}:")
         print()
 
         text = self.text_from_node_to_before_body(node)
         flair_text = self.scoop_flair_items_from_first_body_expr(node)
-        text = flair_text + '``' + text + '``'
+        text = flair_text + "``" + text + "``"
         print(self.make_titletext(text))
         self.dig(node)
 
     def visit_Expr(self, node: ast.Expr) -> Any:
         """Handles docstrings and any other strings that might just appear
         in various places."""
-        is_constant_str = isinstance(node.value, ast.Constant) \
-            and isinstance(node.value.value, str)
+        is_constant_str = isinstance(node.value, ast.Constant) and isinstance(
+            node.value.value, str
+        )
         if not is_constant_str:
             return
 
         # First line might have different indentation!
-        first_line, _, other_lines = node.value.value.partition('\n')
-        text = first_line.strip() + '\n' + dedent(other_lines)
-        text = re.sub(self.flair_pattern, '', text, flags=re.MULTILINE)
+        first_line, _, other_lines = node.value.value.partition("\n")
+        text = first_line.strip() + "\n" + dedent(other_lines)
+        text = re.sub(self.flair_pattern, "", text, flags=re.MULTILINE)
         # Replace doctest notifiers
-        tokens = ['<BLANKLINE>', '# doctest: +SKIP', '# doctest: +ELLIPSIS']
+        tokens = ["<BLANKLINE>", "# doctest: +SKIP", "# doctest: +ELLIPSIS"]
         for t in tokens:
-            text = text.replace(t, ' ' * len(t))
+            text = text.replace(t, " " * len(t))
         print(text)
 
     def visit_Assign(self, node: ast.Assign) -> Any:
         """This is only used to collect the __all__ values to filter
         the output for those."""
-        if not hasattr(node.targets[0], 'id'):
+        if not hasattr(node.targets[0], "id"):
             return
 
-        if node.targets[0].id != '__all__':
+        if node.targets[0].id != "__all__":
             return
 
-        self.all_filter = [
-            n.value for n in node.value.elts
-        ]
+        self.all_filter = [n.value for n in node.value.elts]
 
 
 def main(args):
@@ -189,23 +188,23 @@ def main(args):
     visitor.visit(mod)
 
 
-def make_titletext(name, element, level, prefix=''):
+def make_titletext(name, element, level, prefix=""):
     section_chars = '#*=-^"'
 
     if inspect.isclass(element):
-        text = f'class {name}'
+        text = f"class {name}"
     elif inspect.ismethod(element):
         # class methods
         sig = inspect.signature(element)
-        text = f'*classmethod* ``{element.__qualname__}{sig}``'
+        text = f"*classmethod* ``{element.__qualname__}{sig}``"
     elif inspect.isfunction(element):
         # class methods
         sig = inspect.signature(element)
-        text = f'``{element.__qualname__}{sig}``'
+        text = f"``{element.__qualname__}{sig}``"
     else:
         try:
             sig = inspect.signature(element)
-            text = f'``{element.__qualname__}{sig}``'
+            text = f"``{element.__qualname__}{sig}``"
         except (ValueError, TypeError):
             text = name
 
@@ -214,12 +213,12 @@ def make_titletext(name, element, level, prefix=''):
 
     underline_len = len(text.encode())
 
-    return '\n' + text + '\n' + section_chars[level] * underline_len
+    return "\n" + text + "\n" + section_chars[level] * underline_len
 
 
 def parse(node, level=0, include_names=None):
     def elems_by_appearance(node):
-        if node.__name__ == 'type':
+        if node.__name__ == "type":
             return
 
         def line_number(node):
@@ -243,24 +242,24 @@ def parse(node, level=0, include_names=None):
         except AttributeError:
             continue
 
-        if name.startswith('_'):
+        if name.startswith("_"):
             continue
 
-        allow_emit = level!=1 or (
+        allow_emit = level != 1 or (
             not include_names or element.__name__ in include_names
         )
         if allow_emit:
             yield name, element, level
-            if hasattr(element, '__doc__'):
-                print(name, 'hasdoc')
+            if hasattr(element, "__doc__"):
+                print(name, "hasdoc")
             if inspect.isclass(element):
-                yield from parse(element, level+1)
+                yield from parse(element, level + 1)
 
 
-if __name__ == '__main__':
-    logging.basicConfig(level='WARNING', stream=sys.stderr)
+if __name__ == "__main__":
+    logging.basicConfig(level="WARNING", stream=sys.stderr)
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--module', help='Module name to document')
-    parser.add_argument('-a', '--all', help='Only document entries in __all__')
+    parser.add_argument("-m", "--module", help="Module name to document")
+    parser.add_argument("-a", "--all", help="Only document entries in __all__")
     args = parser.parse_args()
     main(args)
