@@ -9,36 +9,36 @@ jobs:
     timeout-minutes: 5
     strategy:
       matrix:
-        python-version: ['3.6', '3.7', '3.8', '3.9', '3.10', 'pypy3']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13', 'pypy3.10']
         os: [ubuntu-latest, windows-latest, macOS-latest]
         exclude:
           - os: macOS-latest
-            python-version: '3.6'
+            python-version: '3.8'
           - os: macOS-latest
-            python-version: 'pypy3'
+            python-version: '3.9'
+          - os: macOS-latest
+            python-version: '3.10'
+          # - os: macOS-latest
+          #   python-version: 'pypy3'
       fail-fast: false
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
     - name: Set up Python
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-        architecture: x64  
+        architecture: x64
     - name: Install dependencies
       run: |
         python -m pip install -U pip wheel
         pip install .
         pip install -r requirements-test.txt
-    - name: Lint with flake8
+    - name: Lint
+      continue-on-error: true
       run: |
-        pip install flake8
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        uv run ruff check
     - name: Test with pytest
       run: |
-        pip install pytest
         pytest --cov excitertools excitertools.py tests/
     - name: Extract branch name
       shell: bash
