@@ -250,6 +250,7 @@ an instance of Iter_ to allow further iterable chaining.
 
 .. code-block:: python
 
+    >>> import string
     >>> enumerate(string.ascii_lowercase).take(3).collect()
     [(0, 'a'), (1, 'b'), (2, 'c')]
 
@@ -681,6 +682,7 @@ Counting the whitespace
 
 .. code-block:: python
 
+    >>> from collections import Counter
     >>> splititer_regex(r"\s", "aaa     bbb  \n  ccc\nddd\teee").collect(Counter)
     Counter({'': 8, 'aaa': 1, 'bbb': 1, 'ccc': 1, 'ddd': 1, 'eee': 1})
 
@@ -1245,11 +1247,12 @@ the reader to control how many bytes are read in each chunk.
 In this example we're reading 1 byte at a time. In a real example
 you might have a sequence of headers and bodies, where headers
 give size information about how many bytes are in the body
-corresponding to that header. Then you can precisely read 
+corresponding to that header. Then you can precisely read
 each body in sequence.
 
 .. code-block:: python
 
+    >>> from collections import deque
     >>> read_sizes = deque([1])
     >>> with open(filename, 'rb') as f:
     ...     data = (
@@ -1546,7 +1549,7 @@ it follows that there are no elements that are falsy and that's why
 ``Iter.dict(self) -> "Dict"``
 =============================
 
-In regular Python a dict can be constructed through an iterable 
+In regular Python a dict can be constructed through an iterable
 of tuples:
 
 .. code-block:: python
@@ -1687,7 +1690,7 @@ With the normal ``filter``, this fails:
         ...
     TypeError: <lambda>() missing 1 required positional argument: 'x'
 
-This is a real buzzkill. ``starfilter`` is very similar to 
+This is a real buzzkill. ``starfilter`` is very similar to
 ``starmap`` in that tuples are unpacked when calling the function:
 
 .. code-block:: python
@@ -1889,10 +1892,10 @@ want to add some comments on these chains:
 
 ``reduce`` is a quite crude low-level tool. In many cases you'll
 find that there are other functions and methods better suited
-to the situations you'll encounter most often. For example, 
+to the situations you'll encounter most often. For example,
 there is already Iter.sum_ if you just want to add up numbers,
-and it's much easier to use Iter.groupby_ for grouping than 
-to try to make that work with Iter.reduce_. You *can* make it 
+and it's much easier to use Iter.groupby_ for grouping than
+to try to make that work with Iter.reduce_. You *can* make it
 work but it'll be easier to use Iter.groupby_.
 
 
@@ -1969,7 +1972,7 @@ Exactly what you expect:
 .. _Iter.concat:
 
 
-|sink| ``Iter.concat(self, glue: AnyStr = '') -> "AnyStr"``
+|sink| ``Iter.concat(self, glue: AnyStr = "") -> "AnyStr"``
 ===========================================================
 
 
@@ -3468,7 +3471,7 @@ Reference: `more_itertools.nth_combination <https://more-itertools.readthedocs.i
 .. _Iter.always_iterable:
 
 
-``@classmethod Iter.always_iterable(cls, obj, base_type=(str, bytes)) -> 'Iter'``
+``@classmethod Iter.always_iterable(cls, obj, base_type=(str, bytes)) -> "Iter"``
 =================================================================================
 
 Reference: `more_itertools.always_iterable <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.always_iterable>`_
@@ -4052,7 +4055,7 @@ Reference: `more_itertools.consumer <https://more-itertools.readthedocs.io/en/st
 
 Some ideas around a reverse iterator as a sink. Usually you have
 first to "send" a ``None`` into a generator if you want to send
-more values into it (or call ``next()`` on it), but we handle 
+more values into it (or call ``next()`` on it), but we handle
 that automatically.
 
 Simple case:
@@ -4068,7 +4071,7 @@ Simple case:
     >>> output
     [0, 1, 2]
 
-However, if the caller already started the generator, that 
+However, if the caller already started the generator, that
 works too:
 
 .. code-block:: python
@@ -4253,6 +4256,7 @@ libraries that offer similar features:
 Somewhat related:
 
 * `https://github.com/jreese/aioitertools <https://github.com/jreese/aioitertools>`_
+
 
 Dev Instructions
 ################
