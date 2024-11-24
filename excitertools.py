@@ -332,6 +332,7 @@ def enumerate(iterable) -> "Iter[Tuple[int, T]]":
 
     .. code-block:: python
 
+        >>> import string
         >>> enumerate(string.ascii_lowercase).take(3).collect()
         [(0, 'a'), (1, 'b'), (2, 'c')]
 
@@ -749,6 +750,7 @@ def splititer_regex(
 
     .. code-block:: python
 
+        >>> from collections import Counter
         >>> splititer_regex(r"\\s", "aaa     bbb  \\n  ccc\\nddd\\teee").collect(Counter)
         Counter({'': 8, 'aaa': 1, 'bbb': 1, 'ccc': 1, 'ddd': 1, 'eee': 1})
 
@@ -1243,7 +1245,8 @@ class Iter(Generic[T]):
             True
 
         """
-        if isinstance(container, str):
+        # TODO: also hand string subtypes
+        if container is str:
             return self.concat("")
         else:
             return container(self)
@@ -1396,6 +1399,7 @@ class Iter(Generic[T]):
 
         .. code-block:: python
 
+            >>> from collections import deque
             >>> read_sizes = deque([1])
             >>> with open(filename, 'rb') as f:
             ...     data = (
