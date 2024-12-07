@@ -2136,7 +2136,18 @@ class Iter(Generic[T]):
         return concat(self.x, glue)
 
     def insert(self, glue: C) -> "Iter[Union[C, T]]":
-        """Docstring TBD"""
+        """
+
+        .. code-block:: python
+
+            >>> Iter('abc').insert('x').collect()
+            ['a', 'x', 'b', 'x', 'c']
+            >>> Iter('abc').insert('x').concat('')
+            'axbxc'
+            >>> Iter([]).insert('x').collect()
+            []
+
+        """
         return Iter(insert_separator(self, glue))
 
     # standard library
