@@ -4232,7 +4232,12 @@ def insert_separator(iterable: Iterable[Any], glue: Any) -> "Iterable[Any]":
     if not isinstance(iterable, Iterator):
         iterable = iter(iterable)
 
-    yield next(iterable)
+    try:
+        # Empty iterator
+        yield next(iterable)
+    except StopIteration:
+        return
+
     for item in iterable:
         if glue is not None:
             yield glue
