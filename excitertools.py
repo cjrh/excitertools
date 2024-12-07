@@ -2206,7 +2206,7 @@ class Iter(Generic[T]):
 
     # Iterators terminating on the shortest input sequence
     def accumulate(self, func=None, *, initial=None):
-        """Docstring TBD
+        """ Reference `itertools.accumulate <https://docs.python.org/3/library/itertools.html#itertools.accumulate>`_
 
         .. code-block:: python
 

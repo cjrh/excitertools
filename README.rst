@@ -1128,17 +1128,6 @@ completeness.
     >>> Iter('abcaaaabbbbccc').collect(set) == {'a', 'b', 'c'}
     True
 
-String subclasses also work.
-
-.. code-block:: python
-
-    >>> class MyString(str): pass
-    >>> out = Iter(MyString('abc')).collect(MyString)
-    >>> out
-    'abc'
-    >>> type(out)
-    <class 'excitertools.MyString'>
-
 
 
 .. _Iter.open:
