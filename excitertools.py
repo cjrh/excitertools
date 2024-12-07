@@ -909,7 +909,7 @@ The ``Iter`` Class
 """
 
 
-class Iter(Generic[T]):
+class Iter(Generic[T], collections.abc.Iterator[T]):
     """
     |cool|
     This class is what allows chaining. Many of the methods in this class
@@ -2184,7 +2184,7 @@ class Iter(Generic[T]):
             'abcabcab'
 
         """
-        return Iter(itertools.cycle(self.x))
+        return type(self)(itertools.cycle(self.x))
 
     @classmethod
     def repeat(cls, elem: C, times=None) -> "Iter[C]":
@@ -2200,9 +2200,9 @@ class Iter(Generic[T]):
         """
         # TODO: does it really work like this? Wow.
         if times:
-            return Iter(itertools.repeat(elem, times=times))
+            return cls(itertools.repeat(elem, times=times))
         else:
-            return Iter(itertools.repeat(elem))
+            return cls(itertools.repeat(elem))
 
     # Iterators terminating on the shortest input sequence
     def accumulate(self, func=None, *, initial=None):
@@ -2239,7 +2239,7 @@ class Iter(Generic[T]):
                 )
             return Iter(itertools.accumulate(self.x, func))
 
-        return Iter(itertools.accumulate(self.x, func, initial=initial))
+        return type(self)(itertools.accumulate(self.x, func, initial=initial))
 
     def chain(self, *iterables: Iterable[T]) -> "Iter[T]":
         """Docstring TODO
@@ -2252,7 +2252,7 @@ class Iter(Generic[T]):
             ['A', 'B', 'C']
 
         """
-        return Iter(itertools.chain(self.x, *iterables))
+        return type(self)(itertools.chain(self.x, *iterables))
 
     def chain_from_iterable(self) -> "Iter[T]":
         """Docstring TODO
@@ -2261,11 +2261,13 @@ class Iter(Generic[T]):
 
             >>> Iter(['ABC', 'DEF']).chain_from_iterable().collect()
             ['A', 'B', 'C', 'D', 'E', 'F']
+            >>> Iter([range(3), range(4)]).chain_from_iterable().collect()
+            [0, 1, 2, 0, 1, 2, 3]
 
         """
-        return Iter(itertools.chain.from_iterable(self.x))
+        return type(self)(itertools.chain.from_iterable(self.x))
 
-    def compress(self, selectors):
+    def compress(self, selectors) -> "Iter[T]":
         """Replacement for the itertools ``compress`` function.  This version returns
         an instance of Iter_ to allow further iterable chaining.
 
@@ -2275,40 +2277,40 @@ class Iter(Generic[T]):
             ['A', 'C', 'E', 'F']
 
         """
-        return Iter(itertools.compress(self.x, selectors))
+        return type(self)(itertools.compress(self.x, selectors))
 
-    def dropwhile(self, pred):
+    def dropwhile(self, pred) -> "Iter[T]":
         """Docstring TODO"""
-        return Iter(itertools.dropwhile(pred, self.x))
+        return type(self)(itertools.dropwhile(pred, self.x))
 
-    def filterfalse(self, pred):
+    def filterfalse(self, pred) -> "Iter[T]":
         """Docstring TODO"""
-        return Iter(itertools.filterfalse(pred, self.x))
+        return type(self)(itertools.filterfalse(pred, self.x))
 
-    def groupby(self, key=None):
+    def groupby(self, key=None) -> "Iter[Tuple[Any, Iter[T]]]":
         """Docstring TODO"""
-        return Iter(itertools.groupby(self.x, key=key))
+        return type(self)(itertools.groupby(self.x, key=key))
 
-    def islice(self, *args) -> "Iter":
+    def islice(self, *args) -> "Iter[T]":
         """Docstring TODO"""
-        return Iter(itertools.islice(self.x, *args))
+        return type(self)(itertools.islice(self.x, *args))
 
-    def starmap(self, func):
+    def starmap(self, func) -> "Iter[T]":
         """Docstring TODO"""
-        return Iter(itertools.starmap(func, self.x))
+        return type(self)(itertools.starmap(func, self.x))
 
-    def takewhile(self, pred):
+    def takewhile(self, pred) -> "Iter[T]":
         """Docstring TODO"""
-        return Iter(itertools.takewhile(pred, self.x))
+        return type(self)(itertools.takewhile(pred, self.x))
 
     def tee(self, n=2):
         """Docstring TODO"""
         # Pay attention
-        return Iter(Iter(_) for _ in itertools.tee(self.x, n))
+        return type(self)(Iter(_) for _ in itertools.tee(self.x, n))
 
     def zip_longest(self, *iterables, fillvalue=None):
         """Docstring TODO"""
-        return Iter(itertools.zip_longest(self.x, *iterables, fillvalue=fillvalue))
+        return type(self)(itertools.zip_longest(self.x, *iterables, fillvalue=fillvalue))
 
     # more-itertools
     # ===============
