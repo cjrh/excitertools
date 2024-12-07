@@ -1128,6 +1128,17 @@ completeness.
     >>> Iter('abcaaaabbbbccc').collect(set) == {'a', 'b', 'c'}
     True
 
+String subclasses also work.
+
+.. code-block:: python
+
+    >>> class MyString(str): pass
+    >>> out = Iter(MyString('abc')).collect(MyString)
+    >>> out
+    'abc'
+    >>> type(out)
+    <class 'excitertools.MyString'>
+
 
 
 .. _Iter.open:
@@ -2000,7 +2011,17 @@ Joining strings (and bytes).
 
 ``Iter.insert(self, glue: C) -> "Iter[Union[C, T]]"``
 =====================================================
-Docstring TBD
+
+
+.. code-block:: python
+
+    >>> Iter('abc').insert('x').collect()
+    ['a', 'x', 'b', 'x', 'c']
+    >>> Iter('abc').insert('x').concat('')
+    'axbxc'
+    >>> Iter([]).insert('x').collect()
+    []
+
 
 
 .. _Iter.count:
@@ -2060,7 +2081,7 @@ Docstring TBD
 
 ``Iter.accumulate(self, func=None, *, initial=None)``
 =====================================================
-Docstring TBD
+Reference `itertools.accumulate <https://docs.python.org/3/library/itertools.html#itertools.accumulate>`_
 
 .. code-block:: python
 
@@ -2072,6 +2093,17 @@ Docstring TBD
     >>> Iter([1, 2, 3, 4, 5]).accumulate(operator.mul).collect()
     [1, 2, 6, 24, 120]
 
+    Example from the itertools docs:
+    Amortize a 5% loan of 1000 with 10 annual payments of 90
+    >>> update = lambda balance, payment: round(balance * 1.05) - payment
+
+    This is written in the itertools docs:
+    >>> list(accumulate(repeat(90, 10), update, initial=1_000))                 
+
+    This is using excitertools:
+    >>> repeat(90, 10).accumulate(update, initial=1000).collect()
+    [1000, 960, 918, 874, 828, 779, 728, 674, 618, 559, 497]
+
 
 
 .. _Iter.chain:
@@ -2079,7 +2111,7 @@ Docstring TBD
 
 ``Iter.chain(self, *iterables: Iterable[T]) -> "Iter[T]"``
 ==========================================================
-Docstring TBD
+Docstring TODO
 
 .. code-block:: python
 
@@ -2095,7 +2127,7 @@ Docstring TBD
 
 ``Iter.chain_from_iterable(self) -> "Iter[T]"``
 ===============================================
-Docstring TBD
+Docstring TODO
 
 .. code-block:: python
 
@@ -2124,7 +2156,7 @@ an instance of Iter_ to allow further iterable chaining.
 
 ``Iter.dropwhile(self, pred)``
 ==============================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.filterfalse:
@@ -2132,7 +2164,7 @@ Docstring TBD
 
 ``Iter.filterfalse(self, pred)``
 ================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.groupby:
@@ -2140,7 +2172,7 @@ Docstring TBD
 
 ``Iter.groupby(self, key=None)``
 ================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.islice:
@@ -2148,7 +2180,7 @@ Docstring TBD
 
 ``Iter.islice(self, *args) -> "Iter"``
 ======================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.starmap:
@@ -2156,7 +2188,7 @@ Docstring TBD
 
 ``Iter.starmap(self, func)``
 ============================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.takewhile:
@@ -2164,7 +2196,7 @@ Docstring TBD
 
 ``Iter.takewhile(self, pred)``
 ==============================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.tee:
@@ -2172,7 +2204,7 @@ Docstring TBD
 
 ``Iter.tee(self, n=2)``
 =======================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.zip_longest:
@@ -2180,7 +2212,7 @@ Docstring TBD
 
 ``Iter.zip_longest(self, *iterables, fillvalue=None)``
 ======================================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.chunked:
@@ -2188,7 +2220,7 @@ Docstring TBD
 
 ``Iter.chunked(self, n: int) -> "Iter"``
 ========================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.ichunked:
@@ -2196,7 +2228,7 @@ Docstring TBD
 
 ``Iter.ichunked(self, n: int) -> "Iter"``
 =========================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.sliced:
@@ -2204,7 +2236,7 @@ Docstring TBD
 
 ``@classmethod Iter.sliced(cls, seq: Sequence, n: int) -> "Iter"``
 ==================================================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.distribute:
@@ -2212,7 +2244,7 @@ Docstring TBD
 
 ``Iter.distribute(self, n: int) -> "Iter"``
 ===========================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.divide:
@@ -2220,7 +2252,7 @@ Docstring TBD
 
 ``Iter.divide(self, n: int) -> "Iter"``
 =======================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.split_at:
@@ -2228,7 +2260,7 @@ Docstring TBD
 
 ``Iter.split_at(self, pred)``
 =============================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.split_before:
@@ -2236,7 +2268,7 @@ Docstring TBD
 
 ``Iter.split_before(self, pred)``
 =================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.split_after:
@@ -2244,7 +2276,7 @@ Docstring TBD
 
 ``Iter.split_after(self, pred)``
 ================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.split_into:
@@ -2252,7 +2284,7 @@ Docstring TBD
 
 ``Iter.split_into(self, sizes)``
 ================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.split_when:
@@ -2260,7 +2292,7 @@ Docstring TBD
 
 ``Iter.split_when(self, pred)``
 ===============================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.bucket:
@@ -2290,7 +2322,7 @@ of a group again.
 
 ``Iter.unzip(self)``
 ====================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.grouper:
@@ -2298,7 +2330,7 @@ Docstring TBD
 
 ``Iter.grouper(self, n: int, fillvalue=None) -> "Iter"``
 ========================================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.partition:
@@ -2306,7 +2338,7 @@ Docstring TBD
 
 ``Iter.partition(self, pred) -> "Iter"``
 ========================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.spy:
@@ -2314,7 +2346,7 @@ Docstring TBD
 
 ``Iter.spy(self, n=1) -> "Tuple[Iter, Iter]"``
 ==============================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.peekable:
@@ -2323,7 +2355,7 @@ Docstring TBD
 ``Iter.peekable(self) -> "more_itertools.peekable"``
 ====================================================
 
-Docstring TBD
+Docstring TODO
 
 .. code-block:: python
 
@@ -2378,7 +2410,7 @@ right back to iterator chaining. Thus, the ``prepend`` method
 
 ``Iter.seekable(self) -> "more_itertools.seekable"``
 ====================================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.windowed:
@@ -2386,7 +2418,7 @@ Docstring TBD
 
 ``Iter.windowed(self, n, fillvalue=None, step=1) -> "Iter"``
 ============================================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.substrings:
@@ -2394,7 +2426,7 @@ Docstring TBD
 
 ``Iter.substrings(self)``
 =========================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.substrings_indexes:
@@ -2402,7 +2434,7 @@ Docstring TBD
 
 ``Iter.substrings_indexes(self, reverse=False)``
 ================================================
-Docstring TBD
+Docstring TODO
 
 
 .. _Iter.stagger:
@@ -2819,6 +2851,7 @@ Reference: `more_itertools.ilen <https://more-itertools.readthedocs.io/en/stable
 
 Reference: `more_itertools.unique_to_each <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_to_each>`_
 
+
 .. code-block:: python
 
     >>> Iter([{'A', 'B'}, {'B', 'C'}, {'B', 'D'}]).unique_to_each().collect()
@@ -2826,6 +2859,9 @@ Reference: `more_itertools.unique_to_each <https://more-itertools.readthedocs.io
 
     >>> Iter(["mississippi", "missouri"]).unique_to_each().collect()
     [['p', 'p'], ['o', 'u', 'r']]
+
+Note that this will internally construct the full list of the uniques for each group.
+
 
 
 .. _Iter.sample:
@@ -2996,7 +3032,7 @@ Reference: `more_itertools.map_reduce <https://more-itertools.readthedocs.io/en/
 
 
 
-Docstring TBD
+Docstring TODO
 
 .. code-block:: python
 
@@ -3858,7 +3894,7 @@ returned from the consume call.
 =======================================================================
 
 
-Docstring TBD
+Docstring TODO
 
 .. code-block:: python
 
