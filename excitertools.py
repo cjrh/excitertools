@@ -1247,10 +1247,22 @@ class Iter(Generic[T]):
             >>> Iter('abcaaaabbbbccc').collect(set) == {'a', 'b', 'c'}
             True
 
+        String subclasses also work.
+
+        .. code-block:: python
+
+            >>> class MyString(str): pass
+            >>> out = Iter(MyString('abc')).collect(MyString)
+            >>> out
+            'abc'
+            >>> type(out)
+            <class 'excitertools.MyString'>
+
         """
-        # TODO: also hand string subtypes
-        if container is str:
-            return self.concat("")
+        isstr = isinstance(container, type) and container is str
+        isstrsubclass = isinstance(container, type) and issubclass(container, str)
+        if isstr or isstrsubclass:
+            return container(self.concat(""))
         else:
             return container(self)
 
