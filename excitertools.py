@@ -909,7 +909,7 @@ The ``Iter`` Class
 """
 
 
-class Iter(Generic[T], collections.abc.Iterator[T]):
+class Iter(Generic[T], Iterator[T]):
     """
     |cool|
     This class is what allows chaining. Many of the methods in this class
