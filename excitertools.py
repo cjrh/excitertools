@@ -2218,6 +2218,17 @@ class Iter(Generic[T]):
             >>> Iter([1, 2, 3, 4, 5]).accumulate(operator.mul).collect()
             [1, 2, 6, 24, 120]
 
+            Example from the itertools docs:
+            Amortize a 5% loan of 1000 with 10 annual payments of 90
+            >>> update = lambda balance, payment: round(balance * 1.05) - payment
+
+            This is written in the itertools docs:
+            >>> list(accumulate(repeat(90, 10), update, initial=1_000)) # doctest: +SKIP
+
+            This is using excitertools:
+            >>> repeat(90, 10).accumulate(update, initial=1000).collect()
+            [1000, 960, 918, 874, 828, 779, 728, 674, 618, 559, 497]
+
         """
         if sys.version_info < (3, 8):  # pragma: no cover
             if initial:
