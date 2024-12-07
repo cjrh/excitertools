@@ -2242,7 +2242,7 @@ class Iter(Generic[T]):
         return Iter(itertools.accumulate(self.x, func, initial=initial))
 
     def chain(self, *iterables: Iterable[T]) -> "Iter[T]":
-        """Docstring TBD
+        """Docstring TODO
 
         .. code-block:: python
 
@@ -2255,7 +2255,7 @@ class Iter(Generic[T]):
         return Iter(itertools.chain(self.x, *iterables))
 
     def chain_from_iterable(self) -> "Iter[T]":
-        """Docstring TBD
+        """Docstring TODO
 
         .. code-block:: python
 
@@ -2278,36 +2278,36 @@ class Iter(Generic[T]):
         return Iter(itertools.compress(self.x, selectors))
 
     def dropwhile(self, pred):
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(itertools.dropwhile(pred, self.x))
 
     def filterfalse(self, pred):
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(itertools.filterfalse(pred, self.x))
 
     def groupby(self, key=None):
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(itertools.groupby(self.x, key=key))
 
     def islice(self, *args) -> "Iter":
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(itertools.islice(self.x, *args))
 
     def starmap(self, func):
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(itertools.starmap(func, self.x))
 
     def takewhile(self, pred):
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(itertools.takewhile(pred, self.x))
 
     def tee(self, n=2):
-        """Docstring TBD"""
+        """Docstring TODO"""
         # Pay attention
         return Iter(Iter(_) for _ in itertools.tee(self.x, n))
 
     def zip_longest(self, *iterables, fillvalue=None):
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(itertools.zip_longest(self.x, *iterables, fillvalue=fillvalue))
 
     # more-itertools
@@ -2316,44 +2316,44 @@ class Iter(Generic[T]):
     # Grouping
 
     def chunked(self, n: int) -> "Iter":
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(more_itertools.chunked(self.x, n))
 
     def ichunked(self, n: int) -> "Iter":
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(Iter(it) for it in more_itertools.ichunked(self.x, n))
 
     @classmethod
     def sliced(cls, seq: Sequence, n: int) -> "Iter":
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(more_itertools.sliced(seq, n))
 
     def distribute(self, n: int) -> "Iter":
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter((Iter(x) for x in Iter(more_itertools.distribute(n, self.x))))
 
     def divide(self, n: int) -> "Iter":
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(Iter(x) for x in more_itertools.divide(n, self.x))
 
     def split_at(self, pred):
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(more_itertools.split_at(self.x, pred))
 
     def split_before(self, pred):
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(more_itertools.split_before(self.x, pred))
 
     def split_after(self, pred):
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(more_itertools.split_after(self.x, pred))
 
     def split_into(self, sizes):
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(more_itertools.split_into(self.x, sizes))
 
     def split_when(self, pred):
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(more_itertools.split_when(self.x, pred))
 
     def bucket(self, key, validator=None):
@@ -2384,28 +2384,28 @@ class Iter(Generic[T]):
         return _bucket(self.x, key, validator=validator)
 
     def unzip(self):
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(Iter(x) for x in more_itertools.unzip(self.x))
 
     def grouper(self, n: int, fillvalue=None) -> "Iter":
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(more_itertools.grouper(self.x, n, fillvalue=fillvalue))
 
     def partition(self, pred) -> "Iter":
-        """Docstring TBD"""
+        """Docstring TODO"""
         left, right = more_itertools.partition(pred, self.x)
         return Iter((Iter(left), Iter(right)))
 
     # Lookahead and lookback
 
     def spy(self, n=1) -> "Tuple[Iter, Iter]":
-        """Docstring TBD"""
+        """Docstring TODO"""
         head, iterable = more_itertools.spy(self.x, n)
         return Iter(head), Iter(iterable)
 
     def peekable(self) -> "more_itertools.peekable":
         """
-        Docstring TBD
+        Docstring TODO
 
         .. code-block:: python
 
@@ -2472,7 +2472,7 @@ class Iter(Generic[T]):
         return _peekable(self.x)
 
     def seekable(self) -> "more_itertools.seekable":
-        """Docstring TBD"""
+        """Docstring TODO"""
 
         class _seekable(more_itertools.seekable):
             def __iter__(self):
@@ -2483,15 +2483,15 @@ class Iter(Generic[T]):
     # Windowing
 
     def windowed(self, n, fillvalue=None, step=1) -> "Iter":
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(more_itertools.windowed(self.x, n, fillvalue=fillvalue, step=step))
 
     def substrings(self):
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(more_itertools.substrings(self.x))
 
     def substrings_indexes(self, reverse=False):
-        """Docstring TBD"""
+        """Docstring TODO"""
         return Iter(more_itertools.substrings_indexes(list(self.x), reverse=reverse))
 
     def stagger(self, offsets=(-1, 0, 1), longest=False, fillvalue=None):
@@ -2927,6 +2927,7 @@ class Iter(Generic[T]):
         """
         Reference: `more_itertools.unique_to_each <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_to_each>`_
 
+
         .. code-block:: python
 
             >>> Iter([{'A', 'B'}, {'B', 'C'}, {'B', 'D'}]).unique_to_each().collect()
@@ -2934,6 +2935,9 @@ class Iter(Generic[T]):
 
             >>> Iter(["mississippi", "missouri"]).unique_to_each().collect()
             [['p', 'p'], ['o', 'u', 'r']]
+
+        Note that this will internally construct the full list of the uniques for each group.
+
         """
         # TODO: this operation is a little different to the others that take
         #  a *iterables parameter. Not sure if this is what we want.
@@ -3102,7 +3106,7 @@ class Iter(Generic[T]):
         """
         |sink|
 
-        Docstring TBD
+        Docstring TODO
 
         .. code-block:: python
 
@@ -3869,7 +3873,7 @@ class Iter(Generic[T]):
     def repeatfunc(cls, func, *args, times=None):
         """
         |source|
-        Docstring TBD
+        Docstring TODO
 
         .. code-block:: python
 
