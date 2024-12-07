@@ -822,8 +822,8 @@ The ``Iter`` Class
 .. _Iter:
 
 
-|cool| ``class Iter(Generic[T])``
-*********************************
+|cool| ``class Iter(Generic[T], collections.abc.Iterator[T])``
+**************************************************************
 
 
 This class is what allows chaining. Many of the methods in this class
@@ -2133,14 +2133,16 @@ Docstring TODO
 
     >>> Iter(['ABC', 'DEF']).chain_from_iterable().collect()
     ['A', 'B', 'C', 'D', 'E', 'F']
+    >>> Iter([range(3), range(4)]).chain_from_iterable().collect()
+    [0, 1, 2, 0, 1, 2, 3]
 
 
 
 .. _Iter.compress:
 
 
-``Iter.compress(self, selectors)``
-==================================
+``Iter.compress(self, selectors) -> "Iter[T]"``
+===============================================
 Replacement for the itertools ``compress`` function.  This version returns
 an instance of Iter_ to allow further iterable chaining.
 
@@ -2154,48 +2156,48 @@ an instance of Iter_ to allow further iterable chaining.
 .. _Iter.dropwhile:
 
 
-``Iter.dropwhile(self, pred)``
-==============================
+``Iter.dropwhile(self, pred) -> "Iter[T]"``
+===========================================
 Docstring TODO
 
 
 .. _Iter.filterfalse:
 
 
-``Iter.filterfalse(self, pred)``
-================================
+``Iter.filterfalse(self, pred) -> "Iter[T]"``
+=============================================
 Docstring TODO
 
 
 .. _Iter.groupby:
 
 
-``Iter.groupby(self, key=None)``
-================================
+``Iter.groupby(self, key=None) -> "Iter[Tuple[Any, Iter[T]]]"``
+===============================================================
 Docstring TODO
 
 
 .. _Iter.islice:
 
 
-``Iter.islice(self, *args) -> "Iter"``
-======================================
+``Iter.islice(self, *args) -> "Iter[T]"``
+=========================================
 Docstring TODO
 
 
 .. _Iter.starmap:
 
 
-``Iter.starmap(self, func)``
-============================
+``Iter.starmap(self, func) -> "Iter[T]"``
+=========================================
 Docstring TODO
 
 
 .. _Iter.takewhile:
 
 
-``Iter.takewhile(self, pred)``
-==============================
+``Iter.takewhile(self, pred) -> "Iter[T]"``
+===========================================
 Docstring TODO
 
 
@@ -2355,7 +2357,7 @@ Docstring TODO
 ``Iter.peekable(self) -> "more_itertools.peekable"``
 ====================================================
 
-Docstring TODO
+Reference: `more_itertools.peekable <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.peekable>`_
 
 .. code-block:: python
 

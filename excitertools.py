@@ -1131,6 +1131,26 @@ class Iter(Generic[T], collections.abc.Iterator[T]):
     def __next__(self) -> "T":
         return next(self.x)
 
+    def next(self) -> "T":
+        """Convenience function to avoid having to wrap an interator with
+        the `next()` builtin, just to advance it by one step (and return
+        the value). Typical use cases for this might be for tutorials
+        and explainers, where you want to show the next value in a
+        sequence.
+
+        .. code-block:: python
+
+            >>> it = Iter(range(5))
+            >>> it.next()
+            0
+            >>> it.next()
+            1
+            >>> it.collect()
+            [2, 3, 4]
+
+        """
+        return next(self.x)
+
     @classmethod
     def register(cls, *func):
         """
@@ -2407,7 +2427,7 @@ class Iter(Generic[T], collections.abc.Iterator[T]):
 
     def peekable(self) -> "more_itertools.peekable":
         """
-        Docstring TODO
+        Reference: `more_itertools.peekable <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.peekable>`_
 
         .. code-block:: python
 
@@ -2473,14 +2493,90 @@ class Iter(Generic[T], collections.abc.Iterator[T]):
 
         return _peekable(self.x)
 
-    def seekable(self) -> "more_itertools.seekable":
-        """Docstring TODO"""
+    def seekable(self, maxlen=None) -> "IterSeekable[T]":
+        """
+        Reference: `more_itertools.seekable <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.seekable>`_
+
+        Allow for seeking forward and backward.
+
+        .. code-block:: python
+
+            >>> it = count().map(str).seekable()
+            >>> next(it), next(it), next(it)
+            ('0', '1', '2')
+            >>> it.seek(0).take(3).collect(tuple)
+            ('0', '1', '2')
+
+        Seeking forward:
+
+        .. code-block:: python
+
+            >>> it = range(20).map(str).seekable()
+            >>> it.seek(10).next()
+            '10'
+            >>> it.seek(20).collect()
+            []
+            >>> it.seek(0).next()
+            '0'
+
+        Call `relative_seek()` to seek relative to the current position:
+
+        .. code-block:: python
+
+            >>> it = range(20).map(str).seekable()
+            >>> it.take(3).collect(tuple)
+            ('0', '1', '2')
+            >>> it.relative_seek(2).next()
+            '5'
+            >>> it.relative_seek(-3).next()
+            '3'
+            >>> it.relative_seek(-3).next()
+            '1'
+
+        Call peek() to look ahead one item without advancing the iterator:
+
+        .. code-block:: python
+
+            >>> it = Iter('1234').seekable()
+            >>> it.peek()
+            '1'
+            >>> it.collect()
+            ['1', '2', '3', '4']
+            >>> it.peek(default='empty')
+            'empty'
+
+        Before the iterator is at its end, calling bool() on it will
+        return ``True``. After it will return ``False``.
+
+        .. code-block:: python
+
+            >>> it = Iter('5678').seekable()
+            >>> it.bool()
+            True
+            >>> it.collect()
+            ['5', '6', '7', '8']
+            >>> it.bool()
+            False
+
+        Use ``maxlen`` to limit the size of the internal cache used
+        for seeking. This is useful to prevent memory issues when
+        seeking through a very large iterator.
+
+        .. code-block:: python
+
+            >>> it = count().map(str).seekable(maxlen=2)
+            >>> it.take(4).collect(tuple)
+            ('0', '1', '2', '3')
+            >>> it.seek(0).take(4).collect(tuple)
+            ('2', '3', '4', '5')
+
+        """
 
         class _seekable(more_itertools.seekable):
             def __iter__(self):
                 return Iter(super().__iter__())
 
-        return _seekable(self.x)
+        return IterSeekable(_seekable(self.x, maxlen=maxlen))
 
     # Windowing
 
@@ -3626,10 +3722,9 @@ class Iter(Generic[T], collections.abc.Iterator[T]):
             >>> it = Iter(source).seekable()
             >>> pred = lambda x: x > 100
             >>> # TODO: can we avoid making two instances?
-            >>> indexes = Iter(it).locate(pred=pred)
+            >>> indexes = it.locate(pred=pred)
             >>> i = next(indexes)
-            >>> it.seek(i)
-            >>> next(it)
+            >>> it.seek(i).next()
             106
 
         """
@@ -4177,6 +4272,31 @@ class Iter(Generic[T], collections.abc.Iterator[T]):
 
         """
         return Iter(reversed(self.collect()))
+
+
+class IterSeekable(Iter[T]):
+    """ See the docstring for Iter.seekable_ """
+
+    def __init__(self, x: more_itertools.seekable):
+        self.x: more_itertools.seekable = x
+
+    def seek(self, index: int) -> "Iter[T]":
+        """ Seek forwards or backwards to a position in the iterator."""
+        self.x.seek(index)
+        return self
+
+    def relative_seek(self, offset: int) -> "Iter[T]":
+        """ Seek forwards or backwards relative to the current position."""
+        self.x.relative_seek(offset)
+        return self
+
+    def peek(self, default=more_itertools.recipes._marker) -> "T":
+        """ Peek ahead n items in the iterator."""
+        return self.x.peek(default=default)
+
+    def bool(self) -> bool:
+        """ Return True if the iterator has more items."""
+        return bool(self.x)
 
 
 """
