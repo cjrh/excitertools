@@ -195,6 +195,7 @@ from typing import (
     IO,
     Sized,
 )
+from typing_extensions import Self
 import collections.abc
 import queue
 import re
@@ -909,7 +910,7 @@ The ``Iter`` Class
 """
 
 
-class Iter(Generic[T], collections.abc.Iterator[T]):
+class Iter(Generic[T], Iterator[T]):
     """
     |cool|
     This class is what allows chaining. Many of the methods in this class
@@ -1097,6 +1098,7 @@ class Iter(Generic[T], collections.abc.Iterator[T]):
 
     """
 
+    __slots__ = "x"
     x: Iterator[T]
 
     def __init__(self, x: Iterable[T]):
@@ -1129,6 +1131,26 @@ class Iter(Generic[T], collections.abc.Iterator[T]):
         return self.x
 
     def __next__(self) -> "T":
+        return next(self.x)
+
+    def next(self) -> "T":
+        """Convenience function to avoid having to wrap an interator with
+        the `next()` builtin, just to advance it by one step (and return
+        the value). Typical use cases for this might be for tutorials
+        and explainers, where you want to show the next value in a
+        sequence.
+
+        .. code-block:: python
+
+            >>> it = Iter(range(5))
+            >>> it.next()
+            0
+            >>> it.next()
+            1
+            >>> it.collect()
+            [2, 3, 4]
+
+        """
         return next(self.x)
 
     @classmethod
@@ -2242,11 +2264,15 @@ class Iter(Generic[T], collections.abc.Iterator[T]):
         return type(self)(itertools.accumulate(self.x, func, initial=initial))
 
     def chain(self, *iterables: Iterable[T]) -> "Iter[T]":
-        """Docstring TODO
+        """Chain together multiple iterables. This is a replacement for the
+        itertools ``chain`` function.  This version returns an instance of
+        Iter_ to allow further iterable chaining.
 
         .. code-block:: python
 
             >>> Iter('ABC').chain('DEF').collect()
+            ['A', 'B', 'C', 'D', 'E', 'F']
+            >>> Iter('AB').chain('CD', 'EF').collect()
             ['A', 'B', 'C', 'D', 'E', 'F']
             >>> Iter('ABC').chain().collect()
             ['A', 'B', 'C']
@@ -2255,7 +2281,10 @@ class Iter(Generic[T], collections.abc.Iterator[T]):
         return type(self)(itertools.chain(self.x, *iterables))
 
     def chain_from_iterable(self) -> "Iter[T]":
-        """Docstring TODO
+        """This is similar to Iter.chain_ but it takes a single iterable
+        of iterables. This is a replacement for the itertools
+        ``chain.from_iterable`` function.  This version returns an
+        instance of Iter_ to allow further iterable chaining.
 
         .. code-block:: python
 
@@ -2279,37 +2308,147 @@ class Iter(Generic[T], collections.abc.Iterator[T]):
         """
         return type(self)(itertools.compress(self.x, selectors))
 
-    def dropwhile(self, pred) -> "Iter[T]":
-        """Docstring TODO"""
+    def dropwhile(self, pred) -> Self:
+        """
+        Replacement for the itertools ``dropwhile`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        .. code-block:: python
+
+            >>> Iter('abc').dropwhile(lambda x: x < 'c').collect()
+            ['c']
+
+        """
         return type(self)(itertools.dropwhile(pred, self.x))
 
-    def filterfalse(self, pred) -> "Iter[T]":
-        """Docstring TODO"""
+    def filterfalse(self, pred) -> Self:
+        """
+        Replacement for the itertools ``filterfalse`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        .. code-block:: python
+
+            >>> Iter('abc').filterfalse(lambda x: x < 'c').collect()
+            ['c']
+
+        `filterfalse` is useful when you want to exclude elements based
+        on a membership test.
+
+        .. code-block:: python
+
+            >>> stopwords = {'the', 'and', 'or', 'but'}
+            >>> text = 'the quick brown fox jumps over the lazy dog'.split()
+            >>> Iter(text).filterfalse(stopwords.__contains__).collect()
+            ['quick', 'brown', 'fox', 'jumps', 'over', 'lazy', 'dog']
+
+        """
         return type(self)(itertools.filterfalse(pred, self.x))
 
     def groupby(self, key=None) -> "Iter[Tuple[Any, Iter[T]]]":
-        """Docstring TODO"""
-        return type(self)(itertools.groupby(self.x, key=key))
+        """
+        Replacement for the itertools ``groupby`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
 
-    def islice(self, *args) -> "Iter[T]":
-        """Docstring TODO"""
+        The grouper is also an instance of Iter_, mainly because that
+        allows many different operations to be performed on the group
+        as well as realizations like `.collect(...)` or `.ilen()`.
+
+        .. code-block:: python
+
+            >>> from collections import Counter
+            >>> (
+            ...   Iter('AAAABBBCCDAABBB')
+            ...   .groupby()
+            ...   .starmap(lambda key, grouper: (key, grouper.ilen()))
+            ...   .collect()
+            ... )
+            [('A', 4), ('B', 3), ('C', 2), ('D', 1), ('A', 2), ('B', 3)]
+
+        Note that it doesn't do a groupby in the sense that you would
+        normally expect from a database query. It's more like a
+        "consecutive groupby".
+
+        To group up everything, it needs a bit more thinking:
+
+        .. code-block:: python
+
+            >>> def add_group_counts(d: dict, k, v):
+            ...     d[k] = d.get(k, 0) + v
+            ...     return d
+            >>> (
+            ...   Iter('AAAABBBCCDAABBB')
+            ...   .groupby()
+            ...   .starmap(lambda key, grouper: (key, grouper.ilen()))
+            ...   .starreduce(add_group_counts, {})
+            ... )
+            {'A': 6, 'B': 6, 'C': 2, 'D': 1}
+
+        In this specific example, we have merely reimplemented `collections.Counter`.
+
+        """
+        it = map(
+            lambda x: (x[0], Iter(x[1])),
+            itertools.groupby(self.x, key=key)
+        )
+        return type(self)(it)
+
+    def islice(self, *args) -> Self:
+        """
+        Replacement for the itertools ``islice`` function.
+
+        .. code-block:: python
+
+            >>> Iter('abcdef').islice(2).collect()
+            ['a', 'b']
+            >>> Iter('abcdef').islice(2, 4).collect()
+            ['c', 'd']
+
+        """
         return type(self)(itertools.islice(self.x, *args))
 
-    def starmap(self, func) -> "Iter[T]":
-        """Docstring TODO"""
+    def starmap(self, func) -> Self:
+        """
+        Replacement for the itertools ``starmap`` function.
+
+        .. code-block:: python
+
+            >>> Iter([(0, 1), (2, 3)]).starmap(operator.add).collect()
+            [1, 5]
+            >>> Iter([(0, 1), (2, 3)]).starmap(lambda x, y: x + y).collect()
+            [1, 5]
+
+        """
         return type(self)(itertools.starmap(func, self.x))
 
-    def takewhile(self, pred) -> "Iter[T]":
-        """Docstring TODO"""
+    def takewhile(self, pred) -> Self:
+        """
+        Replacement for the itertools ``takewhile`` function.
+
+        .. code-block:: python
+
+            >>> Iter('abc').takewhile(lambda x: x < 'c').collect()
+            ['a', 'b']
+
+        """
         return type(self)(itertools.takewhile(pred, self.x))
 
-    def tee(self, n=2):
+    def tee(self, n=2) -> "Tuple[Self, ...]":
         """Docstring TODO"""
         # Pay attention
         return type(self)(Iter(_) for _ in itertools.tee(self.x, n))
 
-    def zip_longest(self, *iterables, fillvalue=None):
-        """Docstring TODO"""
+    def zip_longest(self, *iterables, fillvalue=None) -> Self:
+        """
+        Replacement for the itertools ``zip_longest`` function.
+
+        .. code-block:: python
+
+            >>> Iter('abc').zip_longest('123').collect()
+            [('a', '1'), ('b', '2'), ('c', '3')]
+            >>> Iter('abcdef').zip_longest('123', fillvalue='x').collect()
+            [('a', '1'), ('b', '2'), ('c', '3'), ('d', 'x'), ('e', 'x'), ('f', 'x')]
+
+        """
         return type(self)(itertools.zip_longest(self.x, *iterables, fillvalue=fillvalue))
 
     # more-itertools
@@ -2407,7 +2546,7 @@ class Iter(Generic[T], collections.abc.Iterator[T]):
 
     def peekable(self) -> "more_itertools.peekable":
         """
-        Docstring TODO
+        Reference: `more_itertools.peekable <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.peekable>`_
 
         .. code-block:: python
 
@@ -2473,14 +2612,90 @@ class Iter(Generic[T], collections.abc.Iterator[T]):
 
         return _peekable(self.x)
 
-    def seekable(self) -> "more_itertools.seekable":
-        """Docstring TODO"""
+    def seekable(self, maxlen=None) -> "IterSeekable[T]":
+        """
+        Reference: `more_itertools.seekable <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.seekable>`_
+
+        Allow for seeking forward and backward.
+
+        .. code-block:: python
+
+            >>> it = count().map(str).seekable()
+            >>> next(it), next(it), next(it)
+            ('0', '1', '2')
+            >>> it.seek(0).take(3).collect(tuple)
+            ('0', '1', '2')
+
+        Seeking forward:
+
+        .. code-block:: python
+
+            >>> it = range(20).map(str).seekable()
+            >>> it.seek(10).next()
+            '10'
+            >>> it.seek(20).collect()
+            []
+            >>> it.seek(0).next()
+            '0'
+
+        Call `relative_seek()` to seek relative to the current position:
+
+        .. code-block:: python
+
+            >>> it = range(20).map(str).seekable()
+            >>> it.take(3).collect(tuple)
+            ('0', '1', '2')
+            >>> it.relative_seek(2).next()
+            '5'
+            >>> it.relative_seek(-3).next()
+            '3'
+            >>> it.relative_seek(-3).next()
+            '1'
+
+        Call peek() to look ahead one item without advancing the iterator:
+
+        .. code-block:: python
+
+            >>> it = Iter('1234').seekable()
+            >>> it.peek()
+            '1'
+            >>> it.collect()
+            ['1', '2', '3', '4']
+            >>> it.peek(default='empty')
+            'empty'
+
+        Before the iterator is at its end, calling bool() on it will
+        return ``True``. After it will return ``False``.
+
+        .. code-block:: python
+
+            >>> it = Iter('5678').seekable()
+            >>> it.bool()
+            True
+            >>> it.collect()
+            ['5', '6', '7', '8']
+            >>> it.bool()
+            False
+
+        Use ``maxlen`` to limit the size of the internal cache used
+        for seeking. This is useful to prevent memory issues when
+        seeking through a very large iterator.
+
+        .. code-block:: python
+
+            >>> it = count().map(str).seekable(maxlen=2)
+            >>> it.take(4).collect(tuple)
+            ('0', '1', '2', '3')
+            >>> it.seek(0).take(4).collect(tuple)
+            ('2', '3', '4', '5')
+
+        """
 
         class _seekable(more_itertools.seekable):
             def __iter__(self):
                 return Iter(super().__iter__())
 
-        return _seekable(self.x)
+        return IterSeekable(_seekable(self.x, maxlen=maxlen))
 
     # Windowing
 
@@ -3626,10 +3841,9 @@ class Iter(Generic[T], collections.abc.Iterator[T]):
             >>> it = Iter(source).seekable()
             >>> pred = lambda x: x > 100
             >>> # TODO: can we avoid making two instances?
-            >>> indexes = Iter(it).locate(pred=pred)
+            >>> indexes = it.locate(pred=pred)
             >>> i = next(indexes)
-            >>> it.seek(i)
-            >>> next(it)
+            >>> it.seek(i).next()
             106
 
         """
@@ -4177,6 +4391,31 @@ class Iter(Generic[T], collections.abc.Iterator[T]):
 
         """
         return Iter(reversed(self.collect()))
+
+
+class IterSeekable(Iter[T]):
+    """ See the docstring for Iter.seekable_ """
+
+    def __init__(self, x: more_itertools.seekable):
+        self.x: more_itertools.seekable = x
+
+    def seek(self, index: int) -> "Iter[T]":
+        """ Seek forwards or backwards to a position in the iterator."""
+        self.x.seek(index)
+        return self
+
+    def relative_seek(self, offset: int) -> "Iter[T]":
+        """ Seek forwards or backwards relative to the current position."""
+        self.x.relative_seek(offset)
+        return self
+
+    def peek(self, default=more_itertools.recipes._marker) -> "T":
+        """ Peek ahead n items in the iterator."""
+        return self.x.peek(default=default)
+
+    def bool(self) -> bool:
+        """ Return True if the iterator has more items."""
+        return bool(self.x)
 
 
 """
