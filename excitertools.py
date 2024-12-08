@@ -195,6 +195,7 @@ from typing import (
     IO,
     Sized,
 )
+from typing_extensions import Self
 import collections.abc
 import queue
 import re
@@ -1097,6 +1098,7 @@ class Iter(Generic[T], Iterator[T]):
 
     """
 
+    __slots__ = "x"
     x: Iterator[T]
 
     def __init__(self, x: Iterable[T]):
@@ -2262,11 +2264,15 @@ class Iter(Generic[T], Iterator[T]):
         return type(self)(itertools.accumulate(self.x, func, initial=initial))
 
     def chain(self, *iterables: Iterable[T]) -> "Iter[T]":
-        """Docstring TODO
+        """Chain together multiple iterables. This is a replacement for the
+        itertools ``chain`` function.  This version returns an instance of
+        Iter_ to allow further iterable chaining.
 
         .. code-block:: python
 
             >>> Iter('ABC').chain('DEF').collect()
+            ['A', 'B', 'C', 'D', 'E', 'F']
+            >>> Iter('AB').chain('CD', 'EF').collect()
             ['A', 'B', 'C', 'D', 'E', 'F']
             >>> Iter('ABC').chain().collect()
             ['A', 'B', 'C']
@@ -2275,7 +2281,10 @@ class Iter(Generic[T], Iterator[T]):
         return type(self)(itertools.chain(self.x, *iterables))
 
     def chain_from_iterable(self) -> "Iter[T]":
-        """Docstring TODO
+        """This is similar to Iter.chain_ but it takes a single iterable
+        of iterables. This is a replacement for the itertools
+        ``chain.from_iterable`` function.  This version returns an
+        instance of Iter_ to allow further iterable chaining.
 
         .. code-block:: python
 
@@ -2299,37 +2308,147 @@ class Iter(Generic[T], Iterator[T]):
         """
         return type(self)(itertools.compress(self.x, selectors))
 
-    def dropwhile(self, pred) -> "Iter[T]":
-        """Docstring TODO"""
+    def dropwhile(self, pred) -> Self:
+        """
+        Replacement for the itertools ``dropwhile`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        .. code-block:: python
+
+            >>> Iter('abc').dropwhile(lambda x: x < 'c').collect()
+            ['c']
+
+        """
         return type(self)(itertools.dropwhile(pred, self.x))
 
-    def filterfalse(self, pred) -> "Iter[T]":
-        """Docstring TODO"""
+    def filterfalse(self, pred) -> Self:
+        """
+        Replacement for the itertools ``filterfalse`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        .. code-block:: python
+
+            >>> Iter('abc').filterfalse(lambda x: x < 'c').collect()
+            ['c']
+
+        `filterfalse` is useful when you want to exclude elements based
+        on a membership test.
+
+        .. code-block:: python
+
+            >>> stopwords = {'the', 'and', 'or', 'but'}
+            >>> text = 'the quick brown fox jumps over the lazy dog'.split()
+            >>> Iter(text).filterfalse(stopwords.__contains__).collect()
+            ['quick', 'brown', 'fox', 'jumps', 'over', 'lazy', 'dog']
+
+        """
         return type(self)(itertools.filterfalse(pred, self.x))
 
     def groupby(self, key=None) -> "Iter[Tuple[Any, Iter[T]]]":
-        """Docstring TODO"""
-        return type(self)(itertools.groupby(self.x, key=key))
+        """
+        Replacement for the itertools ``groupby`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
 
-    def islice(self, *args) -> "Iter[T]":
-        """Docstring TODO"""
+        The grouper is also an instance of Iter_, mainly because that
+        allows many different operations to be performed on the group
+        as well as realizations like `.collect(...)` or `.ilen()`.
+
+        .. code-block:: python
+
+            >>> from collections import Counter
+            >>> (
+            ...   Iter('AAAABBBCCDAABBB')
+            ...   .groupby()
+            ...   .starmap(lambda key, grouper: (key, grouper.ilen()))
+            ...   .collect()
+            ... )
+            [('A', 4), ('B', 3), ('C', 2), ('D', 1), ('A', 2), ('B', 3)]
+
+        Note that it doesn't do a groupby in the sense that you would
+        normally expect from a database query. It's more like a
+        "consecutive groupby".
+
+        To group up everything, it needs a bit more thinking:
+
+        .. code-block:: python
+
+            >>> def add_group_counts(d: dict, k, v):
+            ...     d[k] = d.get(k, 0) + v
+            ...     return d
+            >>> (
+            ...   Iter('AAAABBBCCDAABBB')
+            ...   .groupby()
+            ...   .starmap(lambda key, grouper: (key, grouper.ilen()))
+            ...   .starreduce(add_group_counts, {})
+            ... )
+            {'A': 6, 'B': 6, 'C': 2, 'D': 1}
+
+        In this specific example, we have merely reimplemented `collections.Counter`.
+
+        """
+        it = map(
+            lambda x: (x[0], Iter(x[1])),
+            itertools.groupby(self.x, key=key)
+        )
+        return type(self)(it)
+
+    def islice(self, *args) -> Self:
+        """
+        Replacement for the itertools ``islice`` function.
+
+        .. code-block:: python
+
+            >>> Iter('abcdef').islice(2).collect()
+            ['a', 'b']
+            >>> Iter('abcdef').islice(2, 4).collect()
+            ['c', 'd']
+
+        """
         return type(self)(itertools.islice(self.x, *args))
 
-    def starmap(self, func) -> "Iter[T]":
-        """Docstring TODO"""
+    def starmap(self, func) -> Self:
+        """
+        Replacement for the itertools ``starmap`` function.
+
+        .. code-block:: python
+
+            >>> Iter([(0, 1), (2, 3)]).starmap(operator.add).collect()
+            [1, 5]
+            >>> Iter([(0, 1), (2, 3)]).starmap(lambda x, y: x + y).collect()
+            [1, 5]
+
+        """
         return type(self)(itertools.starmap(func, self.x))
 
-    def takewhile(self, pred) -> "Iter[T]":
-        """Docstring TODO"""
+    def takewhile(self, pred) -> Self:
+        """
+        Replacement for the itertools ``takewhile`` function.
+
+        .. code-block:: python
+
+            >>> Iter('abc').takewhile(lambda x: x < 'c').collect()
+            ['a', 'b']
+
+        """
         return type(self)(itertools.takewhile(pred, self.x))
 
-    def tee(self, n=2):
+    def tee(self, n=2) -> "Tuple[Self, ...]":
         """Docstring TODO"""
         # Pay attention
         return type(self)(Iter(_) for _ in itertools.tee(self.x, n))
 
-    def zip_longest(self, *iterables, fillvalue=None):
-        """Docstring TODO"""
+    def zip_longest(self, *iterables, fillvalue=None) -> Self:
+        """
+        Replacement for the itertools ``zip_longest`` function.
+
+        .. code-block:: python
+
+            >>> Iter('abc').zip_longest('123').collect()
+            [('a', '1'), ('b', '2'), ('c', '3')]
+            >>> Iter('abcdef').zip_longest('123', fillvalue='x').collect()
+            [('a', '1'), ('b', '2'), ('c', '3'), ('d', 'x'), ('e', 'x'), ('f', 'x')]
+
+        """
         return type(self)(itertools.zip_longest(self.x, *iterables, fillvalue=fillvalue))
 
     # more-itertools
