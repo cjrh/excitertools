@@ -2069,8 +2069,8 @@ Joining strings (and bytes).
 .. _Iter.cycle:
 
 
-|inf| ``Iter.cycle(self) -> "Iter[T]"``
-=======================================
+|inf| ``Iter.cycle(self) -> Self``
+==================================
 
 
 
@@ -2132,8 +2132,8 @@ Reference `itertools.accumulate <https://docs.python.org/3/library/itertools.htm
 .. _Iter.chain:
 
 
-``Iter.chain(self, *iterables: Iterable[T]) -> "Iter[T]"``
-==========================================================
+``Iter.chain(self, *iterables: Iterable[T]) -> Self``
+=====================================================
 Chain together multiple iterables. This is a replacement for the
 itertools ``chain`` function.  This version returns an instance of
 Iter_ to allow further iterable chaining.
@@ -2152,8 +2152,8 @@ Iter_ to allow further iterable chaining.
 .. _Iter.chain_from_iterable:
 
 
-``Iter.chain_from_iterable(self) -> "Iter[T]"``
-===============================================
+``Iter.chain_from_iterable(self) -> Self``
+==========================================
 This is similar to Iter.chain_ but it takes a single iterable
 of iterables. This is a replacement for the itertools
 ``chain.from_iterable`` function.  This version returns an
@@ -2171,8 +2171,8 @@ instance of Iter_ to allow further iterable chaining.
 .. _Iter.compress:
 
 
-``Iter.compress(self, selectors) -> "Iter[T]"``
-===============================================
+``Iter.compress(self, selectors) -> Self``
+==========================================
 Replacement for the itertools ``compress`` function.  This version returns
 an instance of Iter_ to allow further iterable chaining.
 
@@ -2349,80 +2349,80 @@ Replacement for the itertools ``zip_longest`` function.
 .. _Iter.chunked:
 
 
-``Iter.chunked(self, n: int) -> "Iter"``
-========================================
+``Iter.chunked(self, n: int) -> Self``
+======================================
 Docstring TODO
 
 
 .. _Iter.ichunked:
 
 
-``Iter.ichunked(self, n: int) -> "Iter"``
-=========================================
+``Iter.ichunked(self, n: int) -> Self``
+=======================================
 Docstring TODO
 
 
 .. _Iter.sliced:
 
 
-``@classmethod Iter.sliced(cls, seq: Sequence, n: int) -> "Iter"``
-==================================================================
+``@classmethod Iter.sliced(cls, seq: Sequence, n: int) -> Self``
+================================================================
 Docstring TODO
 
 
 .. _Iter.distribute:
 
 
-``Iter.distribute(self, n: int) -> "Iter"``
-===========================================
+``Iter.distribute(self, n: int) -> Self``
+=========================================
 Docstring TODO
 
 
 .. _Iter.divide:
 
 
-``Iter.divide(self, n: int) -> "Iter"``
-=======================================
+``Iter.divide(self, n: int) -> Self``
+=====================================
 Docstring TODO
 
 
 .. _Iter.split_at:
 
 
-``Iter.split_at(self, pred)``
-=============================
+``Iter.split_at(self, pred) -> Self``
+=====================================
 Docstring TODO
 
 
 .. _Iter.split_before:
 
 
-``Iter.split_before(self, pred)``
-=================================
+``Iter.split_before(self, pred) -> Self``
+=========================================
 Docstring TODO
 
 
 .. _Iter.split_after:
 
 
-``Iter.split_after(self, pred)``
-================================
+``Iter.split_after(self, pred) -> Self``
+========================================
 Docstring TODO
 
 
 .. _Iter.split_into:
 
 
-``Iter.split_into(self, sizes)``
-================================
+``Iter.split_into(self, sizes) -> Self``
+========================================
 Docstring TODO
 
 
 .. _Iter.split_when:
 
 
-``Iter.split_when(self, pred)``
-===============================
+``Iter.split_when(self, pred) -> Self``
+=======================================
 Docstring TODO
 
 
@@ -2820,8 +2820,8 @@ Reference: `more_itertools.padnone <https://more-itertools.readthedocs.io/en/sta
 .. _Iter.ncycles:
 
 
-``Iter.ncycles(self, n) -> "Iter[T]"``
-======================================
+``Iter.ncycles(self, n) -> Self``
+=================================
 
 Reference: `more_itertools.ncycles <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ncycles>`_
 
@@ -2835,8 +2835,8 @@ Reference: `more_itertools.ncycles <https://more-itertools.readthedocs.io/en/sta
 .. _Iter.collapse:
 
 
-``Iter.collapse(self, base_type=None, levels=None) -> "Iter"``
-==============================================================
+``Iter.collapse(self, base_type=None, levels=None) -> Self``
+============================================================
 
 Reference: `more_itertools.collapse <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.collapse>`_
 
@@ -2900,8 +2900,8 @@ Here is an examples using the instancemethod form:
 .. _Iter.interleave:
 
 
-``@class_or_instancemethod Iter.interleave(self_or_cls, *iterables) -> "Iter"``
-===============================================================================
+``@class_or_instancemethod Iter.interleave(self_or_cls, *iterables) -> Self``
+=============================================================================
 
 Reference: `more_itertools.interleave <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave>`_
 
@@ -2924,8 +2924,8 @@ Instancemethod form:
 .. _Iter.interleave_longest:
 
 
-``@class_or_instancemethod Iter.interleave_longest(self_or_cls, *iterables) -> "Iter"``
-=======================================================================================
+``@class_or_instancemethod Iter.interleave_longest(self_or_cls, *iterables) -> Self``
+=====================================================================================
 
 Reference: `more_itertools.interleave_longest <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave_longest>`_
 
@@ -2948,8 +2948,8 @@ Instancemethod form:
 .. _Iter.zip_offset:
 
 
-``@classmethod Iter.zip_offset(cls, *iterables, offsets, longest=False, fillvalue=None) -> "Iter"``
-===================================================================================================
+``@classmethod Iter.zip_offset(cls, *iterables, offsets, longest=False, fillvalue=None) -> Self``
+=================================================================================================
 
 Reference: `more_itertools.zip_offset <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.zip_offset>`_
 
@@ -2979,8 +2979,8 @@ Reference: `more_itertools.dotproduct <https://more-itertools.readthedocs.io/en/
 .. _Iter.flatten:
 
 
-``Iter.flatten(self) -> "Iter[T]"``
-===================================
+``Iter.flatten(self) -> Self``
+==============================
 
 Reference: `more_itertools.flatten <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.flatten>`_
 
@@ -3052,8 +3052,8 @@ Reference: `more_itertools.ilen <https://more-itertools.readthedocs.io/en/stable
 .. _Iter.unique_to_each:
 
 
-``Iter.unique_to_each(self) -> "Iter[T]"``
-==========================================
+``Iter.unique_to_each(self) -> Self``
+=====================================
 
 Reference: `more_itertools.unique_to_each <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_to_each>`_
 

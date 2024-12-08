@@ -2170,7 +2170,8 @@ class Iter(Generic[T], Iterator[T]):
             []
 
         """
-        return Iter(insert_separator(self, glue))
+        cls = type(self)
+        return cls(insert_separator(self, glue))
 
     # standard library
     # =================
@@ -2194,7 +2195,7 @@ class Iter(Generic[T], Iterator[T]):
         """
         return cls(itertools.count(*args))
 
-    def cycle(self) -> "Iter[T]":
+    def cycle(self) -> Self:
         """
         |inf|
 
@@ -2263,7 +2264,7 @@ class Iter(Generic[T], Iterator[T]):
 
         return type(self)(itertools.accumulate(self.x, func, initial=initial))
 
-    def chain(self, *iterables: Iterable[T]) -> "Iter[T]":
+    def chain(self, *iterables: Iterable[T]) -> Self:
         """Chain together multiple iterables. This is a replacement for the
         itertools ``chain`` function.  This version returns an instance of
         Iter_ to allow further iterable chaining.
@@ -2280,7 +2281,7 @@ class Iter(Generic[T], Iterator[T]):
         """
         return type(self)(itertools.chain(self.x, *iterables))
 
-    def chain_from_iterable(self) -> "Iter[T]":
+    def chain_from_iterable(self) -> Self:
         """This is similar to Iter.chain_ but it takes a single iterable
         of iterables. This is a replacement for the itertools
         ``chain.from_iterable`` function.  This version returns an
@@ -2296,7 +2297,7 @@ class Iter(Generic[T], Iterator[T]):
         """
         return type(self)(itertools.chain.from_iterable(self.x))
 
-    def compress(self, selectors) -> "Iter[T]":
+    def compress(self, selectors) -> Self:
         """Replacement for the itertools ``compress`` function.  This version returns
         an instance of Iter_ to allow further iterable chaining.
 
@@ -2435,7 +2436,8 @@ class Iter(Generic[T], Iterator[T]):
     def tee(self, n=2) -> "Tuple[Self, ...]":
         """Docstring TODO"""
         # Pay attention
-        return type(self)(Iter(_) for _ in itertools.tee(self.x, n))
+        cls = type(self)
+        return cls(cls(_) for _ in itertools.tee(self.x, n))
 
     def zip_longest(self, *iterables, fillvalue=None) -> Self:
         """
@@ -2456,46 +2458,50 @@ class Iter(Generic[T], Iterator[T]):
 
     # Grouping
 
-    def chunked(self, n: int) -> "Iter":
+    def chunked(self, n: int) -> Self:
         """Docstring TODO"""
-        return Iter(more_itertools.chunked(self.x, n))
+        cls = type(self)
+        return cls(more_itertools.chunked(self.x, n))
 
-    def ichunked(self, n: int) -> "Iter":
+    def ichunked(self, n: int) -> Self:
         """Docstring TODO"""
-        return Iter(Iter(it) for it in more_itertools.ichunked(self.x, n))
+        cls = type(self)
+        return cls(cls(it) for it in more_itertools.ichunked(self.x, n))
 
     @classmethod
-    def sliced(cls, seq: Sequence, n: int) -> "Iter":
+    def sliced(cls, seq: Sequence, n: int) -> Self:
         """Docstring TODO"""
-        return Iter(more_itertools.sliced(seq, n))
+        return cls(more_itertools.sliced(seq, n))
 
-    def distribute(self, n: int) -> "Iter":
+    def distribute(self, n: int) -> Self:
         """Docstring TODO"""
-        return Iter((Iter(x) for x in Iter(more_itertools.distribute(n, self.x))))
+        cls = type(self)
+        return cls((cls(x) for x in cls(more_itertools.distribute(n, self.x))))
 
-    def divide(self, n: int) -> "Iter":
+    def divide(self, n: int) -> Self:
         """Docstring TODO"""
-        return Iter(Iter(x) for x in more_itertools.divide(n, self.x))
+        cls = type(self)
+        return cls(cls(x) for x in more_itertools.divide(n, self.x))
 
-    def split_at(self, pred):
+    def split_at(self, pred) -> Self:
         """Docstring TODO"""
-        return Iter(more_itertools.split_at(self.x, pred))
+        return type(self)(more_itertools.split_at(self.x, pred))
 
-    def split_before(self, pred):
+    def split_before(self, pred) -> Self:
         """Docstring TODO"""
-        return Iter(more_itertools.split_before(self.x, pred))
+        return type(self)(more_itertools.split_before(self.x, pred))
 
-    def split_after(self, pred):
+    def split_after(self, pred) -> Self:
         """Docstring TODO"""
-        return Iter(more_itertools.split_after(self.x, pred))
+        return type(self)(more_itertools.split_after(self.x, pred))
 
-    def split_into(self, sizes):
+    def split_into(self, sizes) -> Self:
         """Docstring TODO"""
-        return Iter(more_itertools.split_into(self.x, sizes))
+        return type(self)(more_itertools.split_into(self.x, sizes))
 
-    def split_when(self, pred):
+    def split_when(self, pred) -> Self:
         """Docstring TODO"""
-        return Iter(more_itertools.split_when(self.x, pred))
+        return type(self)(more_itertools.split_when(self.x, pred))
 
     def bucket(self, key, validator=None):
         """
@@ -2514,35 +2520,36 @@ class Iter(Generic[T], Iterator[T]):
         Note that once consumed, you can't iterate over the contents
         of a group again.
         """
+        cls = type(self)
 
         class _bucket(more_itertools.bucket):
             def __iter__(self):
-                return Iter(super().__iter__())
+                return cls(super().__iter__())
 
             def __getitem__(self, item):
-                return Iter(super().__getitem__(item))
+                return cls(super().__getitem__(item))
 
         return _bucket(self.x, key, validator=validator)
 
     def unzip(self):
         """Docstring TODO"""
-        return Iter(Iter(x) for x in more_itertools.unzip(self.x))
+        return type(self)(type(self)(x) for x in more_itertools.unzip(self.x))
 
     def grouper(self, n: int, fillvalue=None) -> "Iter":
         """Docstring TODO"""
-        return Iter(more_itertools.grouper(self.x, n, fillvalue=fillvalue))
+        return type(self)(more_itertools.grouper(self.x, n, fillvalue=fillvalue))
 
     def partition(self, pred) -> "Iter":
         """Docstring TODO"""
         left, right = more_itertools.partition(pred, self.x)
-        return Iter((Iter(left), Iter(right)))
+        return type(self)((type(self)(left), type(self)(right)))
 
     # Lookahead and lookback
 
     def spy(self, n=1) -> "Tuple[Iter, Iter]":
         """Docstring TODO"""
         head, iterable = more_itertools.spy(self.x, n)
-        return Iter(head), Iter(iterable)
+        return type(self)(head), type(self)(iterable)
 
     def peekable(self) -> "more_itertools.peekable":
         """
@@ -2701,15 +2708,15 @@ class Iter(Generic[T], Iterator[T]):
 
     def windowed(self, n, fillvalue=None, step=1) -> "Iter":
         """Docstring TODO"""
-        return Iter(more_itertools.windowed(self.x, n, fillvalue=fillvalue, step=step))
+        return type(self)(more_itertools.windowed(self.x, n, fillvalue=fillvalue, step=step))
 
     def substrings(self):
         """Docstring TODO"""
-        return Iter(more_itertools.substrings(self.x))
+        return type(self)(more_itertools.substrings(self.x))
 
     def substrings_indexes(self, reverse=False):
         """Docstring TODO"""
-        return Iter(more_itertools.substrings_indexes(list(self.x), reverse=reverse))
+        return type(self)(more_itertools.substrings_indexes(list(self.x), reverse=reverse))
 
     def stagger(self, offsets=(-1, 0, 1), longest=False, fillvalue=None):
         """
@@ -2723,7 +2730,7 @@ class Iter(Generic[T], Iterator[T]):
             [(None, 0, 1), (0, 1, 2), (1, 2, 3), (2, 3, None), (3, None, None)]
 
         """
-        return Iter(
+        return type(self)(
             more_itertools.stagger(
                 self.x,
                 offsets=offsets,
@@ -2741,7 +2748,7 @@ class Iter(Generic[T], Iterator[T]):
             >>> Iter.count().pairwise().take(4).collect()
             [(0, 1), (1, 2), (2, 3), (3, 4)]
         """
-        return Iter(more_itertools.pairwise(self.x))
+        return type(self)(more_itertools.pairwise(self.x))
 
     # Augmenting
 
@@ -2756,7 +2763,7 @@ class Iter(Generic[T], Iterator[T]):
             [(0, 'A'), (0, 'B'), (1, 'A'), (1, 'B'), (2, 'A'), (2, 'B')]
 
         """
-        return Iter(more_itertools.count_cycle(self.x, n=n))
+        return type(self)(more_itertools.count_cycle(self.x, n=n))
 
     def intersperse(self, e, n=1) -> "Iter":
         """
@@ -2771,7 +2778,7 @@ class Iter(Generic[T], Iterator[T]):
             [1, 2, None, 3, 4, None, 5]
 
         """
-        return Iter(more_itertools.intersperse(e, self.x, n=n))
+        return type(self)(more_itertools.intersperse(e, self.x, n=n))
 
     def padded(
         self,
@@ -2791,7 +2798,7 @@ class Iter(Generic[T], Iterator[T]):
             [1, 2, 3, 4, None, None]
 
         """
-        return Iter(
+        return type(self)(
             more_itertools.padded(
                 self.x,
                 fillvalue=fillvalue,
@@ -2815,7 +2822,7 @@ class Iter(Generic[T], Iterator[T]):
             [42, 42, 42, 42, 42]
 
         """
-        return Iter(more_itertools.repeat_last(self.x, default=default))
+        return type(self)(more_itertools.repeat_last(self.x, default=default))
 
     def adjacent(self, pred, distance=1) -> "Iter[Tuple[bool, T]]":
         """
@@ -2831,7 +2838,7 @@ class Iter(Generic[T], Iterator[T]):
 
 
         """
-        return Iter(more_itertools.adjacent(pred, self.x, distance=distance))
+        return type(self)(more_itertools.adjacent(pred, self.x, distance=distance))
 
     def groupby_transform(
         self,
@@ -2871,7 +2878,7 @@ class Iter(Generic[T], Iterator[T]):
             [(0, 'ab'), (1, 'cde'), (2, 'fgh'), (3, 'i')]
 
         """
-        return Iter(
+        return type(self)(
             more_itertools.groupby_transform(
                 self.x,
                 keyfunc=keyfunc,
@@ -2889,9 +2896,9 @@ class Iter(Generic[T], Iterator[T]):
             [0, 1, 2, None, None]
 
         """
-        return Iter(more_itertools.padnone(self.x))
+        return type(self)(more_itertools.padnone(self.x))
 
-    def ncycles(self, n) -> "Iter[T]":
+    def ncycles(self, n) -> Self:
         """
         Reference: `more_itertools.ncycles <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ncycles>`_
 
@@ -2901,11 +2908,11 @@ class Iter(Generic[T], Iterator[T]):
             ['a', 'b', 'a', 'b', 'a', 'b']
 
         """
-        return Iter(more_itertools.ncycles(self.x, n))
+        return type(self)(more_itertools.ncycles(self.x, n))
 
     # Combining
 
-    def collapse(self, base_type=None, levels=None) -> "Iter":
+    def collapse(self, base_type=None, levels=None) -> Self:
         """
         Reference: `more_itertools.collapse <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.collapse>`_
 
@@ -2926,7 +2933,7 @@ class Iter(Generic[T], Iterator[T]):
             ['a', ['b'], 'c', ['d']]
 
         """
-        return Iter(more_itertools.collapse(self.x, base_type=base_type, levels=levels))
+        return type(self)(more_itertools.collapse(self.x, base_type=base_type, levels=levels))
 
     @class_or_instancemethod
     def sort_together(self_or_cls, iterables, key_list=(0,), reverse=False):
@@ -2988,7 +2995,7 @@ class Iter(Generic[T], Iterator[T]):
             )
 
     @class_or_instancemethod
-    def interleave(self_or_cls, *iterables) -> "Iter":
+    def interleave(self_or_cls, *iterables) -> Self:
         """
         Reference: `more_itertools.interleave <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave>`_
 
@@ -3013,7 +3020,7 @@ class Iter(Generic[T], Iterator[T]):
             return Iter(more_itertools.interleave(self_or_cls, *iterables))
 
     @class_or_instancemethod
-    def interleave_longest(self_or_cls, *iterables) -> "Iter":
+    def interleave_longest(self_or_cls, *iterables) -> Self:
         """
         Reference: `more_itertools.interleave_longest <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.interleave_longest>`_
 
@@ -3038,7 +3045,7 @@ class Iter(Generic[T], Iterator[T]):
             return Iter(more_itertools.interleave_longest(self_or_cls, *iterables))
 
     @classmethod
-    def zip_offset(cls, *iterables, offsets, longest=False, fillvalue=None) -> "Iter":
+    def zip_offset(cls, *iterables, offsets, longest=False, fillvalue=None) -> Self:
         """
         Reference: `more_itertools.zip_offset <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.zip_offset>`_
 
@@ -3071,7 +3078,7 @@ class Iter(Generic[T], Iterator[T]):
         """
         return more_itertools.dotproduct(self.x, vec2)
 
-    def flatten(self) -> "Iter[T]":
+    def flatten(self) -> Self:
         """
         Reference: `more_itertools.flatten <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.flatten>`_
 
@@ -3081,7 +3088,7 @@ class Iter(Generic[T], Iterator[T]):
             [0, 1, 2, 3]
 
         """
-        return Iter(more_itertools.flatten(self))
+        return type(self)(more_itertools.flatten(self))
 
     @class_or_instancemethod
     def roundrobin(
@@ -3122,7 +3129,7 @@ class Iter(Generic[T], Iterator[T]):
             ['0', '1', '2', '3']
 
         """
-        return Iter(more_itertools.prepend(value, self))
+        return type(self)(more_itertools.prepend(value, self))
 
     # Summarizing
 
@@ -3140,7 +3147,7 @@ class Iter(Generic[T], Iterator[T]):
         """
         return more_itertools.ilen(self)
 
-    def unique_to_each(self) -> "Iter[T]":
+    def unique_to_each(self) -> Self:
         """
         Reference: `more_itertools.unique_to_each <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.unique_to_each>`_
 
