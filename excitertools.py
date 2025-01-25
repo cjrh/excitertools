@@ -2434,7 +2434,19 @@ class Iter(Generic[T], Iterator[T]):
         return type(self)(itertools.takewhile(pred, self.x))
 
     def tee(self, n=2) -> "Tuple[Self, ...]":
-        """Docstring TODO"""
+        """
+        Replacement for the itertools ``tee`` function.  This version returns
+        instances of Iter_ to allow further iterable chaining.
+
+        .. code-block:: python
+
+            >>> a, b = Iter('abc').tee()
+            >>> a.collect()
+            ['a', 'b', 'c']
+            >>> b.collect()
+            ['a', 'b', 'c']
+
+        """
         # Pay attention
         cls = type(self)
         return cls(cls(_) for _ in itertools.tee(self.x, n))
