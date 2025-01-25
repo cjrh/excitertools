@@ -2582,24 +2582,95 @@ class Iter(Generic[T], Iterator[T]):
         )
 
     def divide(self, n: int) -> Self:
-        """Docstring TODO"""
+        """
+        Replacement for the more-itertools ``divide`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        Reference: `more_itertools.divide <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.divide>`_
+
+        .. code-block:: python
+
+            >>> Iter('abcdef').divide(3).map(list).collect()
+            [['a', 'b'], ['c', 'd'], ['e', 'f']]
+            >>> Iter('abc').divide(5).map(list).collect()
+            [['a'], ['b'], ['c'], [], []]
+
+        """
         cls = type(self)
         return cls(cls(x) for x in more_itertools.divide(n, self.x))
 
-    def split_at(self, pred) -> Self:
-        """Docstring TODO"""
-        return type(self)(more_itertools.split_at(self.x, pred))
+    def split_at(self, pred: Callable[[T], bool], maxsplit=-1, keep_separator=False) -> Self:
+        """
+        Replacement for the more-itertools ``split_at`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
 
-    def split_before(self, pred) -> Self:
-        """Docstring TODO"""
-        return type(self)(more_itertools.split_before(self.x, pred))
+        Reference: `more_itertools.split_at <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.split_at>`_
 
-    def split_after(self, pred) -> Self:
-        """Docstring TODO"""
-        return type(self)(more_itertools.split_after(self.x, pred))
+        .. code-block:: python
 
-    def split_into(self, sizes) -> Self:
-        """Docstring TODO"""
+            >>> Iter('abcdef').split_at(lambda char: char == 'd').collect()
+            [['a', 'b', 'c'], ['e', 'f']]
+            >>> Iter.range(10).split_at(lambda x: x % 2 == 1).collect()
+            [[0], [2], [4], [6], [8], []]
+            >>> Iter.range(10).split_at(lambda x: x % 2 == 1, maxsplit=2).collect()
+            [[0], [2], [4, 5, 6, 7, 8, 9]]
+            >>> Iter("abcdcba").split_at(lambda x: x == 'b', keep_separator=True).collect()
+            [['a'], ['b'], ['c', 'd', 'c'], ['b'], ['a']]
+
+        """
+        return type(self)(more_itertools.split_at(self.x, pred, maxsplit=maxsplit, keep_separator=keep_separator))
+
+    def split_before(self, pred: Callable[[T], bool], maxsplit=-1) -> Self:
+        """
+        Replacement for the more-itertools ``split_before`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        Reference: `more_itertools.split_before <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.split_before>`_
+
+        .. code-block:: python
+
+            >>> Iter('OneTwo').split_before(str.isupper).collect()
+            [['O', 'n', 'e'], ['T', 'w', 'o']]
+            >>> Iter(range(10)).split_before(lambda x: x % 3 == 0, maxsplit=2).collect()
+            [[0, 1, 2], [3, 4, 5], [6, 7, 8, 9]]
+
+        """
+        return type(self)(more_itertools.split_before(self.x, pred, maxsplit=maxsplit))
+
+    def split_after(self, pred: Callable[[T], bool], maxsplit=-1) -> Self:
+        """
+        Replacement for the more-itertools ``split_after`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        Reference: `more_itertools.split_after <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.split_after>`_
+
+        .. code-block:: python
+
+            >>> Iter('one1two2').split_after(str.isdigit).collect()
+            [['o', 'n', 'e', '1'], ['t', 'w', 'o', '2']]
+            >>> Iter(range(10)).split_after(lambda x: x % 3 == 0, maxsplit=2).collect()
+            [[0], [1, 2, 3], [4, 5, 6, 7, 8, 9]]
+
+        """
+        return type(self)(more_itertools.split_after(self.x, pred, maxsplit=maxsplit))
+
+    def split_into(self, sizes: Iterable[int]) -> Self:
+        """
+        Replacement for the more-itertools ``split_into`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        Reference: `more_itertools.split_into <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.split_into>`_
+
+        .. code-block:: python
+
+            >>> Iter('abcdef').split_into([2, 3, 1]).collect()
+            [['a', 'b'], ['c', 'd', 'e'], ['f']]
+            >>> Iter('abcdef').split_into(iter([2, 3, 1])).collect()
+            [['a', 'b'], ['c', 'd', 'e'], ['f']]
+            >>> Iter('abcdef').split_into([2, 3]).collect()
+            [['a', 'b'], ['c', 'd', 'e']]
+
+        """
         return type(self)(more_itertools.split_into(self.x, sizes))
 
     def split_when(self, pred) -> Self:
