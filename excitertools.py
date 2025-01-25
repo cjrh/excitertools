@@ -2471,24 +2471,115 @@ class Iter(Generic[T], Iterator[T]):
     # Grouping
 
     def chunked(self, n: int) -> Self:
-        """Docstring TODO"""
+        """
+        Replacement for the more-itertools ``chunked`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        Reference: `more_itertools.chunked <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.chunked>`_
+
+        .. code-block:: python
+
+            >>> Iter('abcdef').chunked(3).collect()
+            [['a', 'b', 'c'], ['d', 'e', 'f']]
+            >>> Iter('abcde').chunked(3).collect()
+            [['a', 'b', 'c'], ['d', 'e']]
+
+        """
         cls = type(self)
         return cls(more_itertools.chunked(self.x, n))
 
     def ichunked(self, n: int) -> Self:
-        """Docstring TODO"""
+        """
+        Replacement for the more-itertools ``ichunked`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        This version differs from Iter.chunked_ in that it returns
+        an iterator of iterators rather than an iterator of lists.
+
+        Reference: `more_itertools.ichunked <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.ichunked>`_
+
+        .. code-block:: python
+
+            >>> Iter('aabbcc').ichunked(3).map(list).collect()
+            [['a', 'a', 'b'], ['b', 'c', 'c']]
+            >>> Iter('aabbcc').ichunked(3).map(tuple).collect()
+            [('a', 'a', 'b'), ('b', 'c', 'c')]
+            >>> out = Iter('aabbcc').ichunked(3).map(set).collect()
+            >>> out == [{'a', 'b'}, {'b', 'c'}]
+            True
+
+        """
         cls = type(self)
         return cls(cls(it) for it in more_itertools.ichunked(self.x, n))
 
     @classmethod
     def sliced(cls, seq: Sequence, n: int) -> Self:
-        """Docstring TODO"""
+        """
+        |source|
+
+        Replacement for the more-itertools ``sliced`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        Reference: `more_itertools.sliced <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sliced>`_
+
+        .. code-block:: python
+
+            >>> Iter.sliced('abcdef', 3).collect()
+            ['abc', 'def']
+
+        """
         return cls(more_itertools.sliced(seq, n))
 
+    def constrained_batches(self, max_size: int, max_count=None, get_len=len, strict=True) -> Self:
+        """
+        Replacement for the more-itertools ``constrained_batches`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        Reference: `more_itertools.constrained_batches <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.constrained_batches>`_
+
+        .. code-block:: python
+
+            >>> iterable = [b'12345', b'123', b'12345678', b'1', b'1', b'12', b'1']
+            >>> Iter(iterable).constrained_batches(10).collect()
+            [(b'12345', b'123'), (b'12345678', b'1', b'1'), (b'12', b'1')]
+            >>> Iter(iterable).constrained_batches(10, max_count=2).collect()
+            [(b'12345', b'123'), (b'12345678', b'1'), (b'1', b'12'), (b'1',)]
+
+        """
+        return type(self)(more_itertools.constrained_batches(
+            self.x, max_size, max_count=max_count, get_len=get_len, strict=strict
+        ))
+
     def distribute(self, n: int) -> Self:
-        """Docstring TODO"""
+        """
+        Replacement for the more-itertools ``distribute`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        Reference: `more_itertools.distribute <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.distribute>`_
+
+        .. code-block:: python
+
+            >>> group_1, group_2, group_3 = Iter('abcdef').distribute(3).collect()
+            >>> group_1.collect()
+            ['a', 'd']
+            >>> group_2.collect()
+            ['b', 'e']
+            >>> group_3.collect()
+            ['c', 'f']
+
+        Note that each of the returned iterables is an instance of Iter_, so chaining works.
+
+        .. code-block:: python
+
+            >>> groups = Iter('abcdef').distribute(3).collect()
+            >>> groups[0].map(str.upper).collect()
+            ['A', 'D']
+
+        """
         cls = type(self)
-        return cls((cls(x) for x in cls(more_itertools.distribute(n, self.x))))
+        return cls(
+            (cls(x) for x in more_itertools.distribute(n, self.x))
+        )
 
     def divide(self, n: int) -> Self:
         """Docstring TODO"""
