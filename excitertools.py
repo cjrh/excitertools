@@ -2673,9 +2673,20 @@ class Iter(Generic[T], Iterator[T]):
         """
         return type(self)(more_itertools.split_into(self.x, sizes))
 
-    def split_when(self, pred) -> Self:
-        """Docstring TODO"""
-        return type(self)(more_itertools.split_when(self.x, pred))
+    def split_when(self, pred: Callable[[T], bool], maxsplit=-1) -> Self:
+        """
+        Replacement for the more-itertools ``split_when`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        Reference: `more_itertools.split_when <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.split_when>`_
+
+        .. code-block:: python
+
+            >>> Iter([1, 2, 3, 3, 2, 5, 2, 4, 2]).split_when(lambda x, y: x > y).collect()
+            [[1, 2, 3, 3], [2, 5], [2, 4], [2]]
+
+        """
+        return type(self)(more_itertools.split_when(self.x, pred, maxsplit=maxsplit))
 
     def bucket(self, key, validator=None):
         """
@@ -2721,7 +2732,29 @@ class Iter(Generic[T], Iterator[T]):
     # Lookahead and lookback
 
     def spy(self, n=1) -> "Tuple[Iter, Iter]":
-        """Docstring TODO"""
+        """
+        Replacement for the more-itertools ``spy`` function.  This version returns
+        instances of Iter_ to allow further iterable chaining.
+
+        Reference: `more_itertools.spy <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.spy>`_
+
+        .. code-block:: python
+
+            >>> head, iterable = Iter('abcdefg').spy()
+            >>> head.collect()
+            ['a']
+            >>> iterable.collect()
+            ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+            >>> (head,), iterable = Iter('abcdefg').spy()
+            >>> head
+            'a'
+            >>> (first, second), iterable = Iter('abcdefg').spy(2)
+            >>> first
+            'a'
+            >>> second
+            'b'
+
+        """
         head, iterable = more_itertools.spy(self.x, n)
         return type(self)(head), type(self)(iterable)
 
@@ -2881,15 +2914,72 @@ class Iter(Generic[T], Iterator[T]):
     # Windowing
 
     def windowed(self, n, fillvalue=None, step=1) -> "Iter":
-        """Docstring TODO"""
+        """
+        Replacement for the more-itertools ``windowed`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        Reference: `more_itertools.windowed <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.windowed>`_
+
+        .. code-block:: python
+
+            >>> Iter([1, 2, 3, 4, 5]).windowed(3).collect()
+            [(1, 2, 3), (2, 3, 4), (3, 4, 5)]
+            >>> Iter([1, 2, 3]).windowed(4).collect()
+            [(1, 2, 3, None)]
+            >>> Iter([1, 2, 3, 4, 5, 6]).windowed(3, fillvalue='!', step=2).collect()
+            [(1, 2, 3), (3, 4, 5), (5, 6, '!')]
+
+        """
         return type(self)(more_itertools.windowed(self.x, n, fillvalue=fillvalue, step=step))
 
-    def substrings(self):
-        """Docstring TODO"""
+    def substrings(self) -> "Iter":
+        """
+        Replacement for the more-itertools ``substrings`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        Reference: `more_itertools.substrings <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.substrings>`_
+
+        .. code-block:: python
+
+            >>> Iter('more').substrings().map("".join).collect()
+            ['m', 'o', 'r', 'e', 'mo', 'or', 're', 'mor', 'ore', 'more']
+            >>> Iter([0, 1, 2]).substrings().collect()
+            [(0,), (1,), (2,), (0, 1), (1, 2), (0, 1, 2)]
+
+        """
         return type(self)(more_itertools.substrings(self.x))
 
-    def substrings_indexes(self, reverse=False):
-        """Docstring TODO"""
+    def substrings_indexes(self, reverse=False) -> "Iter":
+        """
+        |warning| This function is not lazy and will consume the iterable fully before returning
+        another iterable.
+
+        Replacement for the more-itertools ``substrings_indexes`` function.  This version returns
+        an instance of Iter_ to allow further iterable chaining.
+
+        Reference: `more_itertools.substrings_indexes <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.substrings_indexes>`_
+
+        .. code-block:: python
+
+            >>> (
+            ...     Iter('more')
+            ...     .substrings_indexes()
+            ...     .starmap(lambda sub, start, end: ("".join(sub), start, end))
+            ...     .side_effect(print)
+            ...     .consume()
+            ... )
+            ('m', 0, 1)
+            ('o', 1, 2)
+            ('r', 2, 3)
+            ('e', 3, 4)
+            ('mo', 0, 2)
+            ('or', 1, 3)
+            ('re', 2, 4)
+            ('mor', 0, 3)
+            ('ore', 1, 4)
+            ('more', 0, 4)
+
+        """
         return type(self)(more_itertools.substrings_indexes(list(self.x), reverse=reverse))
 
     def stagger(self, offsets=(-1, 0, 1), longest=False, fillvalue=None):
@@ -2928,7 +3018,6 @@ class Iter(Generic[T], Iterator[T]):
 
     def count_cycle(self, n=None) -> "Iter":
         """
-
         Reference: `more_itertools.count_cycle <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.count_cycle>`_
 
         .. code-block:: python
@@ -3504,7 +3593,7 @@ class Iter(Generic[T], Iterator[T]):
         """
         |sink|
 
-        Docstring TODO
+        Reference: `more_itertools.exactly_n <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.exactly_n>`_
 
         .. code-block:: python
 
@@ -3514,18 +3603,107 @@ class Iter(Generic[T], Iterator[T]):
         """
         return more_itertools.exactly_n(self.x, n=n, predicate=predicate)
 
-    def all_equal(self):
-        raise NotImplementedError
+    def is_sorted(self, key=None, reverse=False) -> "bool":
+        """
+        |sink|
 
-    def first_true(self):
-        raise NotImplementedError
+        Reference: `more_itertools.is_sorted <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.is_sorted>`_
+
+        .. code-block:: python
+
+            >>> Iter([1, 2, 3]).is_sorted()
+            True
+
+        """
+        return more_itertools.is_sorted(self.x, key=key, reverse=reverse)
+
+    def all_unique(self, key=None) -> "bool":
+        """
+        |sink|
+
+        Reference: `more_itertools.all_unique <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.all_unique>`_
+
+        .. code-block:: python
+
+            >>> Iter([1, 2, 3]).all_unique()
+            True
+
+        """
+        return more_itertools.all_unique(self.x, key=key)
+
+    def minmax(self, key: Optional[Callable[[T], Any]] = None, default: Optional[tuple[T, T]] = None) -> "Tuple[T, T]":
+        """
+        |sink|
+
+        Reference: `more_itertools.minmax <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.minmax>`_
+
+        .. code-block:: python
+
+            >>> Iter([1, 2, 3]).minmax()
+            (1, 3)
+            >>> Iter([5, 30]).minmax(key=str)
+            (30, 5)
+            >>> Iter([]).minmax(default=(0, 0))
+            (0, 0)
+
+        """
+        return more_itertools.minmax(self.x, key=key, default=default)
+
+    def all_equal(self, key: Optional[Callable[[T], Any]] = None) -> bool:
+        """
+        |sink|
+
+        Reference: `more_itertools.all_equal <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.all_equal>`_
+
+        .. code-block:: python
+
+            >>> Iter([1, 1, 1]).all_equal()
+            True
+            >>> Iter([1, 2, 1]).all_equal()
+            False
+            >>> Iter("aaaa").all_equal()
+            True
+
+        """
+        return more_itertools.all_equal(self.x, key=key)
+
+    def first_true(self, default=None, pred=None) -> Optional[T]:
+        """
+        |sink|
+
+        Reference: `more_itertools.first_true <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.first_true>`_
+
+        .. code-block:: python
+
+            >>> Iter([False, False, True, False]).first_true()
+            True
+            >>> Iter(range(10)).first_true()
+            1
+            >>> Iter(range(10)).first_true(pred=lambda x: x > 5)
+            6
+            >>> Iter(range(10)).first_true(default="missing", pred=lambda x: x > 9)
+            'missing'
+
+        """
+        return more_itertools.first_true(self.x, default=default, pred=pred)
 
     def quantify(self):
-        raise NotImplementedError
+        """
+        |sink|
+
+        Reference: `more_itertools.quantify <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.quantify>`_
+
+        .. code-block:: python
+
+            >>> Iter([True, False, True, False, True]).quantify()
+            3
+
+        """
+        return more_itertools.quantify(self.x)
 
     # Selecting
 
-    def islice_extended(self, *args):
+    def islice_extended(self, *args) -> "Iter":
         """
         Reference: `more_itertools.islice_extended <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.islice_extended>`_
 
@@ -3536,30 +3714,61 @@ class Iter(Generic[T], Iterator[T]):
 
         .. code-block:: python
 
-            >>> Iter.count().islice_extended( 110, 99, -2).collect()
+            >>> Iter.count().islice_extended(110, 99, -2).collect()
             [110, 108, 106, 104, 102, 100]
 
         """
         return Iter(more_itertools.islice_extended(self.x, *args))
 
-    def first(self):
+    def first(self, default: "V" = None) -> "T | V":
         """
         Reference: `more_itertools.first <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.first>`_
-        """
-        raise NotImplementedError
 
-    def last(self):
+        .. code-block:: python
+
+            >>> Iter([1, 2, 3]).first()
+            1
+            >>> Iter([]).first(default='missing')
+            'missing'
+
+        """
+        return more_itertools.first(self.x, default)
+
+    def last(self, default: "V" = None) -> "T | V":
         """
         Reference: `more_itertools.last <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.last>`_
-        """
-        raise NotImplementedError
 
-    def one(self):
+        .. code-block:: python
+
+            >>> Iter([1, 2, 3]).last()
+            3
+            >>> Iter([]).last(default='missing')
+            'missing'
         """
+        return more_itertools.last(self.x, default)
+
+    def one(self, too_short=ValueError, too_long=ValueError) -> "T":
+        """
+        Return the first item from the iterable, raising an exception if there
+        is not exactly one item.
+
+        Note that one() attempts to advance iterable twice to ensure there is
+        only one item. See Iter.spy_ or Iter.peekable_ to check iterable
+        contents less destructively.
+
         Reference: `more_itertools.one <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.one>`_
 
+        .. code-block:: python
+
+            >>> Iter([]).one()
+            Traceback (most recent call last):
+                ...
+            ValueError: ...
+            >>> Iter([42]).one()
+            42
+
         """
-        raise NotImplementedError
+        return more_itertools.one(self.x, too_short=too_short, too_long=too_long)
 
     def only(self, default=None, too_long=ValueError) -> "T":
         """
@@ -3578,6 +3787,29 @@ class Iter(Generic[T], Iterator[T]):
 
         """
         return more_itertools.only(self.x, default=default, too_long=too_long)
+
+    def strictly_n(self, n, too_short=None, too_long=None) -> "Self":
+        """
+        Make sure you understand how the underlying function works. Check
+        the more-itertools_ documentation for more information.
+
+        Reference: `more_itertools.strictly_n <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.strictly_n>`_
+
+        .. code-block:: python
+
+            >>> Iter([1, 2, 3]).strictly_n(3).collect()
+            [1, 2, 3]
+            >>> Iter([1, 2, 3]).strictly_n(2).collect()
+            Traceback (most recent call last):
+                ...
+            ValueError: ...
+            >>> Iter([1, 2, 3]).strictly_n(4).collect()
+            Traceback (most recent call last):
+                ...
+            ValueError: ...
+
+        """
+        return type(self)(more_itertools.strictly_n(self.x, n, too_short=too_short, too_long=too_long))
 
     def strip(self, pred) -> "Iter[T]":
         """
@@ -4171,10 +4403,23 @@ class Iter(Generic[T], Iterator[T]):
             )
         )
 
-    def iterate(self):
-        raise NotImplementedError
+    @classmethod
+    def iterate(cls, func, start) -> "Iter":
+        """
+        |source|
 
-    def difference(self, func=operator.sub, *, initial=None):
+        Reference: `more_itertools.iterate <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.iterate>`_
+
+        .. code-block:: python
+
+            >>> def f(x):
+            ...     return x * 2
+            >>> Iter.iterate(f, 1).take(4).collect()
+            [1, 2, 4, 8]
+        """
+        return Iter(more_itertools.iterate(func, start))
+
+    def difference(self, func=operator.sub, *, initial=None) -> "Iter":
         """
         Reference: `more_itertools.difference <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=difference#more_itertools.difference>`_
 
@@ -4200,11 +4445,40 @@ class Iter(Generic[T], Iterator[T]):
             )
         )
 
-    def make_decorator(self):
-        raise NotImplementedError
+    @classmethod
+    def make_decorator(cls, wrapping_func, result_index=0):
+        """
+        |flux|
 
-    def SequenceView(self):
-        raise NotImplementedError
+        Reference: `more_itertools.make_decorator <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=difference#more_itertools.make_decorator>`_
+
+        .. code-block:: python
+
+            >>> chunker = Iter.make_decorator(Iter.chunked, result_index=0)
+            >>> @chunker(3)
+            ... def iter_range(n):
+            ...     return range(n)
+            >>> list(iter_range(9))
+            [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
+            >>> peekable_function = Iter.make_decorator(Iter.peekable)
+            >>> @peekable_function()
+            ... def str_range(*args):
+            ...     return Iter(str(x) for x in range(*args))
+            >>> it = str_range(1, 20, 2)
+            >>> it.peek()
+            '1'
+            >>> next(it)
+            '1'
+            >>> it.peek()
+            '3'
+
+        """
+        # TODO: a bit unfortunate that we need the `Iter` in there in the peekable
+        #  doctest.
+        return more_itertools.make_decorator(wrapping_func, result_index=result_index)
+
+    # def SequenceView(self):
+    #     raise NotImplementedError
 
     def time_limited(self, limit_seconds) -> "Iter":
         """
@@ -4263,8 +4537,19 @@ class Iter(Generic[T], Iterator[T]):
         if n is not None:
             return self
 
-    def tabulate(self):
-        raise NotImplementedError
+    @classmethod
+    def tabulate(cls, function, start=0) -> "Iter":
+        """
+        |source|
+
+        Reference: `more_itertools.tabulate <https://more-itertools.readthedocs.io/en/stable/api.html?highlight=numeric_range#more_itertools.tabulate>`_
+
+        .. code-block:: python
+
+            >>> Iter.tabulate(lambda x: x ** 2, start=-3).take(4).collect()
+            [9, 4, 1, 0]
+        """
+        return cls(more_itertools.tabulate(function, start=start))
 
     @classmethod
     def repeatfunc(cls, func, *args, times=None):
@@ -4283,11 +4568,34 @@ class Iter(Generic[T], Iterator[T]):
     # New
 
     def wrap(self, ends: "Sequence[T, T]" = "()"):
-        """Other examples for ends: '"' * 2, or '`' * 2, or '[]' etc."""
+        """
+        Wrap the iterator with a start and end value. This is useful for
+        adding brackets, parens, or other delimiters around the data.
+
+        .. code-block:: python
+
+            >>> Iter('abc').wrap('()').concat()
+            '(abc)'
+            >>> Iter('abc').wrap('[]').concat()
+            '[abc]'
+            >>> Iter('abc').wrap(['(((', ')))']).concat()
+            '(((abc)))'
+            >>> Iter(range(5)).wrap([123, 123]).collect()
+            [123, 0, 1, 2, 3, 4, 123]
+            >>> Iter(range(20, 25)).wrap([range(3), range(3)]).collect()
+            [0, 1, 2, 20, 21, 22, 23, 24, 0, 1, 2]
+
+        """
         if len(ends) != 2:
             raise ValueError("The ends must be a 2-length sequence")
 
-        return Iter(itertools.chain.from_iterable([ends[0], self, ends[1]]))
+        start, end = ends
+        if not isinstance(start, Iterable):
+            start = [start]
+        if not isinstance(end, Iterable):
+            end = [end]
+
+        return Iter(itertools.chain.from_iterable([start, self, end]))
 
     def print(self, template="{i}: {v}") -> "Iter[T]":
         """
