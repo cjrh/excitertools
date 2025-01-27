@@ -49,6 +49,15 @@ excitertools
 
 Note that nearly all of the ``more-itertools`` extension library is included.
 
+Custom GPT
+**********
+
+I made a custom GPT [here at chatgpt.com](https://chatgpt.com/g/g-679767714b688191a719d7db72b72261-excitertools-helper)
+to help with coding using excitertools as well as answering questions about it.
+The GPT is set up with this complete README as its knowledge base. This is
+more of an experiement than anything else, but I am curious to know whether it
+is useful.
+
 Demo
 ****
 
