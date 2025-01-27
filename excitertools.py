@@ -208,6 +208,7 @@ from typing_extensions import Self
 import collections.abc
 import queue
 import re
+import fileinput as _fileinput
 
 import more_itertools
 
@@ -226,6 +227,7 @@ __all__ = [
     "chain_from_iterable",
     "compress",
     "dropwhile",
+    "fileinput",
     "filterfalse",
     "groupby",
     "islice",
@@ -905,6 +907,66 @@ def from_queue(q: queue.Queue, timeout=None, sentinel=None) -> "Iter":
 
     """
     return Iter.from_queue(q, timeout=timeout, sentinel=sentinel)
+
+
+def fileinput(
+    files=None,
+    inplace=False,
+    backup="",
+    mode="r",
+    openhook=None,
+    encoding=None,
+    errors=None
+) -> Iter:
+    """
+    |source|
+    A wrapper around fileinput.input that returns an Excitertools Iter_ instance.
+
+    The documentation for the stdlib fileinput module is here:
+        https://docs.python.org/3/library/fileinput.html
+
+    Note that the ``encoding`` and ``errors`` arguments are only available
+    in Python 3.10 and later.
+
+    Here is an example of use:
+
+    .. code-block:: python
+
+        >>> from excitertools import fileinput
+        >>> # Read from a file
+        >>> fileinput(['data.txt']).take(3).collect()  # doctest: +SKIP
+        ['1', '2', '3']
+        >>> # Read from stdin OR files listed on the command line (sys.argv[1:])
+        >>> fileinput().take(3).collect()  # doctest: +SKIP
+        ['1', '2', '3']
+
+    :param files: A list of filenames or '-' for stdin (default: sys.argv[1:]).
+    :param inplace: Whether to allow in-place editing (default: False).
+    :param backup: Backup extension for in-place editing (default: "").
+    :param mode: File mode, e.g., 'r' or 'rb' (default: 'r').
+    :param openhook: Optional hook to customize file opening.
+    :param encoding: File encoding (default: None). Note: Python 3.10+ only.
+    :param errors: Error handling mode (default: None). Note: Python 3.10+ only.
+    """
+
+    def yielder():
+        if sys.version_info < (3, 10): # pragma: no cover
+            extra_kwargs = dict()
+        else:
+            extra_kwargs = dict(encoding=encoding, errors=errors)
+
+        stream = _fileinput.input(
+            files=files,
+            inplace=inplace,
+            backup=backup,
+            mode=mode,
+            openhook=openhook,
+            **extra_kwargs
+        )
+        with stream:
+            yield from stream
+
+    return Iter(yielder())
 
 
 """
