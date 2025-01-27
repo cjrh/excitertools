@@ -818,6 +818,39 @@ other threads to supply and consume data.
 
 
 
+.. _fileinput:
+
+
+|source| ``fileinput(files=None, inplace=False, backup="", mode="r", openhook=None, encoding=None, errors=None) -> Iter``
+*************************************************************************************************************************
+
+
+A wrapper around fileinput.input that returns an Excitertools Iter_ instance.
+
+The documentation for the stdlib fileinput module is here:
+    https://docs.python.org/3/library/fileinput.html
+
+Here is an example of use:
+
+.. code-block:: python
+
+    >>> from excitertools import fileinput
+    >>> # Read from a file
+    >>> fileinput(['data.txt']).take(3).collect()                  
+    ['1', '2', '3']
+    >>> # Read from stdin OR files listed on the command line (sys.argv[1:])
+    >>> fileinput().take(3).collect()                  
+    ['1', '2', '3']
+
+:param files: A list of filenames or '-' for stdin (default: sys.argv[1:]).
+:param inplace: Whether to allow in-place editing (default: False).
+:param backup: Backup extension for in-place editing (default: "").
+:param mode: File mode, e.g., 'r' or 'rb' (default: 'r').
+:param openhook: Optional hook to customize file opening.
+:param encoding: File encoding (default: None).
+:param errors: Error handling mode (default: None).
+
+
 
 The ``Iter`` Class
 ##################
