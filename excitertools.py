@@ -950,7 +950,7 @@ def fileinput(
     """
 
     def yielder():
-        if sys.version_info < (3, 10):
+        if sys.version_info < (3, 10): # pragma: no cover
             extra_kwargs = dict()
         else:
             extra_kwargs = dict(encoding=encoding, errors=errors)
