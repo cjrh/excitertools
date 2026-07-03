@@ -162,6 +162,74 @@ def test_insert():
     assert result == "cxaxlxexb"
 
 
+def test_executemany_batches_and_commits():
+    class Cursor:
+        def __init__(self):
+            self.calls = []
+
+        def executemany(self, sql, batch):
+            self.calls.append((sql, batch))
+
+    cursor = Cursor()
+    events = []
+
+    result = Iter([(1,), (2,), (3,)]).executemany(
+        cursor,
+        "INSERT INTO example VALUES (?)",
+        batch_size=2,
+        commit=lambda: events.append("commit"),
+    )
+
+    assert result is None
+    assert cursor.calls == [
+        ("INSERT INTO example VALUES (?)", [(1,), (2,)]),
+        ("INSERT INTO example VALUES (?)", [(3,)]),
+    ]
+    assert events == ["commit"]
+
+
+def test_executemany_rolls_back_on_error():
+    class Cursor:
+        def __init__(self):
+            self.calls = 0
+
+        def executemany(self, sql, batch):
+            self.calls += 1
+            if self.calls == 2:
+                raise RuntimeError("boom")
+
+    cursor = Cursor()
+    events = []
+
+    with pytest.raises(RuntimeError, match="boom"):
+        Iter([(1,), (2,), (3,)]).executemany(
+            cursor,
+            "INSERT INTO example VALUES (?)",
+            batch_size=1,
+            commit=lambda: events.append("commit"),
+            rollback=lambda: events.append("rollback"),
+        )
+
+    assert cursor.calls == 2
+    assert events == ["rollback"]
+
+
+def test_executemany_rejects_non_positive_batch_size():
+    class Cursor:
+        def __init__(self):
+            self.calls = []
+
+        def executemany(self, sql, batch):
+            self.calls.append((sql, batch))
+
+    cursor = Cursor()
+
+    with pytest.raises(ValueError, match="batch_size"):
+        Iter([(1,)]).executemany(cursor, "INSERT INTO example VALUES (?)", batch_size=0)
+
+    assert cursor.calls == []
+
+
 @pytest.mark.parametrize(
     "elem,times,expected",
     [
