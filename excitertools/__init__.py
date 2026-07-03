@@ -1683,6 +1683,71 @@ class Iter(Generic[T], Iterator[T]):
             for piece in self:
                 f.write(piece)
 
+    # Database operations
+
+    def executemany(
+        self,
+        cursor: Any,
+        sql: str,
+        *,
+        batch_size: int = 1000,
+        commit: Optional[Callable[[], Any]] = None,
+        rollback: Optional[Callable[[], Any]] = None,
+    ) -> None:
+        """
+        |sink|
+
+        Execute a DB-API 2.0-style ``executemany`` call over batches from
+        this iterator.
+
+        The SQL string is supplied by the caller so driver-specific
+        placeholder styles stay outside this method. Each item in the
+        iterator can be any parameter object accepted by the driver, such as
+        a tuple/list for positional placeholders or a dict for named
+        placeholders.
+
+        .. code-block:: python
+
+            >>> import sqlite3
+            >>> conn = sqlite3.connect(":memory:")
+            >>> cursor = conn.cursor()
+            >>> _ = cursor.execute("CREATE TABLE customers (id INTEGER, email TEXT, active INTEGER)")
+            >>> (
+            ...     Iter([(1, "A@EXAMPLE.COM", True), (2, "B@EXAMPLE.COM", False)])
+            ...         .map(lambda row: (row[0], row[1].lower(), row[2]))
+            ...         .executemany(
+            ...             cursor,
+            ...             "INSERT INTO customers VALUES (?, ?, ?)",
+            ...             batch_size=1,
+            ...             commit=conn.commit,
+            ...         )
+            ... )
+            >>> cursor.execute("SELECT id, email, active FROM customers ORDER BY id").fetchall()
+            [(1, 'a@example.com', 1), (2, 'b@example.com', 0)]
+            >>> conn.close()
+
+        By default this method does not commit or roll back; callers can use
+        their driver's transaction or context-manager conventions. If
+        ``commit`` is supplied, it is called after all batches finish
+        successfully. If ``rollback`` is supplied, it is called before
+        re-raising an exception from batching, execution, or commit.
+
+        """
+        if batch_size < 1:
+            raise ValueError("batch_size must be at least 1")
+
+        execute_batch = cursor.executemany
+        try:
+            for batch in self.chunked(batch_size):
+                execute_batch(sql, batch)
+
+            if commit is not None:
+                commit()
+        except Exception:
+            if rollback is not None:
+                rollback()
+            raise
+
     # Standard utilities
 
     @classmethod
