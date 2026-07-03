@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "excitertools"
-version = "2026.0.0"
+version = "2026.1.0"
 description = "itertools with function chaining"
 readme = "README.rst"
 requires-python = ">=3.10"
