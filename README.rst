@@ -1039,6 +1039,31 @@ Iter_ has support for these use-cases, both for reading and for writing.
 
 
 
+.. _Iter.close:
+
+
+``Iter.close(self) -> None``
+============================
+Close the wrapped iterator when it supports explicit cleanup.
+
+File-backed sources such as Iter.open_ and Iter.read_lines_ keep
+file handles open while a chain is being consumed. Calling
+``close()`` releases those resources deterministically, which is
+especially useful when only part of the source is consumed.
+
+.. code-block:: python
+
+    >>> import io
+    >>> stream = io.StringIO("one\ntwo\n")
+    >>> lines = Iter.read_lines(stream, rewind=False)
+    >>> lines.next()
+    'one\n'
+    >>> lines.close()
+    >>> stream.closed
+    True
+
+
+
 .. _Iter.next:
 
 
@@ -1226,11 +1251,40 @@ only reading is supported.
 
 
 
+.. _Iter.read_file:
+
+
+|cool| |source| ``@classmethod Iter.read_file(cls, file, buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, ) -> Self``
+=======================================================================================================================================================
+
+
+
+
+Read a text file lazily, one line at a time.
+
+This is the file-path counterpart to Iter.read_lines_. Unlike
+Iter.open_, it exposes only the text-reading options that matter for
+this source, so binary chunking and write modes do not obscure the
+common case.
+
+.. code-block:: python
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as td:
+    ...     filename = td + 'text.txt'
+    ...     with open(filename, 'w') as f:
+    ...         _ = f.write('one\ntwo\n')
+    ...
+    ...     Iter.read_file(filename).map(str.strip).collect()
+    ['one', 'two']
+
+
+
 .. _Iter.read_lines:
 
 
-|source| ``@classmethod Iter.read_lines(cls, stream: IO[str], rewind=True)``
-============================================================================
+|source| ``@classmethod Iter.read_lines(cls, stream: IO[str], rewind=False)``
+=============================================================================
 
 
 
@@ -1256,7 +1310,9 @@ Use read_lines to process the file data
     ...     Iter.read_lines(f).filter(lambda line: 'def' in line).collect()
     ['def\n']
 
-The ``rewind`` parameter can be used to read sections of a file.
+Reading starts at the stream's current position. The ``rewind``
+parameter can be used to seek back to the beginning first, if the
+stream is seekable.
 
 .. code-block:: python
 
@@ -1274,14 +1330,15 @@ The ``rewind`` parameter can be used to read sections of a file.
 .. _Iter.read_bytes:
 
 
-|source| ``@classmethod Iter.read_bytes(cls, stream: IO[bytes], size: Union[Callable[[], int], int] = -1, rewind=True)``
-========================================================================================================================
+|source| ``@classmethod Iter.read_bytes(cls, stream: IO[bytes], size: Union[Callable[[], int], int] = DEFAULT_BYTE_CHUNK_SIZE, rewind=False, )``
+================================================================================================================================================
 
 
 
-The ``size`` parameter can be used to control how many bytes are
-read for each advancement of the iterator chain. Here we set ``size=1``
-which means we'll get back one byte at a time.
+The ``size`` parameter controls how many bytes are read for each
+advancement of the iterator chain. By default, bytes are read in
+chunks of ``DEFAULT_BYTE_CHUNK_SIZE``. Here we set ``size=1``, which
+means we'll get back one byte at a time.
 
 .. code-block:: python
 
@@ -1329,7 +1386,9 @@ each body in sequence.
     ...     len(data)
     100
 
-The ``rewind`` parameter can be used to read sections of a file.
+Reading starts at the stream's current position. The ``rewind``
+parameter can be used to seek back to the beginning first, if the
+stream is seekable.
 
 .. code-block:: python
 
@@ -1341,6 +1400,34 @@ The ``rewind`` parameter can be used to read sections of a file.
     >>> len(part2[0])
     90
     >>> td.cleanup()
+
+
+
+.. _Iter.read_file_bytes:
+
+
+|cool| |source| ``@classmethod Iter.read_file_bytes(cls, file, size: Union[Callable[[], int], int] = DEFAULT_BYTE_CHUNK_SIZE, buffering=-1, closefd=True, opener=None, ) -> Self``
+==================================================================================================================================================================================
+
+
+
+
+Read a binary file lazily in byte chunks.
+
+This is the file-path counterpart to Iter.read_bytes_. The default
+chunk size is ``DEFAULT_BYTE_CHUNK_SIZE``; pass ``size=-1`` to read
+the whole file as a single chunk.
+
+.. code-block:: python
+
+    >>> import tempfile
+    >>> with tempfile.TemporaryDirectory() as td:
+    ...     filename = td + 'bytes.bin'
+    ...     with open(filename, 'wb') as f:
+    ...         _ = f.write(b'abcdef')
+    ...
+    ...     Iter.read_file_bytes(filename, size=2).collect()
+    [b'ab', b'cd', b'ef']
 
 
 
@@ -1444,14 +1531,19 @@ Flushing can be delayed if multiple parts are to be written.
 
 
 
-.. _Iter.write_to_file:
+.. _Iter.write_file:
 
 
-|cool| |sink| ``Iter.write_to_file(self, file, mode="w", buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, )``
-===============================================================================================================================================
+|cool| |sink| ``Iter.write_file(self, file, mode="w", buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, )``
+============================================================================================================================================
 
 
 
+
+Write items from the chain to a file path.
+
+Text and binary output use the same method; choose an appropriate
+file ``mode`` for the item type being written.
 
 .. code-block:: python
 
@@ -1462,11 +1554,27 @@ Flushing can be delayed if multiple parts are to be written.
     ...         f.writelines(['abc\n', 'def\n', 'ghi\n'])
     ...
     ...     # Open the file, transform, write out to new file.
-    ...     Iter.open(td + 'text.txt').map(str.upper).write_to_file(td + 'test2.txt')
+    ...     Iter.read_file(td + 'text.txt').map(str.upper).write_file(td + 'test2.txt')
     ...     # Read the new file, for the test
-    ...     Iter.open(td + 'test2.txt').collect()
+    ...     Iter.read_file(td + 'test2.txt').collect()
     ['ABC\n', 'DEF\n', 'GHI\n']
+    >>> with tempfile.TemporaryDirectory() as td:
+    ...     Iter([b'a', b'b']).write_file(td + 'bytes.bin', mode='wb')
+    ...     Iter.read_file_bytes(td + 'bytes.bin', size=-1).collect()
+    [b'ab']
 
+
+
+.. _Iter.write_to_file:
+
+
+|sink| ``Iter.write_to_file(self, file, mode="w", buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, )``
+========================================================================================================================================
+
+
+
+Backward-compatible name for Iter.write_file_. New code should use
+Iter.write_file_.
 
 
 .. _Iter.executemany:
