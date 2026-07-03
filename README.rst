@@ -1039,31 +1039,6 @@ Iter_ has support for these use-cases, both for reading and for writing.
 
 
 
-.. _Iter.close:
-
-
-``Iter.close(self) -> None``
-============================
-Close the wrapped iterator when it supports explicit cleanup.
-
-File-backed sources such as Iter.open_ and Iter.read_lines_ keep
-file handles open while a chain is being consumed. Calling
-``close()`` releases those resources deterministically, which is
-especially useful when only part of the source is consumed.
-
-.. code-block:: python
-
-    >>> import io
-    >>> stream = io.StringIO("one\ntwo\n")
-    >>> lines = Iter.read_lines(stream, rewind=False)
-    >>> lines.next()
-    'one\n'
-    >>> lines.close()
-    >>> stream.closed
-    True
-
-
-
 .. _Iter.next:
 
 

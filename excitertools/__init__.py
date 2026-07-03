@@ -1198,36 +1198,6 @@ class Iter(Generic[T], Iterator[T]):
     def __next__(self) -> "T":
         return next(self.x)
 
-    def close(self) -> None:
-        """Close the wrapped iterator when it supports explicit cleanup.
-
-        File-backed sources such as Iter.open_ and Iter.read_lines_ keep
-        file handles open while a chain is being consumed. Calling
-        ``close()`` releases those resources deterministically, which is
-        especially useful when only part of the source is consumed.
-
-        .. code-block:: python
-
-            >>> import io
-            >>> stream = io.StringIO("one\\ntwo\\n")
-            >>> lines = Iter.read_lines(stream, rewind=False)
-            >>> lines.next()
-            'one\\n'
-            >>> lines.close()
-            >>> stream.closed
-            True
-
-        """
-        close = getattr(self.x, "close", None)
-        if callable(close):
-            close()
-
-    def __enter__(self) -> Self:
-        return self
-
-    def __exit__(self, exc_type, exc, traceback) -> None:
-        self.close()
-
     def next(self) -> "T":
         """Convenience function to avoid having to wrap an interator with
         the `next()` builtin, just to advance it by one step (and return
