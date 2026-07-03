@@ -389,9 +389,8 @@ an instance of Iter_ to allow further iterable chaining.
 
     >>> accumulate([1, 2, 3, 4, 5]).collect()
     [1, 3, 6, 10, 15]
-    >>> if sys.version_info >= (3, 8):
-    ...     output = accumulate([1, 2, 3, 4, 5], initial=100).collect()
-    ...     assert output == [100, 101, 103, 106, 110, 115]
+    >>> accumulate([1, 2, 3, 4, 5], initial=100).collect()
+    [100, 101, 103, 106, 110, 115]
     >>> accumulate([1, 2, 3, 4, 5], operator.mul).collect()
     [1, 2, 6, 24, 120]
     >>> accumulate([]).collect()
@@ -830,6 +829,9 @@ A wrapper around fileinput.input that returns an Excitertools Iter_ instance.
 The documentation for the stdlib fileinput module is here:
     https://docs.python.org/3/library/fileinput.html
 
+Note that the ``encoding`` and ``errors`` arguments are only available
+in Python 3.10 and later.
+
 Here is an example of use:
 
 .. code-block:: python
@@ -847,8 +849,8 @@ Here is an example of use:
 :param backup: Backup extension for in-place editing (default: "").
 :param mode: File mode, e.g., 'r' or 'rb' (default: 'r').
 :param openhook: Optional hook to customize file opening.
-:param encoding: File encoding (default: None).
-:param errors: Error handling mode (default: None).
+:param encoding: File encoding (default: None). Note: Python 3.10+ only.
+:param errors: Error handling mode (default: None). Note: Python 3.10+ only.
 
 
 
@@ -2152,9 +2154,8 @@ Reference `itertools.accumulate <https://docs.python.org/3/library/itertools.htm
 
     >>> Iter([1, 2, 3, 4, 5]).accumulate().collect()
     [1, 3, 6, 10, 15]
-    >>> if sys.version_info >= (3, 8):
-    ...     out = Iter([1, 2, 3, 4, 5]).accumulate(initial=100).collect()
-    ...     assert out == [100, 101, 103, 106, 110, 115]
+    >>> Iter([1, 2, 3, 4, 5]).accumulate(initial=100).collect()
+    [100, 101, 103, 106, 110, 115]
     >>> Iter([1, 2, 3, 4, 5]).accumulate(operator.mul).collect()
     [1, 2, 6, 24, 120]
 
@@ -3928,15 +3929,13 @@ Reference: `more_itertools.unique_everseen <https://more-itertools.readthedocs.i
     >>> Iter('ABBCcAD').unique_everseen(key=str.lower).collect()
     ['A', 'B', 'C', 'D']
 
-Be sure to read the *more-itertools* docs whne using unhashable
-items.
+Be sure to read the *more-itertools* docs when using unhashable
+items; provide a key that converts each item to a hashable value.
 
 .. code-block:: python
 
     >>> iterable = ([1, 2], [2, 3], [1, 2])
-    >>> Iter(iterable).unique_everseen().collect()  # Slow
-    [[1, 2], [2, 3]]
-    >>> Iter(iterable).unique_everseen(key=tuple).collect()  # Faster
+    >>> Iter(iterable).unique_everseen(key=tuple).collect()
     [[1, 2], [2, 3]]
 
 
@@ -5010,39 +5009,43 @@ Dev Instructions
 Setup
 *****
 
+This project uses `uv <https://docs.astral.sh/uv/>`_ for dependency
+management and packaging, with common local commands captured in the
+``justfile``.
+
 .. code-block:: shell
 
-    $ python -m venv venv
-    $ source venv/bin/activate
-    (venv) $ pip install -e .[dev,test]
+    $ just sync
 
 Testing
 *******
 
 .. code-block:: shell
 
-    (venv) $ pytest --cov
+    $ just test
+    $ just coverage
 
 Documentation
 *************
 
-To regenerate the documentation, file ``README.rst``:
+To regenerate the documentation file ``README.rst``:
 
 .. code-block:: shell
 
-    (venv) $ python regenerate_readme.py -m excitertools.py > README.rst
+    $ just docs
 
 Releasing
 *********
 
-To do a release, we're using `bumpymcbumpface <https://pypi.org/project/bumpymcbumpface/>`_.
-Make sure that is set up correctly according to its own documentation. I 
-like to use `pipx <https://github.com/pipxproject/pipx>`_ to install and 
-manage these kinds of tools.
+Releases are built and published by GitHub Actions when a ``v*`` tag is
+pushed. PyPI publishing uses trusted publishing (OIDC), so there are no PyPI
+API tokens in GitHub secrets. See ``RELEASING.md`` for the one-time PyPI and
+GitHub environment setup.
 
 .. code-block:: shell
 
-    $ bumpymcbumpface --push-git --push-pypi
+    $ just release         # patch release by default
+    $ just release minor   # or major
 
 |
 |

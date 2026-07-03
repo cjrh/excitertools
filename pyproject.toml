@@ -1,0 +1,83 @@
+[build-system]
+requires = ["uv_build>=0.11.16,<0.12"]
+build-backend = "uv_build"
+
+[project]
+name = "excitertools"
+version = "2025.0.1"
+description = "itertools with function chaining"
+readme = "README.rst"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Caleb Hattingh", email = "caleb.hattingh@gmail.com" },
+]
+keywords = ["itertools", "iterators", "fluent-interface"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "more-itertools",
+    "typing-extensions",
+]
+
+[project.urls]
+Homepage = "https://github.com/cjrh/excitertools"
+Repository = "https://github.com/cjrh/excitertools"
+Issues = "https://github.com/cjrh/excitertools/issues"
+
+[tool.uv.build-backend]
+module-root = ""
+
+[dependency-groups]
+test = [
+    "coverage",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+]
+
+[tool.pytest.ini_options]
+norecursedirs = [
+    ".git",
+    "bin",
+    "examples",
+    "htmlcov",
+    "contrib",
+    "*.egg-info",
+    ".cache",
+]
+xfail_strict = true
+addopts = [
+    "--doctest-modules",
+    "--capture=no",
+    "--verbose",
+    "-m",
+    "not integration",
+    "--continue-on-collection-errors",
+    "--durations=10",
+]
+doctest_optionflags = [
+    "NORMALIZE_WHITESPACE",
+    "IGNORE_EXCEPTION_DETAIL",
+]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+ignore = ["E731"]

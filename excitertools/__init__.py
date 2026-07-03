@@ -176,9 +176,7 @@ upfront cost in your own code.
 
 """
 
-# This cannot be enabled because we still support 3.6 and pypy
 from __future__ import annotations
-import sys
 import itertools
 import functools
 import operator
@@ -481,9 +479,8 @@ def accumulate(iterable, func=None, *, initial=None):
 
         >>> accumulate([1, 2, 3, 4, 5]).collect()
         [1, 3, 6, 10, 15]
-        >>> if sys.version_info >= (3, 8):
-        ...     output = accumulate([1, 2, 3, 4, 5], initial=100).collect()
-        ...     assert output == [100, 101, 103, 106, 110, 115]
+        >>> accumulate([1, 2, 3, 4, 5], initial=100).collect()
+        [100, 101, 103, 106, 110, 115]
         >>> accumulate([1, 2, 3, 4, 5], operator.mul).collect()
         [1, 2, 6, 24, 120]
         >>> accumulate([]).collect()
@@ -950,18 +947,14 @@ def fileinput(
     """
 
     def yielder():
-        if sys.version_info < (3, 10): # pragma: no cover
-            extra_kwargs = dict()
-        else:
-            extra_kwargs = dict(encoding=encoding, errors=errors)
-
         stream = _fileinput.input(
             files=files,
             inplace=inplace,
             backup=backup,
             mode=mode,
             openhook=openhook,
-            **extra_kwargs
+            encoding=encoding,
+            errors=errors,
         )
         with stream:
             yield from stream
@@ -2306,9 +2299,8 @@ class Iter(Generic[T], Iterator[T]):
 
             >>> Iter([1, 2, 3, 4, 5]).accumulate().collect()
             [1, 3, 6, 10, 15]
-            >>> if sys.version_info >= (3, 8):
-            ...     out = Iter([1, 2, 3, 4, 5]).accumulate(initial=100).collect()
-            ...     assert out == [100, 101, 103, 106, 110, 115]
+            >>> Iter([1, 2, 3, 4, 5]).accumulate(initial=100).collect()
+            [100, 101, 103, 106, 110, 115]
             >>> Iter([1, 2, 3, 4, 5]).accumulate(operator.mul).collect()
             [1, 2, 6, 24, 120]
 
@@ -2324,15 +2316,6 @@ class Iter(Generic[T], Iterator[T]):
             [1000, 960, 918, 874, 828, 779, 728, 674, 618, 559, 497]
 
         """
-        if sys.version_info < (3, 8):  # pragma: no cover
-            if initial:
-                raise RuntimeError(
-                    f'The "initial" kwarg was added in Python 3.8 and is not'
-                    f"available on this version of Python which is "
-                    f"{sys.version_info} "
-                )
-            return Iter(itertools.accumulate(self.x, func))
-
         return type(self)(itertools.accumulate(self.x, func, initial=initial))
 
     def chain(self, *iterables: Iterable[T]) -> Self:
@@ -4004,15 +3987,13 @@ class Iter(Generic[T], Iterator[T]):
             >>> Iter('ABBCcAD').unique_everseen(key=str.lower).collect()
             ['A', 'B', 'C', 'D']
 
-        Be sure to read the *more-itertools* docs whne using unhashable
-        items.
+        Be sure to read the *more-itertools* docs when using unhashable
+        items; provide a key that converts each item to a hashable value.
 
         .. code-block:: python
 
             >>> iterable = ([1, 2], [2, 3], [1, 2])
-            >>> Iter(iterable).unique_everseen().collect()  # Slow
-            [[1, 2], [2, 3]]
-            >>> Iter(iterable).unique_everseen(key=tuple).collect()  # Faster
+            >>> Iter(iterable).unique_everseen(key=tuple).collect()
             [[1, 2], [2, 3]]
 
         """
@@ -5086,39 +5067,43 @@ Dev Instructions
 Setup
 *****
 
+This project uses `uv <https://docs.astral.sh/uv/>`_ for dependency
+management and packaging, with common local commands captured in the
+``justfile``.
+
 .. code-block:: shell
 
-    $ python -m venv venv
-    $ source venv/bin/activate
-    (venv) $ pip install -e .[dev,test]
+    $ just sync
 
 Testing
 *******
 
 .. code-block:: shell
 
-    (venv) $ pytest --cov
+    $ just test
+    $ just coverage
 
 Documentation
 *************
 
-To regenerate the documentation, file ``README.rst``:
+To regenerate the documentation file ``README.rst``:
 
 .. code-block:: shell
 
-    (venv) $ python regenerate_readme.py -m excitertools.py > README.rst
+    $ just docs
 
 Releasing
 *********
 
-To do a release, we're using `bumpymcbumpface <https://pypi.org/project/bumpymcbumpface/>`_.
-Make sure that is set up correctly according to its own documentation. I 
-like to use `pipx <https://github.com/pipxproject/pipx>`_ to install and 
-manage these kinds of tools.
+Releases are built and published by GitHub Actions when a ``v*`` tag is
+pushed. PyPI publishing uses trusted publishing (OIDC), so there are no PyPI
+API tokens in GitHub secrets. See ``RELEASING.md`` for the one-time PyPI and
+GitHub environment setup.
 
 .. code-block:: shell
 
-    $ bumpymcbumpface --push-git --push-pypi
+    $ just release         # patch release by default
+    $ just release minor   # or major
 
 |
 |
