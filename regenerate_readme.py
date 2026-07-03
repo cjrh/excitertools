@@ -13,6 +13,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_MODULE = "excitertools/__init__.py"
+
 
 class MyVisitor(ast.NodeVisitor):
     def __init__(self, source: str):
@@ -181,7 +183,8 @@ class MyVisitor(ast.NodeVisitor):
 
 
 def main(args):
-    file_contents = open(args.module).read()
+    with open(args.module, encoding="utf-8") as f:
+        file_contents = f.read()
     mod = ast.parse(file_contents, filename=args.module)
 
     visitor = MyVisitor(file_contents)
@@ -259,7 +262,12 @@ def parse(node, level=0, include_names=None):
 if __name__ == "__main__":
     logging.basicConfig(level="WARNING", stream=sys.stderr)
     parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--module", help="Module name to document")
+    parser.add_argument(
+        "-m",
+        "--module",
+        default=DEFAULT_MODULE,
+        help=f"Python source file to document (default: {DEFAULT_MODULE})",
+    )
     parser.add_argument("-a", "--all", help="Only document entries in __all__")
     args = parser.parse_args()
     main(args)
