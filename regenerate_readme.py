@@ -164,10 +164,8 @@ class MyVisitor(ast.NodeVisitor):
         first_line, _, other_lines = node.value.value.partition("\n")
         text = first_line.strip() + "\n" + dedent(other_lines)
         text = re.sub(self.flair_pattern, "", text, flags=re.MULTILINE)
-        # Replace doctest notifiers
-        tokens = ["<BLANKLINE>", "# doctest: +SKIP", "# doctest: +ELLIPSIS"]
-        for t in tokens:
-            text = text.replace(t, " " * len(t))
+        # Keep doctest directives intact so generated documentation remains
+        # executable with ``python -m doctest README.rst``.
         print(text)
 
     def visit_Assign(self, node: ast.Assign) -> Any:

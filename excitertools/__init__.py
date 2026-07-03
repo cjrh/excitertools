@@ -54,6 +54,8 @@ Demo
 
 .. code-block:: python
 
+    >>> from excitertools import *
+    >>> import builtins, operator, queue
     >>> range(10).map(lambda x: x*7).filter(lambda x: x % 3 == 0).collect()
     [0, 21, 42, 63]
     >>> range(10).map(lambda x: x*7).filter(lambda x: x > 0 and x % 3 == 0).collect()
@@ -258,6 +260,22 @@ _map = builtins.map
 _filter = builtins.filter
 
 
+def _eval_mapper(expression: str) -> Callable[..., Any]:
+    """Return a mapper for the provisional strings-as-code API.
+
+    The single-argument case keeps the historical ``x`` local. Multiple
+    iterables can use ``args`` to access the full tuple of mapped values.
+    """
+
+    def mapper(*values):
+        namespace = {"args": values}
+        if values:
+            namespace["x"] = values[0]
+        return eval(expression, globals(), namespace)
+
+    return mapper
+
+
 def range(*args) -> "Iter[int]":
     """
     |source|
@@ -324,13 +342,13 @@ def range(*args) -> "Iter[int]":
     return Iter(_range(*args))
 
 
-def zip(*iterables: Any) -> "Iter[Tuple[T, ...]]":
+def zip(*iterables: Any, strict: bool = False) -> "Iter[Tuple[T, ...]]":
     """Replacement for the builtin ``zip`` function.  This version returns
     an instance of Iter_ to allow further iterable chaining."""
-    return Iter(_zip(*iterables))
+    return Iter(_zip(*iterables, strict=strict))
 
 
-def enumerate(iterable) -> "Iter[Tuple[int, T]]":
+def enumerate(iterable, start: int = 0) -> "Iter[Tuple[int, T]]":
     """Replacement for the builtin ``enumerate`` function.  This version returns
     an instance of Iter_ to allow further iterable chaining.
 
@@ -342,10 +360,10 @@ def enumerate(iterable) -> "Iter[Tuple[int, T]]":
 
 
     """
-    return Iter(_enumerate(iterable))
+    return Iter(_enumerate(iterable, start=start))
 
 
-def map(func: Union[Callable[..., C], str], iterable) -> "Iter[C]":
+def map(func: Union[Callable[..., C], str], *iterables: Iterable[Any]) -> "Iter[C]":
     """Replacement for the builtin ``map`` function.  This version returns
     an instance of Iter_ to allow further iterable chaining.
 
@@ -358,9 +376,8 @@ def map(func: Union[Callable[..., C], str], iterable) -> "Iter[C]":
         >>> assert result == {'a': 97, 'b': 98, 'c': 99, 'e': 101, 'l': 108}
     """
     if isinstance(func, str):
-        return Iter(_map(lambda x: eval(func), iterable))
-    else:
-        return Iter(_map(func, iterable))
+        func = _eval_mapper(func)
+    return Iter(_map(func, *iterables))
 
 
 def filter(function: "Callable[[Any], bool]", iterable: "Iterable[T]") -> "Iter[T]":
@@ -448,10 +465,10 @@ def repeat(object: C, times=None) -> "Iter[C]":
 
     """
     # TODO: does it really work like this? Wow. https://bugs.python.org/issue34169
-    if times:
-        return Iter(itertools.repeat(object, times=times))
-    else:
+    if times is None:
         return Iter(itertools.repeat(object))
+    else:
+        return Iter(itertools.repeat(object, times=times))
 
 
 """
@@ -1029,18 +1046,10 @@ class Iter(Generic[T], Iterator[T]):
     .. code-block:: python
 
         >>> def mygen(): yield 123
-        >>> Iter(mygen).collect()
+        >>> Iter(mygen).collect()  # doctest: +ELLIPSIS
         Traceback (most recent call last):
             ...
-        TypeError: It seems you passed a generator function, but you
-        probably intended to pass a generator. Remember to evaluate the
-        function to obtain a generator instance:
-        <BLANKLINE>
-        def mygen():
-            yield 123
-        <BLANKLINE>
-        Iter(mygen)    # ERROR - a generator function object is not iterable
-        Iter(mygen())  # CORRECT - a generator instance is iterable.
+        TypeError: It seems you passed a generator function, but you ...
         >>> Iter(mygen()).collect()
         [123]
 
@@ -1093,7 +1102,6 @@ class Iter(Generic[T], Iterator[T]):
             range,
             map,
             filter,
-            reduce,
             repeat,
             count,
             enumerate,
@@ -1122,7 +1130,7 @@ class Iter(Generic[T], Iterator[T]):
         def func(inputs):
             data = (
                 excitertools.Iter(inputs)
-                    .map(lambda x: x + 2, inputs)
+                    .map(lambda x: x + 2)
                     .enumerate()
                     .filter(lambda x: x[1] > 10)
                     ...
@@ -1255,12 +1263,16 @@ class Iter(Generic[T], Iterator[T]):
         These are silly examples, but hopefully you get the idea.
 
         """
-        for f in func:
-
+        def make_method(registered_func):
             def inner(self, *args, **kwargs):
-                return Iter(f(self, *args, **kwargs))
+                return type(self)(registered_func(self, *args, **kwargs))
 
-            setattr(cls, f.__name__, inner)
+            inner.__name__ = registered_func.__name__
+            inner.__doc__ = registered_func.__doc__
+            return inner
+
+        for f in func:
+            setattr(cls, f.__name__, make_method(f))
 
     def collect(self, container=list) -> "List[T]":
         """
@@ -1332,8 +1344,8 @@ class Iter(Generic[T], Iterator[T]):
             >>> out = Iter(MyString('abc')).collect(MyString)
             >>> out
             'abc'
-            >>> type(out)
-            <class 'excitertools.MyString'>
+            >>> type(out).__name__
+            'MyString'
 
         """
         isstr = isinstance(container, type) and container is str
@@ -1799,7 +1811,7 @@ class Iter(Generic[T], Iterator[T]):
         """
         return cls(range(*args))
 
-    def zip(self, *iterables: Any) -> "Iter[Tuple[T, ...]]":
+    def zip(self, *iterables: Any, strict: bool = False) -> "Iter[Tuple[T, ...]]":
         """
 
         The ``zip`` function you all know and love. The only thing to
@@ -1845,7 +1857,7 @@ class Iter(Generic[T], Iterator[T]):
         will be intuitive to use.
 
         """
-        return Iter(_zip(self, *iterables))
+        return type(self)(_zip(self, *iterables, strict=strict))
 
     def any(self) -> "bool":
         """
@@ -1894,7 +1906,7 @@ class Iter(Generic[T], Iterator[T]):
         """
         return all(self)
 
-    def enumerate(self) -> "Iter[Tuple[int, T]]":
+    def enumerate(self, start: int = 0) -> "Iter[Tuple[int, T]]":
         """
 
         .. code-block:: python
@@ -1905,7 +1917,7 @@ class Iter(Generic[T], Iterator[T]):
             []
 
         """
-        return Iter(_enumerate(self))
+        return type(self)(_enumerate(self, start=start))
 
     def dict(self) -> "Dict":
         """
@@ -1930,7 +1942,7 @@ class Iter(Generic[T], Iterator[T]):
 
     ###
 
-    def map(self, func: Union[Callable[..., C], str]) -> "Iter[C]":
+    def map(self, func: Union[Callable[..., C], str], *iterables: Iterable[Any]) -> "Iter[C]":
         """
         The ``map`` function you all know and love.
 
@@ -1974,9 +1986,8 @@ class Iter(Generic[T], Iterator[T]):
 
         """
         if isinstance(func, str):
-            return Iter(_map(lambda x: eval(func), self))
-        else:
-            return Iter(_map(func, self))
+            func = _eval_mapper(func)
+        return type(self)(_map(func, self, *iterables))
 
     def filter(self, function: "Optional[Callable[[T], bool]]" = None) -> "Iter[T]":
         """
@@ -2383,10 +2394,10 @@ class Iter(Generic[T], Iterator[T]):
 
         """
         # TODO: does it really work like this? Wow.
-        if times:
-            return cls(itertools.repeat(elem, times=times))
-        else:
+        if times is None:
             return cls(itertools.repeat(elem))
+        else:
+            return cls(itertools.repeat(elem, times=times))
 
     # Iterators terminating on the shortest input sequence
     def accumulate(self, func=None, *, initial=None):
@@ -2621,7 +2632,7 @@ class Iter(Generic[T], Iterator[T]):
 
     # Grouping
 
-    def chunked(self, n: int) -> Self:
+    def chunked(self, n: int, strict: bool = False) -> Self:
         """
         Replacement for the more-itertools ``chunked`` function.  This version returns
         an instance of Iter_ to allow further iterable chaining.
@@ -2637,7 +2648,7 @@ class Iter(Generic[T], Iterator[T]):
 
         """
         cls = type(self)
-        return cls(more_itertools.chunked(self.x, n))
+        return cls(more_itertools.chunked(self.x, n, strict=strict))
 
     def ichunked(self, n: int) -> Self:
         """
@@ -2664,7 +2675,7 @@ class Iter(Generic[T], Iterator[T]):
         return cls(cls(it) for it in more_itertools.ichunked(self.x, n))
 
     @classmethod
-    def sliced(cls, seq: Sequence, n: int) -> Self:
+    def sliced(cls, seq: Sequence, n: int, strict: bool = False) -> Self:
         """
         |source|
 
@@ -2679,7 +2690,7 @@ class Iter(Generic[T], Iterator[T]):
             ['abc', 'def']
 
         """
-        return cls(more_itertools.sliced(seq, n))
+        return cls(more_itertools.sliced(seq, n, strict=strict))
 
     def constrained_batches(self, max_size: int, max_count=None, get_len=len, strict=True) -> Self:
         """
@@ -2871,9 +2882,16 @@ class Iter(Generic[T], Iterator[T]):
         """Docstring TODO"""
         return type(self)(type(self)(x) for x in more_itertools.unzip(self.x))
 
-    def grouper(self, n: int, fillvalue=None) -> "Iter":
+    def grouper(self, n: int, fillvalue=None, incomplete="fill") -> "Iter":
         """Docstring TODO"""
-        return type(self)(more_itertools.grouper(self.x, n, fillvalue=fillvalue))
+        return type(self)(
+            more_itertools.grouper(
+                self.x,
+                n,
+                incomplete=incomplete,
+                fillvalue=fillvalue,
+            )
+        )
 
     def partition(self, pred) -> "Iter":
         """Docstring TODO"""
@@ -3258,6 +3276,7 @@ class Iter(Generic[T], Iterator[T]):
         self,
         keyfunc: Optional[Callable[..., K]] = None,
         valuefunc: Optional[Callable[..., V]] = None,
+        reducefunc: Optional[Callable[..., R]] = None,
     ) -> "Iter[Tuple[K, Iterable[V]]]":
         """
         Reference: `more_itertools.groupby_transform <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.groupby_transform>`_
@@ -3297,6 +3316,7 @@ class Iter(Generic[T], Iterator[T]):
                 self.x,
                 keyfunc=keyfunc,
                 valuefunc=valuefunc,
+                reducefunc=reducefunc,
             )
         )
 
@@ -3350,7 +3370,14 @@ class Iter(Generic[T], Iterator[T]):
         return type(self)(more_itertools.collapse(self.x, base_type=base_type, levels=levels))
 
     @class_or_instancemethod
-    def sort_together(self_or_cls, iterables, key_list=(0,), reverse=False):
+    def sort_together(
+        self_or_cls,
+        iterables,
+        key_list=(0,),
+        key=None,
+        reverse=False,
+        strict=False,
+    ):
         """
         Reference: `more_itertools.sort_together <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sort_together>`_
 
@@ -3389,7 +3416,9 @@ class Iter(Generic[T], Iterator[T]):
                 more_itertools.sort_together(
                     iterables,
                     key_list=key_list,
+                    key=key,
                     reverse=reverse,
+                    strict=strict,
                 )
             )
         else:
@@ -3404,7 +3433,9 @@ class Iter(Generic[T], Iterator[T]):
                 more_itertools.sort_together(
                     _temp(),
                     key_list=key_list,
+                    key=key,
                     reverse=reverse,
+                    strict=strict,
                 )
             )
 
@@ -3581,7 +3612,7 @@ class Iter(Generic[T], Iterator[T]):
         #  a *iterables parameter. Not sure if this is what we want.
         return Iter(more_itertools.unique_to_each(*self))
 
-    def sample(self, k=1, weights=None) -> "Iter":
+    def sample(self, k=1, weights=None, *, counts=None, strict=False) -> "Iter":
         """
         Reference: `more_itertools.sample <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sample>`_
 
@@ -3608,7 +3639,15 @@ class Iter(Generic[T], Iterator[T]):
             True
 
         """
-        return Iter(more_itertools.sample(self.x, k=k, weights=weights))
+        return type(self)(
+            more_itertools.sample(
+                self.x,
+                k=k,
+                weights=weights,
+                counts=counts,
+                strict=strict,
+            )
+        )
 
     def consecutive_groups(self, ordering=lambda x: x):
         """
@@ -3688,7 +3727,7 @@ class Iter(Generic[T], Iterator[T]):
 
         .. code-block:: python
 
-            >>> all_items = _range(30)
+            >>> all_items = builtins.range(30)
             >>> keyfunc = lambda x: x % 2  # Evens map to 0; odds to 1
             >>> categories = Iter(all_items).filter(lambda x: 10<=x<=20).map_reduce(keyfunc=keyfunc)
             >>> sorted(categories.items())
@@ -3754,7 +3793,7 @@ class Iter(Generic[T], Iterator[T]):
         """
         return more_itertools.exactly_n(self.x, n=n, predicate=predicate)
 
-    def is_sorted(self, key=None, reverse=False) -> "bool":
+    def is_sorted(self, key=None, reverse=False, strict=False) -> "bool":
         """
         |sink|
 
@@ -3766,7 +3805,12 @@ class Iter(Generic[T], Iterator[T]):
             True
 
         """
-        return more_itertools.is_sorted(self.x, key=key, reverse=reverse)
+        return more_itertools.is_sorted(
+            self.x,
+            key=key,
+            reverse=reverse,
+            strict=strict,
+        )
 
     def all_unique(self, key=None) -> "bool":
         """
@@ -3782,7 +3826,11 @@ class Iter(Generic[T], Iterator[T]):
         """
         return more_itertools.all_unique(self.x, key=key)
 
-    def minmax(self, key: Optional[Callable[[T], Any]] = None, default: Optional[tuple[T, T]] = None) -> "Tuple[T, T]":
+    def minmax(
+        self,
+        key: Optional[Callable[[T], Any]] = None,
+        default: Any = _marker,
+    ) -> "Tuple[T, T]":
         """
         |sink|
 
@@ -3798,6 +3846,8 @@ class Iter(Generic[T], Iterator[T]):
             (0, 0)
 
         """
+        if default is _marker:
+            return more_itertools.minmax(self.x, key=key)
         return more_itertools.minmax(self.x, key=key, default=default)
 
     def all_equal(self, key: Optional[Callable[[T], Any]] = None) -> bool:
@@ -3838,7 +3888,7 @@ class Iter(Generic[T], Iterator[T]):
         """
         return more_itertools.first_true(self.x, default=default, pred=pred)
 
-    def quantify(self):
+    def quantify(self, pred=bool):
         """
         |sink|
 
@@ -3850,7 +3900,7 @@ class Iter(Generic[T], Iterator[T]):
             3
 
         """
-        return more_itertools.quantify(self.x)
+        return more_itertools.quantify(self.x, pred=pred)
 
     # Selecting
 
@@ -3871,7 +3921,7 @@ class Iter(Generic[T], Iterator[T]):
         """
         return Iter(more_itertools.islice_extended(self.x, *args))
 
-    def first(self, default: "V" = None) -> "T | V":
+    def first(self, default: "V" = _marker) -> "T | V":
         """
         Reference: `more_itertools.first <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.first>`_
 
@@ -3883,9 +3933,11 @@ class Iter(Generic[T], Iterator[T]):
             'missing'
 
         """
+        if default is _marker:
+            return more_itertools.first(self.x)
         return more_itertools.first(self.x, default)
 
-    def last(self, default: "V" = None) -> "T | V":
+    def last(self, default: "V" = _marker) -> "T | V":
         """
         Reference: `more_itertools.last <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.last>`_
 
@@ -3896,9 +3948,11 @@ class Iter(Generic[T], Iterator[T]):
             >>> Iter([]).last(default='missing')
             'missing'
         """
+        if default is _marker:
+            return more_itertools.last(self.x)
         return more_itertools.last(self.x, default)
 
-    def one(self, too_short=ValueError, too_long=ValueError) -> "T":
+    def one(self, too_short=None, too_long=None) -> "T":
         """
         Return the first item from the iterable, raising an exception if there
         is not exactly one item.
@@ -3911,7 +3965,7 @@ class Iter(Generic[T], Iterator[T]):
 
         .. code-block:: python
 
-            >>> Iter([]).one()
+            >>> Iter([]).one()  # doctest: +ELLIPSIS
             Traceback (most recent call last):
                 ...
             ValueError: ...
@@ -3921,7 +3975,7 @@ class Iter(Generic[T], Iterator[T]):
         """
         return more_itertools.one(self.x, too_short=too_short, too_long=too_long)
 
-    def only(self, default=None, too_long=ValueError) -> "T":
+    def only(self, default=None, too_long=None) -> "T":
         """
         Reference: `more_itertools.one <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.one>`_
 
@@ -3931,7 +3985,7 @@ class Iter(Generic[T], Iterator[T]):
             'missing'
             >>> Iter([42]).only(default='missing')
             42
-            >>> Iter([1, 2]).only()
+            >>> Iter([1, 2]).only()  # doctest: +ELLIPSIS
             Traceback (most recent call last):
                 ...
             ValueError: ...
@@ -3950,11 +4004,11 @@ class Iter(Generic[T], Iterator[T]):
 
             >>> Iter([1, 2, 3]).strictly_n(3).collect()
             [1, 2, 3]
-            >>> Iter([1, 2, 3]).strictly_n(2).collect()
+            >>> Iter([1, 2, 3]).strictly_n(2).collect()  # doctest: +ELLIPSIS
             Traceback (most recent call last):
                 ...
             ValueError: ...
-            >>> Iter([1, 2, 3]).strictly_n(4).collect()
+            >>> Iter([1, 2, 3]).strictly_n(4).collect()  # doctest: +ELLIPSIS
             Traceback (most recent call last):
                 ...
             ValueError: ...
@@ -4112,7 +4166,7 @@ class Iter(Generic[T], Iterator[T]):
 
     # Combinatorics
 
-    def distinct_permutations(self):
+    def distinct_permutations(self, r=None):
         """
         Reference: `more_itertools.distinct_permutations <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.distinct_permutations>`_
 
@@ -4122,7 +4176,7 @@ class Iter(Generic[T], Iterator[T]):
             [(0, 1, 1), (1, 0, 1), (1, 1, 0)]
 
         """
-        return Iter(more_itertools.distinct_permutations(self.x))
+        return type(self)(more_itertools.distinct_permutations(self.x, r=r))
 
     def distinct_combinations(self, r) -> "Iter[T]":
         """
@@ -4136,7 +4190,7 @@ class Iter(Generic[T], Iterator[T]):
         """
         return Iter(more_itertools.distinct_combinations(self, r))
 
-    def circular_shifts(self) -> "Iter[T]":
+    def circular_shifts(self, steps=1) -> "Iter[T]":
         """
         Reference: `more_itertools.circular_shifts <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.circular_shifts>`_
 
@@ -4146,7 +4200,7 @@ class Iter(Generic[T], Iterator[T]):
             [(0, 1, 2, 3), (1, 2, 3, 0), (2, 3, 0, 1), (3, 0, 1, 2)]
 
         """
-        return Iter(more_itertools.circular_shifts(self))
+        return type(self)(more_itertools.circular_shifts(self, steps=steps))
 
     def partitions(self) -> "Iter[T]":
         """
@@ -4170,7 +4224,7 @@ class Iter(Generic[T], Iterator[T]):
         """
         return Iter(more_itertools.partitions(self.x))
 
-    def set_partitions(self, k=None) -> "Iter[T]":
+    def set_partitions(self, k=None, min_size=None, max_size=None) -> "Iter[T]":
         """
         Reference: `more_itertools.set_partitions <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.set_partitions>`_
 
@@ -4180,7 +4234,14 @@ class Iter(Generic[T], Iterator[T]):
             [[['a'], ['b', 'c']], [['a', 'b'], ['c']], [['b'], ['a', 'c']]]
 
         """
-        return Iter(more_itertools.set_partitions(self, k=k))
+        return type(self)(
+            more_itertools.set_partitions(
+                self,
+                k=k,
+                min_size=min_size,
+                max_size=max_size,
+            )
+        )
 
     def powerset(self):
         """
@@ -4810,7 +4871,14 @@ class Iter(Generic[T], Iterator[T]):
         have waited in Iter.collect_ forever.
 
         """
-        return Iter.repeatfunc(q.get, timeout).takewhile(lambda v: v is not None)
+        def values():
+            while True:
+                value = q.get(timeout=timeout)
+                if value == sentinel:
+                    return
+                yield value
+
+        return cls(values())
 
     def into_queue(self, q: queue.Queue) -> "Iter[T]":
         """

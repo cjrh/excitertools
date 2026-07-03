@@ -7,6 +7,24 @@ def test_basic():
     assert list(it) == [0, 1, 2, 3, 4]
 
 
+def test_register_binds_each_function_independently():
+    class CustomIter(Iter):
+        pass
+
+    def add1(iterable):
+        for value in iterable:
+            yield value + 1
+
+    def mul10(iterable):
+        for value in iterable:
+            yield value * 10
+
+    CustomIter.register(add1, mul10)
+
+    assert CustomIter([1, 2]).add1().collect() == [2, 3]
+    assert CustomIter([1, 2]).mul10().collect() == [10, 20]
+
+
 @pytest.mark.parametrize(
     "val,wargs,jargs,result",
     [

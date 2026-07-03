@@ -12,6 +12,9 @@ def test_chunked():
         [9, 10, 11],
     ]
 
+    with pytest.raises(ValueError):
+        Iter(range(5)).chunked(3, strict=True).collect()
+
 
 def test_ichunked():
     it = Iter(range(12))
@@ -26,6 +29,9 @@ def test_sliced():
     seq = list(range(4))
     assert Iter.sliced(seq, 2).collect() == [[0, 1], [2, 3]]
     assert Iter.sliced(seq, 3).collect() == [[0, 1, 2], [3]]
+
+    with pytest.raises(ValueError):
+        Iter.sliced(seq, 3, strict=True).collect()
 
 
 def test_distribute():
@@ -112,6 +118,10 @@ def test_grouper():
         ("D", "E", "F"),
         ("G", "x", "x"),
     ]
+    assert Iter("ABCDEFG").grouper(3, incomplete="ignore").collect() == [
+        ("A", "B", "C"),
+        ("D", "E", "F"),
+    ]
 
 
 def test_partition():
@@ -192,6 +202,35 @@ def test_map_reduce_reducefunc():
         sum,
     )
     assert sorted(x.items()) == [("A", 1), ("B", 2), ("C", 3)]
+
+
+def test_groupby_transform_reducefunc():
+    result = Iter("aab").groupby_transform(lambda x: x, reducefunc=list).collect()
+    assert result == [("a", ["a", "a"]), ("b", ["b"])]
+
+
+def test_more_itertools_newer_options_are_exposed():
+    assert Iter([1, 1, 2]).is_sorted(strict=True) is False
+    assert Iter([0, 1, 2, 3]).quantify(pred=lambda x: x > 1) == 2
+    assert Iter([1, 1, 2]).distinct_permutations(r=2).collect() == [
+        (1, 1),
+        (1, 2),
+        (2, 1),
+    ]
+    assert Iter([1, 2, 3]).circular_shifts(steps=2).collect() == [
+        (1, 2, 3),
+        (3, 1, 2),
+        (2, 3, 1),
+    ]
+    assert Iter([1, 2, 3]).set_partitions(min_size=2).collect() == [[[1, 2, 3]]]
+    assert Iter("abc").sample(k=2, counts=[1, 1, 1], strict=True).ilen() == 2
+
+    with pytest.raises(ValueError):
+        Iter([]).minmax()
+    with pytest.raises(ValueError):
+        Iter([]).first()
+    with pytest.raises(ValueError):
+        Iter([]).last()
 
 
 def test_interleave():

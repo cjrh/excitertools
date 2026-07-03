@@ -54,6 +54,8 @@ Demo
 
 .. code-block:: python
 
+    >>> from excitertools import *
+    >>> import builtins, operator, queue
     >>> range(10).map(lambda x: x*7).filter(lambda x: x % 3 == 0).collect()
     [0, 21, 42, 63]
     >>> range(10).map(lambda x: x*7).filter(lambda x: x > 0 and x % 3 == 0).collect()
@@ -238,16 +240,16 @@ at all:
 .. _zip:
 
 
-``zip(*iterables: Any) -> "Iter[Tuple[T, ...]]"``
-*************************************************
+``zip(*iterables: Any, strict: bool = False) -> "Iter[Tuple[T, ...]]"``
+***********************************************************************
 Replacement for the builtin ``zip`` function.  This version returns
 an instance of Iter_ to allow further iterable chaining.
 
 .. _enumerate:
 
 
-``enumerate(iterable) -> "Iter[Tuple[int, T]]"``
-************************************************
+``enumerate(iterable, start: int = 0) -> "Iter[Tuple[int, T]]"``
+****************************************************************
 Replacement for the builtin ``enumerate`` function.  This version returns
 an instance of Iter_ to allow further iterable chaining.
 
@@ -263,8 +265,8 @@ an instance of Iter_ to allow further iterable chaining.
 .. _map:
 
 
-``map(func: Union[Callable[..., C], str], iterable) -> "Iter[C]"``
-******************************************************************
+``map(func: Union[Callable[..., C], str], *iterables: Iterable[Any]) -> "Iter[C]"``
+***********************************************************************************
 Replacement for the builtin ``map`` function.  This version returns
 an instance of Iter_ to allow further iterable chaining.
 
@@ -829,10 +831,10 @@ Here is an example of use:
 
     >>> from excitertools import fileinput
     >>> # Read from a file
-    >>> fileinput(['data.txt']).take(3).collect()                  
+    >>> fileinput(['data.txt']).take(3).collect()  # doctest: +SKIP
     ['1', '2', '3']
     >>> # Read from stdin OR files listed on the command line (sys.argv[1:])
-    >>> fileinput().take(3).collect()                  
+    >>> fileinput().take(3).collect()  # doctest: +SKIP
     ['1', '2', '3']
 
 :param files: A list of filenames or '-' for stdin (default: sys.argv[1:]).
@@ -922,18 +924,10 @@ pointing out the mistake:
 .. code-block:: python
 
     >>> def mygen(): yield 123
-    >>> Iter(mygen).collect()
+    >>> Iter(mygen).collect()  # doctest: +ELLIPSIS
     Traceback (most recent call last):
         ...
-    TypeError: It seems you passed a generator function, but you
-    probably intended to pass a generator. Remember to evaluate the
-    function to obtain a generator instance:
-               
-    def mygen():
-        yield 123
-               
-    Iter(mygen)    # ERROR - a generator function object is not iterable
-    Iter(mygen())  # CORRECT - a generator instance is iterable.
+    TypeError: It seems you passed a generator function, but you ...
     >>> Iter(mygen()).collect()
     [123]
 
@@ -986,7 +980,6 @@ cool stuff:
         range,
         map,
         filter,
-        reduce,
         repeat,
         count,
         enumerate,
@@ -1015,7 +1008,7 @@ fine with importing this class only, or even importing the module only:
     def func(inputs):
         data = (
             excitertools.Iter(inputs)
-                .map(lambda x: x + 2, inputs)
+                .map(lambda x: x + 2)
                 .enumerate()
                 .filter(lambda x: x[1] > 10)
                 ...
@@ -1194,8 +1187,8 @@ String subclasses also work.
     >>> out = Iter(MyString('abc')).collect(MyString)
     >>> out
     'abc'
-    >>> type(out)
-    <class 'excitertools.MyString'>
+    >>> type(out).__name__
+    'MyString'
 
 
 
@@ -1584,8 +1577,8 @@ The ``range`` function you all know and love.
 .. _Iter.zip:
 
 
-``Iter.zip(self, *iterables: Any) -> "Iter[Tuple[T, ...]]"``
-============================================================
+``Iter.zip(self, *iterables: Any, strict: bool = False) -> "Iter[Tuple[T, ...]]"``
+==================================================================================
 
 
 The ``zip`` function you all know and love. The only thing to
@@ -1688,8 +1681,8 @@ it follows that there are no elements that are falsy and that's why
 .. _Iter.enumerate:
 
 
-``Iter.enumerate(self) -> "Iter[Tuple[int, T]]"``
-=================================================
+``Iter.enumerate(self, start: int = 0) -> "Iter[Tuple[int, T]]"``
+=================================================================
 
 
 .. code-block:: python
@@ -1712,7 +1705,7 @@ of tuples:
 
 .. code-block:: python
 
-    >>> dict([('a', 0), ('b', 1)])                  
+    >>> dict([('a', 0), ('b', 1)])  # doctest: +SKIP
     {'a': 0, 'b': 1}
 
 In *excitertools* we prefer chaining so this method is a shortcut
@@ -1728,8 +1721,8 @@ for that:
 .. _Iter.map:
 
 
-``Iter.map(self, func: Union[Callable[..., C], str]) -> "Iter[C]"``
-===================================================================
+``Iter.map(self, func: Union[Callable[..., C], str], *iterables: Iterable[Any]) -> "Iter[C]"``
+==============================================================================================
 
 The ``map`` function you all know and love.
 
@@ -2241,7 +2234,7 @@ Reference `itertools.accumulate <https://docs.python.org/3/library/itertools.htm
     >>> update = lambda balance, payment: round(balance * 1.05) - payment
 
     This is written in the itertools docs:
-    >>> list(accumulate(repeat(90, 10), update, initial=1_000))                 
+    >>> list(accumulate(repeat(90, 10), update, initial=1_000)) # doctest: +SKIP
 
     This is using excitertools:
     >>> repeat(90, 10).accumulate(update, initial=1000).collect()
@@ -2480,8 +2473,8 @@ Replacement for the itertools ``zip_longest`` function.
 .. _Iter.chunked:
 
 
-``Iter.chunked(self, n: int) -> Self``
-======================================
+``Iter.chunked(self, n: int, strict: bool = False) -> Self``
+============================================================
 
 Replacement for the more-itertools ``chunked`` function.  This version returns
 an instance of Iter_ to allow further iterable chaining.
@@ -2526,8 +2519,8 @@ Reference: `more_itertools.ichunked <https://more-itertools.readthedocs.io/en/st
 .. _Iter.sliced:
 
 
-|source| ``@classmethod Iter.sliced(cls, seq: Sequence, n: int) -> Self``
-=========================================================================
+|source| ``@classmethod Iter.sliced(cls, seq: Sequence, n: int, strict: bool = False) -> Self``
+===============================================================================================
 
 
 
@@ -2752,8 +2745,8 @@ Docstring TODO
 .. _Iter.grouper:
 
 
-``Iter.grouper(self, n: int, fillvalue=None) -> "Iter"``
-========================================================
+``Iter.grouper(self, n: int, fillvalue=None, incomplete="fill") -> "Iter"``
+===========================================================================
 Docstring TODO
 
 
@@ -3133,8 +3126,8 @@ Reference: `more_itertools.adjacent <https://more-itertools.readthedocs.io/en/st
 .. _Iter.groupby_transform:
 
 
-``Iter.groupby_transform(self, keyfunc: Optional[Callable[..., K]] = None, valuefunc: Optional[Callable[..., V]] = None, ) -> "Iter[Tuple[K, Iterable[V]]]"``
-=============================================================================================================================================================
+``Iter.groupby_transform(self, keyfunc: Optional[Callable[..., K]] = None, valuefunc: Optional[Callable[..., V]] = None, reducefunc: Optional[Callable[..., R]] = None, ) -> "Iter[Tuple[K, Iterable[V]]]"``
+============================================================================================================================================================================================================
 
 Reference: `more_itertools.groupby_transform <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.groupby_transform>`_
 
@@ -3228,8 +3221,8 @@ Reference: `more_itertools.collapse <https://more-itertools.readthedocs.io/en/st
 .. _Iter.sort_together:
 
 
-``@class_or_instancemethod Iter.sort_together(self_or_cls, iterables, key_list=(0,), reverse=False)``
-=====================================================================================================
+``@class_or_instancemethod Iter.sort_together(self_or_cls, iterables, key_list=(0,), key=None, reverse=False, strict=False, )``
+===============================================================================================================================
 
 Reference: `more_itertools.sort_together <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sort_together>`_
 
@@ -3440,25 +3433,25 @@ Note that this will internally construct the full list of the uniques for each g
 .. _Iter.sample:
 
 
-``Iter.sample(self, k=1, weights=None) -> "Iter"``
-==================================================
+``Iter.sample(self, k=1, weights=None, *, counts=None, strict=False) -> "Iter"``
+================================================================================
 
 Reference: `more_itertools.sample <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.sample>`_
 
 .. code-block:: python
 
     >>> iterable = range(100)
-    >>> Iter(iterable).sample(5).collect()                  
+    >>> Iter(iterable).sample(5).collect()  # doctest: +SKIP
     [81, 60, 96, 16, 4]
 
     >>> iterable = range(100)
     >>> weights = (i * i + 1 for i in range(100))
-    >>> Iter(iterable).sample(5, weights=weights)                  
+    >>> Iter(iterable).sample(5, weights=weights)  # doctest: +SKIP
     [79, 67, 74, 66, 78]
 
     >>> data = "abcdefgh"
     >>> weights = range(1, len(data) + 1)
-    >>> Iter(data).sample(k=len(data), weights=weights)                  
+    >>> Iter(data).sample(k=len(data), weights=weights)  # doctest: +SKIP
     ['c', 'a', 'b', 'e', 'g', 'd', 'h', 'f']
 
 
@@ -3559,7 +3552,7 @@ to filter *before* applying map_reduce, not after.
 
 .. code-block:: python
 
-    >>> all_items = _range(30)
+    >>> all_items = builtins.range(30)
     >>> keyfunc = lambda x: x % 2  # Evens map to 0; odds to 1
     >>> categories = Iter(all_items).filter(lambda x: 10<=x<=20).map_reduce(keyfunc=keyfunc)
     >>> sorted(categories.items())
@@ -3617,8 +3610,8 @@ Reference: `more_itertools.exactly_n <https://more-itertools.readthedocs.io/en/s
 .. _Iter.is_sorted:
 
 
-|sink| ``Iter.is_sorted(self, key=None, reverse=False) -> "bool"``
-==================================================================
+|sink| ``Iter.is_sorted(self, key=None, reverse=False, strict=False) -> "bool"``
+================================================================================
 
 
 
@@ -3651,8 +3644,8 @@ Reference: `more_itertools.all_unique <https://more-itertools.readthedocs.io/en/
 .. _Iter.minmax:
 
 
-|sink| ``Iter.minmax(self, key: Optional[Callable[[T], Any]] = None, default: Optional[tuple[T, T]] = None) -> "Tuple[T, T]"``
-==============================================================================================================================
+|sink| ``Iter.minmax(self, key: Optional[Callable[[T], Any]] = None, default: Any = _marker, ) -> "Tuple[T, T]"``
+=================================================================================================================
 
 
 
@@ -3716,8 +3709,8 @@ Reference: `more_itertools.first_true <https://more-itertools.readthedocs.io/en/
 .. _Iter.quantify:
 
 
-|sink| ``Iter.quantify(self)``
-==============================
+|sink| ``Iter.quantify(self, pred=bool)``
+=========================================
 
 
 
@@ -3753,8 +3746,8 @@ Reference: `more_itertools.islice_extended <https://more-itertools.readthedocs.i
 .. _Iter.first:
 
 
-``Iter.first(self, default: "V" = None) -> "T | V"``
-====================================================
+``Iter.first(self, default: "V" = _marker) -> "T | V"``
+=======================================================
 
 Reference: `more_itertools.first <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.first>`_
 
@@ -3770,8 +3763,8 @@ Reference: `more_itertools.first <https://more-itertools.readthedocs.io/en/stabl
 .. _Iter.last:
 
 
-``Iter.last(self, default: "V" = None) -> "T | V"``
-===================================================
+``Iter.last(self, default: "V" = _marker) -> "T | V"``
+======================================================
 
 Reference: `more_itertools.last <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.last>`_
 
@@ -3786,8 +3779,8 @@ Reference: `more_itertools.last <https://more-itertools.readthedocs.io/en/stable
 .. _Iter.one:
 
 
-``Iter.one(self, too_short=ValueError, too_long=ValueError) -> "T"``
-====================================================================
+``Iter.one(self, too_short=None, too_long=None) -> "T"``
+========================================================
 
 Return the first item from the iterable, raising an exception if there
 is not exactly one item.
@@ -3800,7 +3793,7 @@ Reference: `more_itertools.one <https://more-itertools.readthedocs.io/en/stable/
 
 .. code-block:: python
 
-    >>> Iter([]).one()
+    >>> Iter([]).one()  # doctest: +ELLIPSIS
     Traceback (most recent call last):
         ...
     ValueError: ...
@@ -3812,8 +3805,8 @@ Reference: `more_itertools.one <https://more-itertools.readthedocs.io/en/stable/
 .. _Iter.only:
 
 
-``Iter.only(self, default=None, too_long=ValueError) -> "T"``
-=============================================================
+``Iter.only(self, default=None, too_long=None) -> "T"``
+=======================================================
 
 Reference: `more_itertools.one <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.one>`_
 
@@ -3823,7 +3816,7 @@ Reference: `more_itertools.one <https://more-itertools.readthedocs.io/en/stable/
     'missing'
     >>> Iter([42]).only(default='missing')
     42
-    >>> Iter([1, 2]).only()
+    >>> Iter([1, 2]).only()  # doctest: +ELLIPSIS
     Traceback (most recent call last):
         ...
     ValueError: ...
@@ -3845,11 +3838,11 @@ Reference: `more_itertools.strictly_n <https://more-itertools.readthedocs.io/en/
 
     >>> Iter([1, 2, 3]).strictly_n(3).collect()
     [1, 2, 3]
-    >>> Iter([1, 2, 3]).strictly_n(2).collect()
+    >>> Iter([1, 2, 3]).strictly_n(2).collect()  # doctest: +ELLIPSIS
     Traceback (most recent call last):
         ...
     ValueError: ...
-    >>> Iter([1, 2, 3]).strictly_n(4).collect()
+    >>> Iter([1, 2, 3]).strictly_n(4).collect()  # doctest: +ELLIPSIS
     Traceback (most recent call last):
         ...
     ValueError: ...
@@ -4037,8 +4030,8 @@ Reference: `more_itertools.unique_justseen <https://more-itertools.readthedocs.i
 .. _Iter.distinct_permutations:
 
 
-``Iter.distinct_permutations(self)``
-====================================
+``Iter.distinct_permutations(self, r=None)``
+============================================
 
 Reference: `more_itertools.distinct_permutations <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.distinct_permutations>`_
 
@@ -4067,8 +4060,8 @@ Reference: `more_itertools.distinct_combinations <https://more-itertools.readthe
 .. _Iter.circular_shifts:
 
 
-``Iter.circular_shifts(self) -> "Iter[T]"``
-===========================================
+``Iter.circular_shifts(self, steps=1) -> "Iter[T]"``
+====================================================
 
 Reference: `more_itertools.circular_shifts <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.circular_shifts>`_
 
@@ -4107,8 +4100,8 @@ Reference: `more_itertools.partitions <https://more-itertools.readthedocs.io/en/
 .. _Iter.set_partitions:
 
 
-``Iter.set_partitions(self, k=None) -> "Iter[T]"``
-==================================================
+``Iter.set_partitions(self, k=None, min_size=None, max_size=None) -> "Iter[T]"``
+================================================================================
 
 Reference: `more_itertools.set_partitions <https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.set_partitions>`_
 
@@ -4144,9 +4137,9 @@ Reference: `more_itertools.random_product <https://more-itertools.readthedocs.io
 
 .. code-block:: python
 
-    >>> Iter('abc').random_product(range(4), 'XYZ').collect()                  
+    >>> Iter('abc').random_product(range(4), 'XYZ').collect()  # doctest: +SKIP
     ['c', 3, 'X']
-    >>> Iter.random_product('abc', range(4), 'XYZ').collect()                  
+    >>> Iter.random_product('abc', range(4), 'XYZ').collect()  # doctest: +SKIP
     ['c', 0, 'Z']
     >>> Iter('abc').random_product(range(0)).collect()
     Traceback (most recent call last):
@@ -4169,7 +4162,7 @@ Reference: `more_itertools.random_permutation <https://more-itertools.readthedoc
 
 .. code-block:: python
 
-    >>> Iter(range(5)).random_permutation().collect()                  
+    >>> Iter(range(5)).random_permutation().collect()  # doctest: +SKIP
     [2, 0, 4, 3, 1]
     >>> Iter(range(0)).random_permutation().collect()
     []
@@ -4186,7 +4179,7 @@ Reference: `more_itertools.random_combination <https://more-itertools.readthedoc
 
 .. code-block:: python
 
-    >>> Iter(range(5)).random_combination(3).collect()                  
+    >>> Iter(range(5)).random_combination(3).collect()  # doctest: +SKIP
     [0, 1, 4]
     >>> Iter(range(5)).random_combination(0).collect()
     []
@@ -4203,7 +4196,7 @@ Reference: `more_itertools.random_combination_with_replacement <https://more-ite
 
 .. code-block:: python
 
-    >>> Iter(range(3)).random_combination_with_replacement(5).collect()                  
+    >>> Iter(range(3)).random_combination_with_replacement(5).collect()  # doctest: +SKIP
     [0, 0, 1, 2, 2]
     >>> Iter(range(3)).random_combination_with_replacement(0).collect()
     []
@@ -4918,7 +4911,7 @@ you'll get an exception (Python 3.7+):
     >>> def collector():
     ...   for i in builtins.range(3):
     ...       output.append((yield))
-    >>> Iter.range(50).send_also(collector()).collect()                  
+    >>> Iter.range(50).send_also(collector()).collect()  # doctest: +SKIP
     Traceback (most recent call last):
         ...
     RuntimeError

@@ -145,7 +145,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "more-itertools" },
+    { name = "more-itertools", specifier = ">=11.1,<12" },
     { name = "typing-extensions" },
 ]
 
