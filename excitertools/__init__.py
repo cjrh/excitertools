@@ -1794,34 +1794,6 @@ class Iter(Generic[T], Iterator[T]):
             for piece in self:
                 f.write(piece)
 
-    def write_to_file(
-        self,
-        file,
-        mode="w",
-        buffering=-1,
-        encoding=None,
-        errors=None,
-        newline=None,
-        closefd=True,
-        opener=None,
-    ):
-        """
-        |sink|
-
-        Backward-compatible name for Iter.write_file_. New code should use
-        Iter.write_file_.
-        """
-        return self.write_file(
-            file=file,
-            mode=mode,
-            buffering=buffering,
-            encoding=encoding,
-            errors=errors,
-            newline=newline,
-            closefd=closefd,
-            opener=opener,
-        )
-
     # Database operations
 
     def executemany(

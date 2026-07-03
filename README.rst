@@ -1540,18 +1540,6 @@ file ``mode`` for the item type being written.
 
 
 
-.. _Iter.write_to_file:
-
-
-|sink| ``Iter.write_to_file(self, file, mode="w", buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None, )``
-========================================================================================================================================
-
-
-
-Backward-compatible name for Iter.write_file_. New code should use
-Iter.write_file_.
-
-
 .. _Iter.executemany:
 
 
