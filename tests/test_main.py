@@ -1,11 +1,28 @@
+import queue
+
 import pytest
 
+import excitertools as et
 from excitertools import Iter, insert_separator, concat
 
 
 def test_basic():
     it = Iter(range(5))
     assert list(it) == [0, 1, 2, 3, 4]
+
+
+def test_builtin_replacements_accept_builtin_parameters():
+    assert et.enumerate("ab", start=1).collect() == [(1, "a"), (2, "b")]
+    assert Iter("ab").enumerate(start=1).collect() == [(1, "a"), (2, "b")]
+
+    assert et.map(pow, [2, 3], [4, 2]).collect() == [16, 9]
+    assert Iter([2, 3]).map(pow, [4, 2]).collect() == [16, 9]
+
+    with pytest.raises(ValueError):
+        et.zip([1, 2], [3], strict=True).collect()
+
+    with pytest.raises(ValueError):
+        Iter([1, 2]).zip([3], strict=True).collect()
 
 
 @pytest.mark.parametrize(
@@ -253,6 +270,11 @@ def test_repeat_infinite(elem, taken, expected):
     assert result == expected
 
 
+def test_repeat_zero_is_empty():
+    assert et.repeat("x", times=0).collect() == []
+    assert Iter.repeat("x", times=0).collect() == []
+
+
 @pytest.mark.parametrize(
     "arg,func,expected",
     [
@@ -371,6 +393,19 @@ def test_zip():
 def test_zip_longest():
     result = Iter([1, 4, 6, 4, 1]).zip_longest("abc").collect()
     assert result == [(1, "a"), (4, "b"), (6, "c"), (4, None), (1, None)]
+
+
+def test_from_queue_respects_sentinel_and_timeout():
+    q = queue.Queue()
+    q.put(1)
+    q.put("STOP")
+    q.put(2)
+
+    assert Iter.from_queue(q, sentinel="STOP").collect() == [1]
+    assert q.get_nowait() == 2
+
+    with pytest.raises(queue.Empty):
+        Iter.from_queue(queue.Queue(), timeout=0).collect()
 
 
 def test_non_iterable_error():
