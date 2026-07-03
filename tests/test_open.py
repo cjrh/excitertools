@@ -72,3 +72,33 @@ def test_open_context_manager_stops_generator_after_partial_read(tmp_path):
 
     with pytest.raises(StopIteration):
         lines.next()
+
+
+def test_read_file_reads_text_lines(tmp_path):
+    path = tmp_path / "data.txt"
+    path.write_text("one\ntwo\n")
+
+    assert Iter.read_file(path).map(str.strip).collect() == ["one", "two"]
+
+
+def test_read_file_bytes_reads_binary_chunks(tmp_path):
+    path = tmp_path / "data.bin"
+    path.write_bytes(b"abcdef")
+
+    assert Iter.read_file_bytes(path, size=2).collect() == [b"ab", b"cd", b"ef"]
+
+
+def test_write_file_writes_text(tmp_path):
+    path = tmp_path / "data.txt"
+
+    Iter(["one", "two"]).intersperse("\n").write_file(path)
+
+    assert path.read_text() == "one\ntwo"
+
+
+def test_write_file_writes_bytes(tmp_path):
+    path = tmp_path / "data.bin"
+
+    Iter([b"one", b"two"]).write_file(path, mode="wb")
+
+    assert path.read_bytes() == b"onetwo"

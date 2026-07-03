@@ -1446,6 +1446,51 @@ class Iter(Generic[T], Iterator[T]):
         return cls(inner())
 
     @classmethod
+    def read_file(
+        cls,
+        file,
+        buffering=-1,
+        encoding=None,
+        errors=None,
+        newline=None,
+        closefd=True,
+        opener=None,
+    ) -> Self:
+        """
+        |cool|
+        |source|
+
+        Read a text file lazily, one line at a time.
+
+        This is the file-path counterpart to Iter.read_lines_. Unlike
+        Iter.open_, it exposes only the text-reading options that matter for
+        this source, so binary chunking and write modes do not obscure the
+        common case.
+
+        .. code-block:: python
+
+            >>> import tempfile
+            >>> with tempfile.TemporaryDirectory() as td:
+            ...     filename = td + 'text.txt'
+            ...     with open(filename, 'w') as f:
+            ...         _ = f.write('one\\ntwo\\n')
+            ...
+            ...     Iter.read_file(filename).map(str.strip).collect()
+            ['one', 'two']
+
+        """
+        return cls.open(
+            file=file,
+            mode="r",
+            buffering=buffering,
+            encoding=encoding,
+            errors=errors,
+            newline=newline,
+            closefd=closefd,
+            opener=opener,
+        )
+
+    @classmethod
     def read_lines(cls, stream: IO[str], rewind=False):
         """
         |source|
@@ -1581,6 +1626,50 @@ class Iter(Generic[T], Iterator[T]):
 
         return cls(inner())
 
+    @classmethod
+    def read_file_bytes(
+        cls,
+        file,
+        size: Union[Callable[[], int], int] = DEFAULT_BYTE_CHUNK_SIZE,
+        buffering=-1,
+        closefd=True,
+        opener=None,
+    ) -> Self:
+        """
+        |cool|
+        |source|
+
+        Read a binary file lazily in byte chunks.
+
+        This is the file-path counterpart to Iter.read_bytes_. The default
+        chunk size is ``DEFAULT_BYTE_CHUNK_SIZE``; pass ``size=-1`` to read
+        the whole file as a single chunk.
+
+        .. code-block:: python
+
+            >>> import tempfile
+            >>> with tempfile.TemporaryDirectory() as td:
+            ...     filename = td + 'bytes.bin'
+            ...     with open(filename, 'wb') as f:
+            ...         _ = f.write(b'abcdef')
+            ...
+            ...     Iter.read_file_bytes(filename, size=2).collect()
+            [b'ab', b'cd', b'ef']
+
+        """
+
+        def inner():
+            with open(
+                file=file,
+                mode="rb",
+                buffering=buffering,
+                closefd=closefd,
+                opener=opener,
+            ) as f:
+                yield from cls.read_bytes(f, size=size, rewind=False)
+
+        return cls(inner())
+
     def write_text_to_stream(self, stream: IO[str], insert_newlines=True, flush=True):
         """
         |sink|
@@ -1683,7 +1772,7 @@ class Iter(Generic[T], Iterator[T]):
         if flush:
             stream.flush()
 
-    def write_to_file(
+    def write_file(
         self,
         file,
         mode="w",
@@ -1698,6 +1787,11 @@ class Iter(Generic[T], Iterator[T]):
         |cool|
         |sink|
 
+        Write items from the chain to a file path.
+
+        Text and binary output use the same method; choose an appropriate
+        file ``mode`` for the item type being written.
+
         .. code-block:: python
 
             >>> import tempfile
@@ -1707,10 +1801,14 @@ class Iter(Generic[T], Iterator[T]):
             ...         f.writelines(['abc\\n', 'def\\n', 'ghi\\n'])
             ...
             ...     # Open the file, transform, write out to new file.
-            ...     Iter.open(td + 'text.txt').map(str.upper).write_to_file(td + 'test2.txt')
+            ...     Iter.read_file(td + 'text.txt').map(str.upper).write_file(td + 'test2.txt')
             ...     # Read the new file, for the test
-            ...     Iter.open(td + 'test2.txt').collect()
+            ...     Iter.read_file(td + 'test2.txt').collect()
             ['ABC\\n', 'DEF\\n', 'GHI\\n']
+            >>> with tempfile.TemporaryDirectory() as td:
+            ...     Iter([b'a', b'b']).write_file(td + 'bytes.bin', mode='wb')
+            ...     Iter.read_file_bytes(td + 'bytes.bin', size=-1).collect()
+            [b'ab']
 
         """
         with open(
@@ -1725,6 +1823,34 @@ class Iter(Generic[T], Iterator[T]):
         ) as f:
             for piece in self:
                 f.write(piece)
+
+    def write_to_file(
+        self,
+        file,
+        mode="w",
+        buffering=-1,
+        encoding=None,
+        errors=None,
+        newline=None,
+        closefd=True,
+        opener=None,
+    ):
+        """
+        |sink|
+
+        Backward-compatible name for Iter.write_file_. New code should use
+        Iter.write_file_.
+        """
+        return self.write_file(
+            file=file,
+            mode=mode,
+            buffering=buffering,
+            encoding=encoding,
+            errors=errors,
+            newline=newline,
+            closefd=closefd,
+            opener=opener,
+        )
 
     # Database operations
 
