@@ -1528,6 +1528,47 @@ their driver's transaction or context-manager conventions. If
 successfully. If ``rollback`` is supplied, it is called before
 re-raising an exception from batching, execution, or commit.
 
+Here's a somewhat realistic ETL example:
+
+.. code-block:: python
+
+    from excitertools import Iter
+    import psycopg
+
+    with psycopg.connect(src_dsn) as src:
+        with psycopg.connect(dst_dsn) as dst:
+            src_cur = src.cursor()
+            dst_cur = dst.cursor()
+
+            sql_read = ''' SELECT id, email, signup_date FROM customers ORDER BY id '''
+            sql_write = '''
+                INSERT INTO customers (id, email, signup_date)
+                VALUES (%s, %s, %s)
+                ON CONFLICT DO NOTHING
+            '''
+
+            (
+                Iter(src_cur.execute(sql_read))
+                    # Only records with email
+                    .filter(lambda r: r.email is not None)
+                    # Lowercase the email address
+                    .starmap(
+                        lambda id, email, signup_date:
+                        (id, email.lower(), signup_date)
+                    )
+                    # Batch insert into the destination database
+                    .executemany(
+                        dst_cur,
+                        '''
+                        INSERT INTO customers (id, email, signup_date)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT DO NOTHING
+                        ''',
+                        batch_size=1000,
+                        commit=dst.commit,
+                    )
+            )
+
 
 
 .. _Iter.range:
