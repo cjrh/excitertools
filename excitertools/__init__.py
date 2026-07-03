@@ -240,6 +240,8 @@ K = TypeVar("K")
 V = TypeVar("V")
 R = TypeVar("R")
 
+DEFAULT_BYTE_CHUNK_SIZE = 8192
+
 
 class class_or_instancemethod(classmethod):
     """From: https://stackoverflow.com/a/28238047/170656"""
@@ -1444,7 +1446,7 @@ class Iter(Generic[T], Iterator[T]):
         return cls(inner())
 
     @classmethod
-    def read_lines(cls, stream: IO[str], rewind=True):
+    def read_lines(cls, stream: IO[str], rewind=False):
         """
         |source|
 
@@ -1470,7 +1472,9 @@ class Iter(Generic[T], Iterator[T]):
             ...     Iter.read_lines(f).filter(lambda line: 'def' in line).collect()
             ['def\\n']
 
-        The ``rewind`` parameter can be used to read sections of a file.
+        Reading starts at the stream's current position. The ``rewind``
+        parameter can be used to seek back to the beginning first, if the
+        stream is seekable.
 
         .. code-block:: python
 
@@ -1490,14 +1494,18 @@ class Iter(Generic[T], Iterator[T]):
 
     @classmethod
     def read_bytes(
-        cls, stream: IO[bytes], size: Union[Callable[[], int], int] = -1, rewind=True
+        cls,
+        stream: IO[bytes],
+        size: Union[Callable[[], int], int] = DEFAULT_BYTE_CHUNK_SIZE,
+        rewind=False,
     ):
         """
         |source|
 
-        The ``size`` parameter can be used to control how many bytes are
-        read for each advancement of the iterator chain. Here we set ``size=1``
-        which means we'll get back one byte at a time.
+        The ``size`` parameter controls how many bytes are read for each
+        advancement of the iterator chain. By default, bytes are read in
+        chunks of ``DEFAULT_BYTE_CHUNK_SIZE``. Here we set ``size=1``, which
+        means we'll get back one byte at a time.
 
         .. code-block:: python
 
@@ -1545,7 +1553,9 @@ class Iter(Generic[T], Iterator[T]):
             ...     len(data)
             100
 
-        The ``rewind`` parameter can be used to read sections of a file.
+        Reading starts at the stream's current position. The ``rewind``
+        parameter can be used to seek back to the beginning first, if the
+        stream is seekable.
 
         .. code-block:: python
 
