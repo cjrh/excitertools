@@ -7134,6 +7134,127 @@ class AIter(Iter[T]):
                 break
         return self
 
+    # -- I/O sinks -------------------------------------------------------
+    #
+    # These drain the async chain into a blocking destination (a file
+    # stream or a DB cursor). The stream/cursor stays synchronous -- we
+    # deliberately do *not* pull in an async-file dependency -- so writes
+    # are handed to a worker thread in batches (``batch_size``) to keep the
+    # event loop responsive without paying a thread hop per item. A DB
+    # cursor whose ``executemany``/``commit`` are themselves coroutines is
+    # awaited natively instead (see ``aexecutemany``).
+
+    async def _adrain_writelines(self, stream, batch_size):
+        """Consume the chain and feed it to ``stream.writelines`` in
+        thread-offloaded batches of ``batch_size`` items. A pending partial
+        batch is flushed even if the source errors mid-stream, so every item
+        that was consumed is persisted (matching the synchronous sink).
+        ``batch`` is cleared *before* each write, so a failing write is never
+        retried by the finally-flush."""
+        batch = []
+
+        async def flush():
+            nonlocal batch
+            if batch:
+                pending, batch = batch, []
+                await asyncio.to_thread(stream.writelines, pending)
+
+        try:
+            async for v in self:
+                batch.append(v)
+                if len(batch) >= batch_size:
+                    await flush()
+        finally:
+            await flush()
+
+    async def awrite_text_to_stream(
+        self, stream, insert_newlines=True, flush=True, batch_size=1000
+    ):
+        """|sink| Asynchronous write_text_to_stream_: write items to an open
+        text ``stream``, batching writes onto a worker thread. Set
+        ``insert_newlines=False`` if the items already carry newlines."""
+        src = self.intersperse("\n") if insert_newlines else self
+        await src._adrain_writelines(stream, batch_size)
+        if flush:
+            await asyncio.to_thread(stream.flush)
+
+    async def awrite_bytes_to_stream(self, stream, flush=True, batch_size=1000):
+        """|sink| Asynchronous write_bytes_to_stream_: write items to an open
+        binary ``stream``, batching writes onto a worker thread."""
+        await self._adrain_writelines(stream, batch_size)
+        if flush:
+            await asyncio.to_thread(stream.flush)
+
+    async def awrite_file(
+        self,
+        file,
+        mode="w",
+        buffering=-1,
+        encoding=None,
+        errors=None,
+        newline=None,
+        closefd=True,
+        opener=None,
+        batch_size=1000,
+    ):
+        """|sink| Asynchronous write_file_: open ``file``, write every item
+        to it (batched onto a worker thread), and close it -- even if the
+        chain errors mid-stream. Text or binary is selected by ``mode``."""
+        f = await asyncio.to_thread(
+            open,
+            file,
+            mode,
+            buffering,
+            encoding,
+            errors,
+            newline,
+            closefd,
+            opener,
+        )
+        try:
+            await self._adrain_writelines(f, batch_size)
+        finally:
+            await asyncio.to_thread(f.close)
+
+    async def aexecutemany(
+        self,
+        cursor: Any,
+        sql: str,
+        *,
+        batch_size: int = 1000,
+        commit: Optional[Callable[[], Any]] = None,
+        rollback: Optional[Callable[[], Any]] = None,
+    ) -> None:
+        """|sink| Asynchronous executemany_: run a DB-API ``executemany`` over
+        ``batch_size`` chunks of this chain. ``cursor.executemany`` (and the
+        optional ``commit``/``rollback``) may be sync or coroutine -- each is
+        awaited iff it returns an awaitable, so async drivers (asyncpg,
+        psycopg async, aiosqlite) work natively."""
+        if batch_size < 1:
+            raise ValueError("batch_size must be at least 1")
+
+        try:
+            async for batch in self.chunked(batch_size):
+                await _awaited(cursor.executemany(sql, batch))
+            if commit is not None:
+                await _awaited(commit())
+        except Exception:
+            if rollback is not None:
+                await _awaited(rollback())
+            raise
+
+    async def asend(self, collector, close_collector_when_done=False) -> None:
+        """|sink| Asynchronous send_: drive an async-generator ``collector``
+        (one that does ``(yield)``) by ``asend``-ing each item into it. The
+        generator is primed automatically. It is left open unless
+        ``close_collector_when_done`` is set."""
+        if inspect.getasyncgenstate(collector) == inspect.AGEN_CREATED:
+            await collector.asend(None)
+        async for v in self:
+            await collector.asend(v)
+        if close_collector_when_done:
+            await collector.aclose()
+
     # -- Count-validating combinators (return an AIter) ------------------
 
     def strictly_n(self, n, too_short=None, too_long=None) -> "AIter":
@@ -7156,6 +7277,35 @@ class AIter(Iter[T]):
                 yield item
 
         return cls(agen())
+
+    # -- Fan-out combinators (yield items unchanged after a side-effect) -
+
+    def into_queue(self, q) -> "AIter":
+        """Asynchronous into_queue_: put each item onto ``q`` and yield it
+        unchanged. ``q`` may be a ``queue.Queue`` or an ``asyncio.Queue``
+        (its coroutine ``put`` is awaited). Drive it with ``aconsume``."""
+        cls = type(self)
+
+        async def agen():
+            async for v in self:
+                await _awaited(q.put(v))
+                yield v
+
+        return cls(agen())
+
+    def send_also(self, collector) -> "AIter":
+        """Asynchronous send_also_: ``asend`` each item into an
+        async-generator ``collector`` (primed automatically) while yielding
+        the items onward unchanged."""
+
+        async def prime():
+            if inspect.getasyncgenstate(collector) == inspect.AGEN_CREATED:
+                await collector.asend(None)
+
+        async def func(v):
+            await collector.asend(v)
+
+        return self.side_effect(func, before=prime)
 
     # -- Guards: synchronous sinks cannot drive an async pipeline --------
 
@@ -7240,6 +7390,21 @@ class AIter(Iter[T]):
 
     def next(self, *args, **kwargs):
         raise _sync_sink_error("next", "afirst")
+
+    def write_text_to_stream(self, *args, **kwargs):
+        raise _sync_sink_error("write_text_to_stream", "awrite_text_to_stream")
+
+    def write_bytes_to_stream(self, *args, **kwargs):
+        raise _sync_sink_error("write_bytes_to_stream", "awrite_bytes_to_stream")
+
+    def write_file(self, *args, **kwargs):
+        raise _sync_sink_error("write_file", "awrite_file")
+
+    def executemany(self, *args, **kwargs):
+        raise _sync_sink_error("executemany", "aexecutemany")
+
+    def send(self, *args, **kwargs):
+        raise _sync_sink_error("send", "asend")
 
 
 """

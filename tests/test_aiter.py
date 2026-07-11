@@ -785,3 +785,161 @@ def test_stateful_helpers_refuse_on_async_chain():
         with pytest.raises(NotImplementedError) as exc:
             getattr(A(range(3)), name)()
         assert "acollect" in str(exc.value), name
+
+
+def A_(src):
+    return Iter(src).to_async()
+
+
+def test_awrite_text_and_bytes_to_stream():
+    # Text stream: newlines interspersed by default; suppressed on request;
+    # batching (batch_size < len) must not change the bytes written.
+    with tempfile.TemporaryDirectory() as td:
+        fn = os.path.join(td, "t.txt")
+        with open(fn, "w") as f:
+            _run(lambda: A_(["a", "b", "c"]).map(str.upper).awrite_text_to_stream(f))
+        assert open(fn).read() == "A\nB\nC"
+
+        with open(fn, "w") as f:
+            _run(lambda: A_("abcde").awrite_text_to_stream(
+                f, insert_newlines=False, batch_size=2))
+        assert open(fn).read() == "abcde"
+
+        bn = os.path.join(td, "b.bin")
+        with open(bn, "wb") as f:
+            _run(lambda: A_([b"a", b"b", b"c"]).map(lambda x: x * 2)
+                 .awrite_bytes_to_stream(f))
+        assert open(bn, "rb").read() == b"aabbcc"
+
+
+def test_awrite_file_text_bytes_and_error_persists_consumed_items():
+    with tempfile.TemporaryDirectory() as td:
+        wf = os.path.join(td, "w.txt")
+        _run(lambda: A_(["ABC\n", "DEF\n"]).awrite_file(wf))
+        assert open(wf).read() == "ABC\nDEF\n"
+
+        wfb = os.path.join(td, "w.bin")
+        _run(lambda: A_([b"a", b"b"]).awrite_file(wfb, mode="wb"))
+        assert open(wfb, "rb").read() == b"ab"
+
+        # A mid-stream source error still persists everything consumed so
+        # far and closes the file (finally-flush), matching the sync sink.
+        import pytest
+
+        async def boom():
+            yield "ok\n"
+            raise RuntimeError("mid-stream")
+
+        ef = os.path.join(td, "e.txt")
+        with pytest.raises(RuntimeError):
+            _run(lambda: AIter(boom()).awrite_file(ef))
+        assert open(ef).read() == "ok\n"
+
+
+def test_aexecutemany_commits_and_rolls_back():
+    import sqlite3
+    import pytest
+
+    conn = sqlite3.connect(":memory:")
+    cur = conn.cursor()
+    cur.execute("CREATE TABLE c(id INTEGER, email TEXT)")
+    _run(lambda: A_([(1, "A@X.COM"), (2, "B@X.COM")])
+         .starmap(lambda i, e: (i, e.lower()))
+         .aexecutemany(cur, "INSERT INTO c VALUES (?,?)",
+                       batch_size=1, commit=conn.commit))
+    assert cur.execute("SELECT * FROM c ORDER BY id").fetchall() == [
+        (1, "a@x.com"), (2, "b@x.com")
+    ]
+    conn.close()
+
+    # rollback fires (and the error re-raises) when executemany blows up.
+    rolled = []
+
+    class FakeCursor:
+        def executemany(self, sql, batch):
+            raise ValueError("boom")
+
+    with pytest.raises(ValueError):
+        _run(lambda: A_([(1,)]).aexecutemany(
+            FakeCursor(), "x", rollback=lambda: rolled.append(1)))
+    assert rolled == [1]
+
+
+def test_into_queue_sync_and_async_queue():
+    import queue
+
+    q = queue.Queue()
+    _run(lambda: A_(range(5)).into_queue(q).aconsume())
+    drained = []
+    while not q.empty():
+        drained.append(q.get_nowait())
+    assert drained == [0, 1, 2, 3, 4]
+
+    async def go():
+        aq = asyncio.Queue()               # coroutine .put is awaited
+        passed = await A_(range(3)).into_queue(aq).acollect()
+        return passed, [aq.get_nowait() for _ in range(3)]
+
+    passed, in_queue = _run(go)
+    assert passed == [0, 1, 2]             # items still flow downstream
+    assert in_queue == [0, 1, 2]
+
+
+def test_asend_and_send_also_drive_async_generator():
+    # asend is a sink: it primes and feeds an async-generator collector.
+    async def go_send():
+        output = []
+
+        async def collector():
+            while True:
+                output.append((yield))
+
+        await A_(range(3)).asend(collector())
+        return output
+
+    assert _run(go_send) == [0, 1, 2]
+
+    # close_collector_when_done then reuse -> StopAsyncIteration.
+    import pytest
+
+    async def go_close():
+        async def collector():
+            while True:
+                (yield)
+
+        g = collector()
+        await A_(range(3)).asend(g, close_collector_when_done=True)
+        await A_(range(3)).asend(g)         # closed -> raises
+
+    with pytest.raises(StopAsyncIteration):
+        _run(go_close)
+
+    # send_also tees into the collector AND passes items downstream.
+    async def go_also():
+        seen = []
+
+        async def collector():
+            while True:
+                seen.append((yield))
+
+        passed = await A_(range(3)).send_also(collector()).acollect()
+        return passed, seen
+
+    passed, seen = _run(go_also)
+    assert passed == [0, 1, 2] and seen == [0, 1, 2]
+
+
+def test_io_sink_sync_guards_point_to_async_twin():
+    import pytest
+
+    twins = {
+        "write_text_to_stream": "awrite_text_to_stream",
+        "write_bytes_to_stream": "awrite_bytes_to_stream",
+        "write_file": "awrite_file",
+        "executemany": "aexecutemany",
+        "send": "asend",
+    }
+    for sync_name, async_name in twins.items():
+        with pytest.raises(TypeError) as exc:
+            getattr(A_(range(3)), sync_name)()
+        assert async_name in str(exc.value), sync_name
