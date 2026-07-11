@@ -934,9 +934,6 @@ def fileinput(
     The documentation for the stdlib fileinput module is here:
         https://docs.python.org/3/library/fileinput.html
 
-    Note that the ``encoding`` and ``errors`` arguments are only available
-    in Python 3.10 and later.
-
     Here is an example of use:
 
     .. code-block:: python
@@ -954,8 +951,8 @@ def fileinput(
     :param backup: Backup extension for in-place editing (default: "").
     :param mode: File mode, e.g., 'r' or 'rb' (default: 'r').
     :param openhook: Optional hook to customize file opening.
-    :param encoding: File encoding (default: None). Note: Python 3.10+ only.
-    :param errors: Error handling mode (default: None). Note: Python 3.10+ only.
+    :param encoding: File encoding (default: None).
+    :param errors: Error handling mode (default: None).
     """
 
     def yielder():
