@@ -634,6 +634,18 @@ def test_take_over_concurrent_source_overpulls_by_one():
     assert 5 not in completed      # deep-tail items were still cancelled
 
 
+def test_intersperse_validates_n_and_supports_grouped_spacing():
+    import pytest
+
+    source = Iter(range(7)).to_async()
+    with pytest.raises(ValueError, match="n must be > 0"):
+        source.intersperse("x", n=0)
+
+    assert _run(
+        lambda: Iter(range(7)).to_async().intersperse("x", n=2).acollect()
+    ) == [0, 1, "x", 2, 3, "x", 4, 5, "x", 6]
+
+
 def test_ported_combinators_match_more_itertools():
     # Parity: each ported combinator must produce exactly what the
     # synchronous more_itertools function produces on the same input.

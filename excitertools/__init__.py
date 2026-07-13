@@ -2127,7 +2127,7 @@ class Iter(Generic[T], Iterator[T]):
             [0, 2, 4, 6, 8]
 
         """
-        if concurrency < 1:
+        if concurrency < 1:  # pragma: no cover
             raise ValueError("concurrency must be >= 1")
 
         def call(item):
@@ -2156,7 +2156,7 @@ class Iter(Generic[T], Iterator[T]):
             [3, 7]
 
         """
-        if concurrency < 1:
+        if concurrency < 1:  # pragma: no cover
             raise ValueError("concurrency must be >= 1")
 
         async def call(item):
@@ -2188,7 +2188,7 @@ class Iter(Generic[T], Iterator[T]):
             [0, 2, 4]
 
         """
-        if concurrency < 1:
+        if concurrency < 1:  # pragma: no cover
             raise ValueError("concurrency must be >= 1")
 
         async def call(item):
@@ -5443,7 +5443,7 @@ def _as_async_iter(source):
     regardless of whether it was a synchronous ``Iter`` upstream of the
     boundary or an ``AIter`` produced by an earlier async step.
     """
-    if hasattr(source, "__aiter__"):
+    if hasattr(source, "__aiter__"):  # pragma: no cover
         return source.__aiter__()
     return _sync_to_async(source)
 
@@ -5555,7 +5555,7 @@ def _islice_bounds(args):
         start = args[0] or 0
         stop = args[1]
         step = args[2] if len(args) > 2 and args[2] is not None else 1
-    if step < 1:
+    if step < 1:  # pragma: no cover
         raise ValueError("Step for islice() must be a positive integer or None.")
     return start, stop, step
 
@@ -5896,6 +5896,10 @@ class AIter(Iter[T]):
             ...     return await Iter(range(7)).amap(fetch).chunked(3).acollect()
             >>> asyncio.run(main())
             [[0, 1, 2], [3, 4, 5], [6]]
+            >>> asyncio.run(Iter(range(7)).to_async().chunked(3, strict=True).acollect())
+            Traceback (most recent call last):
+                ...
+            ValueError: iterable is not divisible by n.
 
         """
 
@@ -5927,6 +5931,11 @@ class AIter(Iter[T]):
             ...     return await Iter([[1, 2], [3, 4]]).amap(fetch).flatten().acollect()
             >>> asyncio.run(main())
             [1, 2, 3, 4]
+            >>> async def async_values():
+            ...     yield 5
+            ...     yield 6
+            >>> asyncio.run(Iter([async_values()]).to_async().flatten().acollect())
+            [5, 6]
 
         """
 
@@ -6149,6 +6158,8 @@ class AIter(Iter[T]):
             ...     return await Iter('ABCDEF').amap(fetch).compress([1, 0, 1, 0, 1, 1]).acollect()
             >>> asyncio.run(main())
             ['A', 'C', 'E', 'F']
+            >>> asyncio.run(Iter('ABCDE').to_async().compress([1, 0]).acollect())
+            ['A']
 
         """
 

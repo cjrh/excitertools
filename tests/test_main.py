@@ -81,6 +81,10 @@ def test_piecemeal_results():
     assert next(x) == 8
 
 
+def test_eval_mapper_without_values_exposes_empty_args():
+    assert et._eval_mapper("args")() == ()
+
+
 @pytest.mark.parametrize(
     "v,expected",
     [
@@ -229,6 +233,27 @@ def test_executemany_rolls_back_on_error():
 
     assert cursor.calls == 2
     assert events == ["rollback"]
+
+
+def test_executemany_allows_omitting_transaction_callbacks():
+    class Cursor:
+        def __init__(self, error=None):
+            self.error = error
+            self.calls = []
+
+        def executemany(self, sql, batch):
+            self.calls.append((sql, batch))
+            if self.error is not None:
+                raise self.error
+
+    cursor = Cursor()
+    Iter([(1,)]).executemany(cursor, "INSERT INTO example VALUES (?)")
+    assert cursor.calls == [("INSERT INTO example VALUES (?)", [(1,)])]
+
+    with pytest.raises(RuntimeError, match="boom"):
+        Iter([(1,)]).executemany(
+            Cursor(RuntimeError("boom")), "INSERT INTO example VALUES (?)"
+        )
 
 
 def test_executemany_rejects_non_positive_batch_size():
