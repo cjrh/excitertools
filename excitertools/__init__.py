@@ -174,7 +174,8 @@ import itertools
 import functools
 import operator
 import inspect
-from collections import UserDict
+import asyncio
+from collections import UserDict, deque
 import builtins
 from typing import (
     Iterable,
@@ -205,6 +206,7 @@ import more_itertools
 
 __all__ = [
     "Iter",
+    "AIter",
     "range",
     "zip",
     "enumerate",
@@ -932,9 +934,6 @@ def fileinput(
     The documentation for the stdlib fileinput module is here:
         https://docs.python.org/3/library/fileinput.html
 
-    Note that the ``encoding`` and ``errors`` arguments are only available
-    in Python 3.10 and later.
-
     Here is an example of use:
 
     .. code-block:: python
@@ -952,8 +951,8 @@ def fileinput(
     :param backup: Backup extension for in-place editing (default: "").
     :param mode: File mode, e.g., 'r' or 'rb' (default: 'r').
     :param openhook: Optional hook to customize file opening.
-    :param encoding: File encoding (default: None). Note: Python 3.10+ only.
-    :param errors: Error handling mode (default: None). Note: Python 3.10+ only.
+    :param encoding: File encoding (default: None).
+    :param errors: Error handling mode (default: None).
     """
 
     def yielder():
@@ -2096,6 +2095,132 @@ class Iter(Generic[T], Iterator[T]):
         if isinstance(func, str):
             func = _eval_mapper(func)
         return type(self)(_map(func, self, *iterables))
+
+    def amap(self, func: Callable[[T], Any], *, concurrency: int = 1, ordered: bool = True) -> "AIter":
+        """
+        |flux|
+
+        The asynchronous counterpart to map_. This is the *boundary*
+        method: it is the point at which a synchronous chain becomes an
+        asynchronous one. It always returns an AIter_, so every method
+        after it in the chain is asynchronous too, all the way to an
+        async sink such as acollect_.
+
+        ``func`` may be either a coroutine function (``async def``) or an
+        ordinary function; each result is awaited if it is awaitable. Up
+        to ``concurrency`` calls are kept in flight at once. Results are
+        yielded in input order by default; pass ``ordered=False`` to
+        yield them as they complete.
+
+        Note that ``amap`` itself is *not* a coroutine and is not awaited.
+        Like every other combinator it merely builds a lazy pipeline;
+        nothing runs until the pipeline is driven by an async sink.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def double(x):
+            ...     return x * 2
+            >>> async def main():
+            ...     return await Iter(range(5)).amap(double).acollect()
+            >>> asyncio.run(main())
+            [0, 2, 4, 6, 8]
+
+        """
+        if concurrency < 1:  # pragma: no cover
+            raise ValueError("concurrency must be >= 1")
+
+        def call(item):
+            return _maybe_await(func, item)
+
+        return AIter(_abounded(_as_async_iter(self), call, concurrency, ordered))
+
+    def astarmap(self, func: Callable[..., Any], *, concurrency: int = 1, ordered: bool = True) -> "AIter":
+        """
+        |flux|
+
+        The concurrent, asynchronous counterpart to starmap_. Each item is
+        an argument tuple, unpacked into ``func(*item)``; ``func`` may be a
+        coroutine function or an ordinary one. Like amap_ this is a
+        boundary method that returns an AIter_. See amap_ for the meaning
+        of ``concurrency`` and ``ordered``.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def add(a, b):
+            ...     return a + b
+            >>> async def main():
+            ...     return await Iter([(1, 2), (3, 4)]).astarmap(add).acollect()
+            >>> asyncio.run(main())
+            [3, 7]
+
+        """
+        if concurrency < 1:  # pragma: no cover
+            raise ValueError("concurrency must be >= 1")
+
+        async def call(item):
+            return await _awaited(func(*item))
+
+        return AIter(_abounded(_as_async_iter(self), call, concurrency, ordered))
+
+    def afilter(self, pred: Callable[[T], Any], *, concurrency: int = 1, ordered: bool = True) -> "AIter":
+        """
+        |flux|
+
+        The concurrent, asynchronous counterpart to filter_, for when the
+        *predicate* itself is asynchronous (or merely benefits from
+        concurrent evaluation). ``pred`` may be a coroutine function or an
+        ordinary one; up to ``concurrency`` predicate evaluations run at
+        once. A boundary method: it returns an AIter_.
+
+        Note that ``ordered`` controls the order of the surviving items;
+        predicate evaluation is always concurrent regardless.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def is_even(x):
+            ...     return x % 2 == 0
+            >>> async def main():
+            ...     return await Iter(range(6)).afilter(is_even).acollect()
+            >>> asyncio.run(main())
+            [0, 2, 4]
+
+        """
+        if concurrency < 1:  # pragma: no cover
+            raise ValueError("concurrency must be >= 1")
+
+        async def call(item):
+            return item, await _awaited(pred(item))
+
+        async def agen():
+            engine = _abounded(_as_async_iter(self), call, concurrency, ordered)
+            async for item, keep in engine:
+                if keep:
+                    yield item
+
+        return AIter(agen())
+
+    def to_async(self) -> "AIter":
+        """
+        |flux|
+
+        Explicitly lift a synchronous chain into the asynchronous world
+        without introducing any async callable. Useful when the source is
+        synchronous but you want to attach an async sink, or use AIter_
+        combinators, further down the chain.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def main():
+            ...     return await Iter(range(3)).to_async().acollect()
+            >>> asyncio.run(main())
+            [0, 1, 2]
+
+        """
+        return AIter(self)
 
     def filter(self, function: "Optional[Callable[[T], bool]]" = None) -> "Iter[T]":
         """
@@ -5297,6 +5422,3612 @@ def insert_separator(iterable: Iterable[Any], glue: Any) -> "Iterable[Any]":
         if glue is not None:
             yield glue
         yield item
+
+
+async def _sync_to_async(iterable):
+    """Adapt any synchronous iterable into an async iterator.
+
+    This is the seam between the synchronous and asynchronous worlds:
+    it lets the async machinery pull from an ordinary ``Iter`` (or list,
+    generator, ...) using ``async for`` without the caller having to know
+    which side of the boundary the source came from.
+    """
+    for item in iterable:
+        yield item
+
+
+def _as_async_iter(source):
+    """Return an async *iterator* for ``source``, sync or async.
+
+    Callers can then uniformly drive ``source`` with ``__anext__``
+    regardless of whether it was a synchronous ``Iter`` upstream of the
+    boundary or an ``AIter`` produced by an earlier async step.
+    """
+    if hasattr(source, "__aiter__"):  # pragma: no cover
+        return source.__aiter__()
+    return _sync_to_async(source)
+
+
+async def _awaited(result):
+    """Await ``result`` if it is awaitable, otherwise return it as-is.
+
+    The single primitive that lets every async combinator accept a plain
+    value or a coroutine interchangeably -- the colour of a callable no
+    longer matters to the pipeline, only whether its result needs
+    awaiting.
+    """
+    if inspect.isawaitable(result):
+        return await result
+    return result
+
+
+async def _maybe_await(func, item):
+    """Call ``func(item)`` and await the result if it is awaitable."""
+    return await _awaited(func(item))
+
+
+async def _cancel_all(tasks):
+    """Cancel and drain any still-outstanding tasks.
+
+    Called from the ``finally`` of the concurrency engine so that whenever
+    the pipeline stops early -- a scheduled task raised, or a downstream
+    combinator such as ``take`` closed the generator before the source was
+    drained -- the in-flight tasks are cancelled and awaited rather than
+    orphaned. Without this the event loop emits "Task was destroyed but it
+    is pending" warnings and the abandoned work keeps running. Draining
+    with ``return_exceptions=True`` also retrieves any sibling exceptions,
+    suppressing "exception was never retrieved" noise.
+    """
+    if not tasks:
+        return
+    for task in tasks:
+        task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+
+async def _abounded(source, call, concurrency, ordered):
+    """Drive ``call`` over an async ``source`` with bounded concurrency.
+
+    ``source`` is an async iterator; ``call`` is a coroutine function
+    taking one item. At most ``concurrency`` calls are kept in flight.
+    When ``ordered`` is true, results are yielded in the order their
+    inputs arrived (a sliding window whose left edge is awaited); when
+    false, they are yielded as they complete.
+
+    If a scheduled call raises, the exception propagates from the awaiting
+    ``yield`` point and the remaining in-flight tasks are cancelled on the
+    way out (see _cancel_all). For ``ordered`` the surfaced exception is
+    the first in input order; for unordered it is the first to complete.
+
+    This is the single place the sync->async concurrency machinery
+    lives, shared by amap_, astarmap_ and afilter_.
+    """
+    exhausted = [False]
+
+    async def pump(add, size):
+        # Pull upstream and schedule tasks until the window is full or the
+        # source is exhausted. Upstream is pulled one item at a time
+        # (cheap); the expensive ``call`` work is what runs concurrently.
+        while not exhausted[0] and size() < concurrency:
+            try:
+                item = await source.__anext__()
+            except StopAsyncIteration:
+                exhausted[0] = True
+                return
+            add(asyncio.ensure_future(call(item)))
+
+    if ordered:
+        window = deque()
+        try:
+            await pump(window.append, lambda: len(window))
+            while window:
+                result = await window.popleft()
+                yield result
+                await pump(window.append, lambda: len(window))
+        finally:
+            await _cancel_all(window)
+    else:
+        pending = set()
+        try:
+            await pump(pending.add, lambda: len(pending))
+            while pending:
+                done, remaining = await asyncio.wait(
+                    pending, return_when=asyncio.FIRST_COMPLETED
+                )
+                pending.clear()
+                pending.update(remaining)
+                for task in done:
+                    yield task.result()
+                await pump(pending.add, lambda: len(pending))
+        finally:
+            await _cancel_all(pending)
+
+
+def _islice_bounds(args):
+    """Normalise ``islice``-style positional args into (start, stop, step).
+
+    Mirrors the argument handling of ``itertools.islice`` so the async
+    ``AIter.islice`` accepts the same call shapes.
+    """
+    if len(args) == 1:
+        start, stop, step = 0, args[0], 1
+    else:
+        start = args[0] or 0
+        stop = args[1]
+        step = args[2] if len(args) > 2 and args[2] is not None else 1
+    if step < 1:  # pragma: no cover
+        raise ValueError("Step for islice() must be a positive integer or None.")
+    return start, stop, step
+
+
+def _sync_sink_error(sync_name, async_name):
+    """Build the error raised when a synchronous sink is used on an AIter.
+
+    Kept in one place so every guard gives the same guidance: name the
+    synchronous sink that cannot run, and point at its async twin.
+    """
+    return TypeError(
+        f"{sync_name}() is a synchronous sink and cannot drive an "
+        f"asynchronous pipeline (this chain is an AIter). Use "
+        f"`await ...{async_name}()` instead."
+    )
+
+
+class AIter(Iter[T]):
+    """
+    |flux|
+
+    The asynchronous sibling of Iter_. You never construct one directly
+    in normal use; instead a chain *becomes* an AIter the moment it
+    passes through an async-introducing method such as amap_. From that
+    point on the ``type(self)`` propagation used throughout Iter_ keeps
+    every subsequent method returning an AIter, so the whole tail of the
+    chain is asynchronous.
+
+    An AIter wraps an *async* iterator (``__aiter__``/``__anext__``)
+    rather than a synchronous one. Its constructor normalises whatever it
+    is given -- an async iterator, an async iterable, or even a plain
+    synchronous iterable -- into a single async iterator, so the rest of
+    the class can be written uniformly against ``async for``.
+
+    The transition is one-way: because you cannot pull from an async
+    iterator without ``await``, there is no way back to a synchronous
+    Iter_. Synchronous sinks such as collect_ therefore raise, and you
+    must finish the chain with an async sink such as acollect_.
+    """
+
+    def __init__(self, x):
+        if hasattr(x, "__anext__"):
+            self.x = x
+        elif hasattr(x, "__aiter__"):
+            self.x = x.__aiter__()
+        else:
+            self.x = _sync_to_async(x)
+
+    def __aiter__(self):
+        return self.x
+
+    async def __anext__(self):
+        return await self.x.__anext__()
+
+    def __iter__(self):
+        raise TypeError(
+            "AIter is asynchronous and cannot be driven by a synchronous "
+            "`for` loop. Use `async for`, or an async sink such as "
+            "`await ...acollect()`."
+        )
+
+    # -- Transformations (lazy; each returns a new AIter) ---------------
+    #
+    # These re-implement the corresponding Iter_ combinators with an
+    # ``async for`` body, because a synchronous ``for`` cannot drive an
+    # async iterator. Callables passed in (predicates, mappers) may be
+    # either ordinary functions or coroutine functions; their results are
+    # awaited only if awaitable (see _awaited).
+
+    def map(self, func: Callable[[T], Any], *iterables: Iterable[Any]) -> "AIter":
+        """Asynchronous map. ``func`` may be sync or a coroutine function.
+
+        Unlike amap_ this runs one item at a time (no concurrency); it is
+        the plain per-item transform that a chain already in the async
+        world uses. Use amap_ when you want concurrent calls.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def shout(s):
+            ...     return s.upper()
+            >>> async def main():
+            ...     return await Iter('abc').amap(fetch).map(shout).acollect()
+            >>> asyncio.run(main())
+            ['A', 'B', 'C']
+
+        """
+        if iterables:  # pragma: no cover
+            raise NotImplementedError(
+                "AIter.map over multiple iterables is not yet supported."
+            )
+
+        async def agen():
+            async for v in self:
+                yield await _awaited(func(v))
+
+        return type(self)(agen())
+
+    def filter(self, function: "Optional[Callable[[T], Any]]" = None) -> "AIter":
+        """Asynchronous filter. ``function`` may be sync or a coroutine function.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def is_odd(x):
+            ...     await asyncio.sleep(0)  # e.g. an async membership check
+            ...     return x % 2 == 1
+            >>> async def main():
+            ...     return await Iter(range(10)).to_async().filter(is_odd).acollect()
+            >>> asyncio.run(main())
+            [1, 3, 5, 7, 9]
+
+        """
+
+        async def agen():
+            async for v in self:
+                keep = bool(v) if function is None else await _awaited(function(v))
+                if keep:
+                    yield v
+
+        return type(self)(agen())
+
+    def enumerate(self, start: int = 0) -> "AIter":
+        """Asynchronous enumerate_.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter('abc').amap(fetch).enumerate().acollect()
+            >>> asyncio.run(main())
+            [(0, 'a'), (1, 'b'), (2, 'c')]
+
+        """
+
+        async def agen():
+            i = start
+            async for v in self:
+                yield (i, v)
+                i += 1
+
+        return type(self)(agen())
+
+    def starmap(self, func: Callable[..., Any]) -> "AIter":
+        """Asynchronous starmap_ (one item at a time). See astarmap_ for a
+        concurrent version.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     pairs = [(2, 3), (4, 5)]
+            ...     return await Iter(pairs).amap(fetch).starmap(lambda a, b: a * b).acollect()
+            >>> asyncio.run(main())
+            [6, 20]
+
+        """
+
+        async def agen():
+            async for args in self:
+                yield await _awaited(func(*args))
+
+        return type(self)(agen())
+
+    def takewhile(self, pred) -> "AIter":
+        """Asynchronous takewhile_. ``pred`` may be sync or async.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3, 0, 4]).amap(fetch).takewhile(lambda x: x < 3).acollect()
+            >>> asyncio.run(main())
+            [1, 2]
+
+        """
+
+        async def agen():
+            async for v in self:
+                if not await _awaited(pred(v)):
+                    break
+                yield v
+
+        return type(self)(agen())
+
+    def dropwhile(self, pred) -> "AIter":
+        """Asynchronous dropwhile_. ``pred`` may be sync or async.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3, 0, 4]).amap(fetch).dropwhile(lambda x: x < 3).acollect()
+            >>> asyncio.run(main())
+            [3, 0, 4]
+
+        """
+
+        async def agen():
+            dropping = True
+            async for v in self:
+                if dropping:
+                    if await _awaited(pred(v)):
+                        continue
+                    dropping = False
+                yield v
+
+        return type(self)(agen())
+
+    def filterfalse(self, pred) -> "AIter":
+        """Asynchronous filterfalse_. ``pred`` may be sync or async.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(10)).amap(fetch).filterfalse(lambda x: x % 2).acollect()
+            >>> asyncio.run(main())
+            [0, 2, 4, 6, 8]
+
+        """
+
+        async def agen():
+            async for v in self:
+                keep = (not v) if pred is None else (not await _awaited(pred(v)))
+                if keep:
+                    yield v
+
+        return type(self)(agen())
+
+    def islice(self, *args) -> "AIter":
+        """Asynchronous islice_. Accepts the same argument shapes as the
+        stdlib ``itertools.islice``.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(10)).amap(fetch).islice(2, 8, 2).acollect()
+            >>> asyncio.run(main())
+            [2, 4, 6]
+
+        """
+        start, stop, step = _islice_bounds(args)
+
+        async def agen():
+            idx = 0
+            target = start
+            async for v in self:
+                if stop is not None and idx >= stop:
+                    break
+                if idx == target:
+                    yield v
+                    target += step
+                idx += 1
+
+        return type(self)(agen())
+
+    def take(self, n: int) -> "AIter":
+        """Asynchronous take_: the first ``n`` items.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(10)).amap(fetch).take(3).acollect()
+            >>> asyncio.run(main())
+            [0, 1, 2]
+
+        """
+        return self.islice(n)
+
+    def tail(self, n: int) -> "AIter":
+        """Asynchronous tail_: the last ``n`` items.
+
+        Necessarily buffers up to ``n`` items, since the last items are
+        only known once the source is exhausted.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(10)).amap(fetch).tail(3).acollect()
+            >>> asyncio.run(main())
+            [7, 8, 9]
+
+        """
+
+        async def agen():
+            buf = deque(maxlen=n)
+            async for v in self:
+                buf.append(v)
+            for v in buf:
+                yield v
+
+        return type(self)(agen())
+
+    def chunked(self, n: int, strict: bool = False) -> "AIter":
+        """Asynchronous chunked_: batch items into lists of length ``n``.
+
+        Especially useful in async pipelines for amortising per-item cost
+        at a sink -- e.g. batching results before a single offloaded write.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(7)).amap(fetch).chunked(3).acollect()
+            >>> asyncio.run(main())
+            [[0, 1, 2], [3, 4, 5], [6]]
+            >>> asyncio.run(Iter(range(7)).to_async().chunked(3, strict=True).acollect())
+            Traceback (most recent call last):
+                ...
+            ValueError: iterable is not divisible by n.
+
+        """
+
+        async def agen():
+            batch = []
+            async for v in self:
+                batch.append(v)
+                if len(batch) == n:
+                    yield batch
+                    batch = []
+            if batch:
+                if strict and len(batch) != n:
+                    raise ValueError("iterable is not divisible by n.")
+                yield batch
+
+        return type(self)(agen())
+
+    def flatten(self) -> "AIter":
+        """Asynchronous flatten_ (one level). Sub-iterables may themselves
+        be synchronous or asynchronous.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([[1, 2], [3, 4]]).amap(fetch).flatten().acollect()
+            >>> asyncio.run(main())
+            [1, 2, 3, 4]
+            >>> async def async_values():
+            ...     yield 5
+            ...     yield 6
+            >>> asyncio.run(Iter([async_values()]).to_async().flatten().acollect())
+            [5, 6]
+
+        """
+
+        async def agen():
+            async for sub in self:
+                if hasattr(sub, "__aiter__"):
+                    async for v in sub:
+                        yield v
+                else:
+                    for v in sub:
+                        yield v
+
+        return type(self)(agen())
+
+    def chain(self, *iterables: Iterable[Any]) -> "AIter":
+        """Asynchronous chain_: append further iterables (sync or async)
+        after this one.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2]).amap(fetch).chain([3, 4], [5]).acollect()
+            >>> asyncio.run(main())
+            [1, 2, 3, 4, 5]
+
+        """
+
+        async def agen():
+            async for v in self:
+                yield v
+            for it in iterables:
+                if hasattr(it, "__aiter__"):
+                    async for v in it:
+                        yield v
+                else:
+                    for v in it:
+                        yield v
+
+        return type(self)(agen())
+
+    def prepend(self, value) -> "AIter":
+        """Asynchronous prepend_: yield ``value`` before the rest.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2]).amap(fetch).prepend(0).acollect()
+            >>> asyncio.run(main())
+            [0, 1, 2]
+
+        """
+
+        async def agen():
+            yield value
+            async for v in self:
+                yield v
+
+        return type(self)(agen())
+
+    def accumulate(self, func=None, *, initial=None) -> "AIter":
+        """Asynchronous accumulate_. ``func`` may be sync or async.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3, 4]).amap(fetch).accumulate().acollect()
+            >>> asyncio.run(main())
+            [1, 3, 6, 10]
+
+        """
+        op = func if func is not None else operator.add
+
+        async def agen():
+            if initial is not None:
+                total = initial
+                yield total
+                async for v in self:
+                    total = await _awaited(op(total, v))
+                    yield total
+            else:
+                have = False
+                total = None
+                async for v in self:
+                    total = v if not have else await _awaited(op(total, v))
+                    have = True
+                    yield total
+
+        return type(self)(agen())
+
+    # -- Materialising bridge -------------------------------------------
+    #
+    # Many Iter_ combinators are thin wrappers over a synchronous
+    # more_itertools generator: ``type(self)(more_itertools.foo(self.x,
+    # ...))``. Such a generator cannot be driven by an async source, and
+    # some (windowing, sorting, combinatorics) inherently need the whole
+    # input before they can yield anyway. For those we buffer the async
+    # source into a list, run the *identical* synchronous function on it
+    # -- guaranteeing exact semantic parity with the sync method -- and
+    # lift the result back into the async world. The cost is
+    # materialisation: unlike the streaming combinators these do not
+    # support infinite async sources, and any callables they take must be
+    # ordinary (synchronous) functions.
+
+    def _abuffer_then(self, fn: Callable[[list], Iterable[Any]]) -> "AIter":
+        """Buffer the async source, apply the synchronous ``fn`` to the
+        list, and re-wrap its (sync-iterable) result as an AIter."""
+
+        async def agen():
+            buf = [x async for x in self]
+            for v in fn(buf):
+                yield v
+
+        return type(self)(agen())
+
+    # -- Streaming combinators (lazy; re-implemented with ``async for``) --
+
+    def starfilter(self, function=None) -> "AIter":
+        """Asynchronous starfilter_: like filter_ but tuple args are
+        star-unpacked into ``function`` (which may be sync or async).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     pairs = [(1, 2), (3, 0), (4, 5)]
+            ...     return await Iter(pairs).amap(fetch).starfilter(lambda a, b: a < b).acollect()
+            >>> asyncio.run(main())
+            [(1, 2), (4, 5)]
+
+        """
+
+        async def agen():
+            async for v in self:
+                if await _awaited(function(*v)):
+                    yield v
+
+        return type(self)(agen())
+
+    def filter_except(self, validator, *exceptions) -> "AIter":
+        """Asynchronous filter_except_: keep items for which ``validator``
+        does not raise one of ``exceptions``. ``validator`` may be async.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(['1', '2', 'x', '3']).amap(fetch).filter_except(int, ValueError).acollect()
+            >>> asyncio.run(main())
+            ['1', '2', '3']
+
+        """
+
+        async def agen():
+            async for v in self:
+                try:
+                    await _awaited(validator(v))
+                except exceptions:
+                    continue
+                yield v
+
+        return type(self)(agen())
+
+    def map_except(self, function, *exceptions) -> "AIter":
+        """Asynchronous map_except_: apply ``function`` (sync or async),
+        dropping items for which it raises one of ``exceptions``.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(['1', '2', 'x', '3']).amap(fetch).map_except(int, ValueError).acollect()
+            >>> asyncio.run(main())
+            [1, 2, 3]
+
+        """
+
+        async def agen():
+            async for v in self:
+                try:
+                    result = await _awaited(function(v))
+                except exceptions:
+                    continue
+                yield result
+
+        return type(self)(agen())
+
+    def compress(self, selectors) -> "AIter":
+        """Asynchronous compress_: yield items where the paired selector is
+        truthy. ``selectors`` is a synchronous iterable; iteration stops
+        when either the source or the selectors are exhausted.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter('ABCDEF').amap(fetch).compress([1, 0, 1, 0, 1, 1]).acollect()
+            >>> asyncio.run(main())
+            ['A', 'C', 'E', 'F']
+            >>> asyncio.run(Iter('ABCDE').to_async().compress([1, 0]).acollect())
+            ['A']
+
+        """
+
+        async def agen():
+            sel = iter(selectors)
+            async for v in self:
+                try:
+                    keep = next(sel)
+                except StopIteration:
+                    break
+                if keep:
+                    yield v
+
+        return type(self)(agen())
+
+    def chain_from_iterable(self) -> "AIter":
+        """Asynchronous chain_from_iterable_: flatten one level of a
+        stream of iterables. Identical to flatten_ for an async chain.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([[1, 2], [3, 4]]).amap(fetch).chain_from_iterable().acollect()
+            >>> asyncio.run(main())
+            [1, 2, 3, 4]
+
+        """
+        return self.flatten()
+
+    def intersperse(self, e, n: int = 1) -> "AIter":
+        """Asynchronous intersperse_: insert ``e`` between every ``n``
+        items. For ``n > 1`` the source is buffered (see _abuffer_then).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).intersperse(0).acollect()
+            >>> asyncio.run(main())
+            [1, 0, 2, 0, 3]
+
+        """
+        if n <= 0:
+            raise ValueError("n must be > 0")
+        if n != 1:
+            return self._abuffer_then(
+                lambda buf: more_itertools.intersperse(e, buf, n=n)
+            )
+
+        async def agen():
+            first = True
+            async for v in self:
+                if not first:
+                    yield e
+                first = False
+                yield v
+
+        return type(self)(agen())
+
+    def pairwise(self) -> "AIter":
+        """Asynchronous pairwise_: yield overlapping ``(prev, cur)`` pairs.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3, 4]).amap(fetch).pairwise().acollect()
+            >>> asyncio.run(main())
+            [(1, 2), (2, 3), (3, 4)]
+
+        """
+
+        async def agen():
+            prev = _marker
+            async for v in self:
+                if prev is not _marker:
+                    yield (prev, v)
+                prev = v
+
+        return type(self)(agen())
+
+    def unique_everseen(self, key=None) -> "AIter":
+        """Asynchronous unique_everseen_: drop items seen before (globally).
+        ``key`` may be sync or async. Unhashable keys fall back to a list.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 1, 2, 3, 2, 1]).amap(fetch).unique_everseen().acollect()
+            >>> asyncio.run(main())
+            [1, 2, 3]
+
+        """
+
+        async def agen():
+            seen_set = set()
+            seen_list = []
+            async for v in self:
+                k = await _awaited(key(v)) if key is not None else v
+                try:
+                    if k not in seen_set:
+                        seen_set.add(k)
+                        yield v
+                except TypeError:
+                    if k not in seen_list:
+                        seen_list.append(k)
+                        yield v
+
+        return type(self)(agen())
+
+    def unique_justseen(self, key=None) -> "AIter":
+        """Asynchronous unique_justseen_: drop *consecutive* duplicates.
+        ``key`` may be sync or async.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 1, 2, 2, 1]).amap(fetch).unique_justseen().acollect()
+            >>> asyncio.run(main())
+            [1, 2, 1]
+
+        """
+
+        async def agen():
+            prev_key = _marker
+            async for v in self:
+                k = await _awaited(key(v)) if key is not None else v
+                if k != prev_key:
+                    prev_key = k
+                    yield v
+
+        return type(self)(agen())
+
+    def side_effect(
+        self, func, *args, chunk_size=None, before=None, after=None
+    ) -> "AIter":
+        """Asynchronous side_effect_: invoke ``func`` (sync or async) on
+        each item -- or each chunk of ``chunk_size`` items -- purely for
+        its effect, yielding the items unchanged. ``before``/``after`` run
+        once around the stream; ``after`` runs even if the stream errors.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> seen = []
+            >>> async def audit(x):
+            ...     await asyncio.sleep(0)  # e.g. write to an async audit log
+            ...     seen.append(x)
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).to_async().side_effect(audit).acollect()
+            >>> asyncio.run(main())
+            [1, 2, 3]
+            >>> seen
+            [1, 2, 3]
+
+        """
+        f = lambda *value: func(*value, *args)
+
+        async def agen():
+            if before is not None:
+                await _awaited(before())
+            try:
+                if chunk_size is None:
+                    async for v in self:
+                        await _awaited(f(v))
+                        yield v
+                else:
+                    chunk = []
+                    async for v in self:
+                        chunk.append(v)
+                        if len(chunk) == chunk_size:
+                            await _awaited(f(chunk))
+                            for x in chunk:
+                                yield x
+                            chunk = []
+                    if chunk:
+                        await _awaited(f(chunk))
+                        for x in chunk:
+                            yield x
+            finally:
+                if after is not None:
+                    await _awaited(after())
+
+        return type(self)(agen())
+
+    def padnone(self) -> "AIter":
+        """Asynchronous padnone_: yield the items, then ``None`` forever.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2]).amap(fetch).padnone().take(4).acollect()
+            >>> asyncio.run(main())
+            [1, 2, None, None]
+
+        """
+
+        async def agen():
+            source = self.__aiter__()
+            while True:
+                try:
+                    yield await anext(source)
+                except StopAsyncIteration:
+                    break
+            while True:
+                yield None
+
+        return type(self)(agen())
+
+    def repeat_last(self, default=None) -> "AIter":
+        """Asynchronous repeat_last_: after the source is exhausted, repeat
+        its final item forever (or ``default`` if the source was empty).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2]).amap(fetch).repeat_last().take(4).acollect()
+            >>> asyncio.run(main())
+            [1, 2, 2, 2]
+
+        """
+
+        async def agen():
+            last = _marker
+            async for v in self:
+                last = v
+                yield v
+            fill = default if last is _marker else last
+            while True:
+                yield fill
+
+        return type(self)(agen())
+
+    def cycle(self) -> "AIter":
+        """Asynchronous cycle_: yield the items, then repeat them forever.
+        Buffers items as they are first seen.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2]).amap(fetch).cycle().take(5).acollect()
+            >>> asyncio.run(main())
+            [1, 2, 1, 2, 1]
+
+        """
+
+        async def agen():
+            saved = []
+            async for v in self:
+                saved.append(v)
+                yield v
+            if not saved:
+                return
+            while True:
+                for v in saved:
+                    yield v
+
+        return type(self)(agen())
+
+    def ncycles(self, n: int) -> "AIter":
+        """Asynchronous ncycles_: yield the whole source ``n`` times.
+        Buffers the source.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2]).amap(fetch).ncycles(3).acollect()
+            >>> asyncio.run(main())
+            [1, 2, 1, 2, 1, 2]
+
+        """
+
+        async def agen():
+            saved = [x async for x in self]
+            for _ in builtins.range(n):
+                for v in saved:
+                    yield v
+
+        return type(self)(agen())
+
+    def count_cycle(self, n=None) -> "AIter":
+        """Asynchronous count_cycle_: cycle the source, pairing each item
+        with its 0-based cycle number. Buffers the source.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter('ab').amap(fetch).count_cycle().take(4).acollect()
+            >>> asyncio.run(main())
+            [(0, 'a'), (0, 'b'), (1, 'a'), (1, 'b')]
+
+        """
+
+        async def agen():
+            saved = [x async for x in self]
+            if not saved:
+                return
+            i = 0
+            while n is None or i < n:
+                for v in saved:
+                    yield (i, v)
+                i += 1
+
+        return type(self)(agen())
+
+    def lstrip(self, pred) -> "AIter":
+        """Asynchronous lstrip_: drop leading items while ``pred`` (sync or
+        async) is truthy.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([0, 0, 1, 2, 0]).amap(fetch).lstrip(lambda x: x == 0).acollect()
+            >>> asyncio.run(main())
+            [1, 2, 0]
+
+        """
+
+        async def agen():
+            stripping = True
+            async for v in self:
+                if stripping and await _awaited(pred(v)):
+                    continue
+                stripping = False
+                yield v
+
+        return type(self)(agen())
+
+    def rstrip(self, pred) -> "AIter":
+        """Asynchronous rstrip_: drop trailing items for which ``pred``
+        (sync or async) is truthy.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([0, 1, 2, 0, 0]).amap(fetch).rstrip(lambda x: x == 0).acollect()
+            >>> asyncio.run(main())
+            [0, 1, 2]
+
+        """
+
+        async def agen():
+            cache = []
+            async for v in self:
+                if await _awaited(pred(v)):
+                    cache.append(v)
+                else:
+                    for c in cache:
+                        yield c
+                    cache.clear()
+                    yield v
+
+        return type(self)(agen())
+
+    def strip(self, pred) -> "AIter":
+        """Asynchronous strip_: drop both leading and trailing items for
+        which ``pred`` is truthy.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([0, 1, 2, 0]).amap(fetch).strip(lambda x: x == 0).acollect()
+            >>> asyncio.run(main())
+            [1, 2]
+
+        """
+        return self.lstrip(pred).rstrip(pred)
+
+    def run_length_encode(self) -> "AIter":
+        """Asynchronous run_length_encode_: collapse runs of equal items
+        into ``(item, count)`` pairs.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter('aaabbc').amap(fetch).run_length_encode().acollect()
+            >>> asyncio.run(main())
+            [('a', 3), ('b', 2), ('c', 1)]
+
+        """
+
+        async def agen():
+            cur = _marker
+            count = 0
+            async for v in self:
+                if cur is _marker:
+                    cur, count = v, 1
+                elif v == cur:
+                    count += 1
+                else:
+                    yield (cur, count)
+                    cur, count = v, 1
+            if cur is not _marker:
+                yield (cur, count)
+
+        return type(self)(agen())
+
+    def run_length_decode(self) -> "AIter":
+        """Asynchronous run_length_decode_: expand ``(item, count)`` pairs
+        back into a flat run of items.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([('a', 3), ('b', 2)]).amap(fetch).run_length_decode().acollect()
+            >>> asyncio.run(main())
+            ['a', 'a', 'a', 'b', 'b']
+
+        """
+
+        async def agen():
+            async for item, count in self:
+                for _ in builtins.range(count):
+                    yield item
+
+        return type(self)(agen())
+
+    def consecutive_groups(self, ordering=lambda x: x) -> "AIter":
+        """Asynchronous consecutive_groups_: group runs of consecutive
+        values (by ``ordering``). Each group is yielded as a list.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3, 10, 11, 20]).amap(fetch).consecutive_groups().acollect()
+            >>> asyncio.run(main())
+            [[1, 2, 3], [10, 11], [20]]
+
+        """
+
+        async def agen():
+            group = []
+            prev = _marker
+            async for v in self:
+                o = ordering(v)
+                if prev is _marker or o == prev + 1:
+                    group.append(v)
+                else:
+                    yield group
+                    group = [v]
+                prev = o
+            if group:
+                yield group
+
+        return type(self)(agen())
+
+    def locate(self, pred=bool, window_size=None) -> "AIter":
+        """Asynchronous locate_: yield the indices of items for which
+        ``pred`` is truthy. With ``window_size`` the source is buffered and
+        ``pred`` must be synchronous; otherwise it streams and ``pred`` may
+        be async.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([0, 1, 0, 1, 1]).amap(fetch).locate().acollect()
+            >>> asyncio.run(main())
+            [1, 3, 4]
+
+        """
+        if window_size is not None:
+            return self._abuffer_then(
+                lambda buf: more_itertools.locate(
+                    buf, pred=pred, window_size=window_size
+                )
+            )
+
+        async def agen():
+            i = 0
+            async for v in self:
+                if await _awaited(pred(v)):
+                    yield i
+                i += 1
+
+        return type(self)(agen())
+
+    def difference(self, func=operator.sub, *, initial=None) -> "AIter":
+        """Asynchronous difference_: inverse of accumulate_ -- yield the
+        first item, then ``func(cur, prev)`` for each subsequent pair.
+        ``func`` may be sync or async.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 3, 6, 10]).amap(fetch).difference().acollect()
+            >>> asyncio.run(main())
+            [1, 2, 3, 4]
+
+        """
+
+        async def agen():
+            prev = _marker
+            async for v in self:
+                if prev is _marker:
+                    if initial is None:
+                        yield v
+                else:
+                    yield await _awaited(func(v, prev))
+                prev = v
+
+        return type(self)(agen())
+
+    def grouper(self, n: int, fillvalue=None, incomplete="fill") -> "AIter":
+        """Asynchronous grouper_: batch into length-``n`` tuples. The final
+        short group is padded (``fill``), dropped (``ignore``) or raises
+        (``strict``), matching more_itertools.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter('ABCDE').amap(fetch).grouper(2, fillvalue='x').acollect()
+            >>> asyncio.run(main())
+            [('A', 'B'), ('C', 'D'), ('E', 'x')]
+
+        """
+        if incomplete not in ("fill", "strict", "ignore"):  # pragma: no cover
+            raise ValueError("Expected fill, strict, or ignore")
+
+        async def agen():
+            batch = []
+            async for v in self:
+                batch.append(v)
+                if len(batch) == n:
+                    yield tuple(batch)
+                    batch = []
+            if batch:
+                if incomplete == "fill":
+                    yield tuple(batch) + (fillvalue,) * (n - len(batch))
+                elif incomplete == "strict":
+                    raise ValueError("iterable is not divisible by n.")
+                elif incomplete == "ignore":  # pragma: no branch
+                    return
+
+        return type(self)(agen())
+
+    def ichunked(self, n: int) -> "AIter":
+        """Asynchronous ichunked_: batch into consecutive chunks of length
+        ``n``, each chunk itself an AIter. Chunks are materialised eagerly
+        (an async chunk cannot be lazily re-entered after the next is
+        pulled), so this is chunked_ with AIter-wrapped groups.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     out = []
+            ...     async for chunk in Iter(range(5)).amap(fetch).ichunked(2):
+            ...         out.append(await chunk.acollect())
+            ...     return out
+            >>> asyncio.run(main())
+            [[0, 1], [2, 3], [4]]
+
+        """
+        cls = type(self)
+
+        async def agen():
+            batch = []
+            async for v in self:
+                batch.append(v)
+                if len(batch) == n:
+                    yield cls(batch)
+                    batch = []
+            if batch:
+                yield cls(batch)
+
+        return cls(agen())
+
+    def groupby(self, key=None) -> "AIter":
+        """Asynchronous groupby_: group *consecutive* items sharing a key
+        into ``(key, group)`` pairs, each group an AIter. ``key`` may be
+        sync or async. Unlike itertools each group is materialised, so
+        groups stay valid after the outer iterator advances.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     out = []
+            ...     async for k, g in Iter('aaabbc').amap(fetch).groupby():
+            ...         out.append((k, await g.acollect()))
+            ...     return out
+            >>> asyncio.run(main())
+            [('a', ['a', 'a', 'a']), ('b', ['b', 'b']), ('c', ['c'])]
+
+        """
+        cls = type(self)
+
+        async def agen():
+            cur_key = _marker
+            group = []
+            async for v in self:
+                k = await _awaited(key(v)) if key is not None else v
+                if cur_key is _marker:
+                    cur_key, group = k, [v]
+                elif k == cur_key:
+                    group.append(v)
+                else:
+                    yield (cur_key, cls(group))
+                    cur_key, group = k, [v]
+            if cur_key is not _marker:
+                yield (cur_key, cls(group))
+
+        return cls(agen())
+
+    def split_at(self, pred, maxsplit=-1, keep_separator=False) -> "AIter":
+        """Asynchronous split_at_: split into lists at items where ``pred``
+        (sync or async) is truthy. ``keep_separator`` keeps the matched
+        item as its own single-element list.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 0, 2, 3, 0, 4]).amap(fetch).split_at(lambda x: x == 0).acollect()
+            >>> asyncio.run(main())
+            [[1], [2, 3], [4]]
+
+        """
+
+        async def agen():
+            buf = []
+            splits = 0
+            async for v in self:
+                if maxsplit != splits and await _awaited(pred(v)):
+                    yield buf
+                    if keep_separator:
+                        yield [v]
+                    buf = []
+                    splits += 1
+                else:
+                    buf.append(v)
+            yield buf
+
+        return type(self)(agen())
+
+    def split_before(self, pred, maxsplit=-1) -> "AIter":
+        """Asynchronous split_before_: start a new list before each item
+        where ``pred`` (sync or async) is truthy.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 0, 3, 0, 4]).amap(fetch).split_before(lambda x: x == 0).acollect()
+            >>> asyncio.run(main())
+            [[1, 2], [0, 3], [0, 4]]
+
+        """
+
+        async def agen():
+            buf = []
+            splits = 0
+            async for v in self:
+                if maxsplit != splits and buf and await _awaited(pred(v)):
+                    yield buf
+                    buf = []
+                    splits += 1
+                buf.append(v)
+            if buf:
+                yield buf
+
+        return type(self)(agen())
+
+    def split_after(self, pred, maxsplit=-1) -> "AIter":
+        """Asynchronous split_after_: end the current list after each item
+        where ``pred`` (sync or async) is truthy.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([0, 1, 0, 2, 3]).amap(fetch).split_after(lambda x: x == 0).acollect()
+            >>> asyncio.run(main())
+            [[0], [1, 0], [2, 3]]
+
+        """
+
+        async def agen():
+            buf = []
+            splits = 0
+            async for v in self:
+                buf.append(v)
+                if maxsplit != splits and await _awaited(pred(v)):
+                    yield buf
+                    buf = []
+                    splits += 1
+            if buf:
+                yield buf
+
+        return type(self)(agen())
+
+    def split_when(self, pred, maxsplit=-1) -> "AIter":
+        """Asynchronous split_when_: split between two adjacent items
+        whenever ``pred(prev, cur)`` (sync or async) is truthy.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3, 1, 2]).amap(fetch).split_when(lambda a, b: a > b).acollect()
+            >>> asyncio.run(main())
+            [[1, 2, 3], [1, 2]]
+
+        """
+
+        async def agen():
+            src = self.__aiter__()
+            try:
+                cur = await src.__anext__()
+            except StopAsyncIteration:
+                return
+            buf = [cur]
+            splits = 0
+            while True:
+                try:
+                    nxt = await src.__anext__()
+                except StopAsyncIteration:
+                    break
+                if maxsplit != splits and await _awaited(pred(cur, nxt)):
+                    yield buf
+                    buf = []
+                    splits += 1
+                buf.append(nxt)
+                cur = nxt
+            yield buf
+
+        return type(self)(agen())
+
+    # -- Buffered combinators (materialise, then delegate) --------------
+    #
+    # These forward to the identical more_itertools function used by the
+    # synchronous Iter_ method, run against the buffered source, so their
+    # behaviour matches the sync version exactly. See _abuffer_then.
+
+    def windowed(self, n, fillvalue=None, step=1) -> "AIter":
+        """Asynchronous windowed_ (buffered): sliding windows of length ``n``.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(4)).amap(fetch).windowed(2).acollect()
+            >>> asyncio.run(main())
+            [(0, 1), (1, 2), (2, 3)]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.windowed(buf, n, fillvalue=fillvalue, step=step)
+        )
+
+    def substrings(self) -> "AIter":
+        """Asynchronous substrings_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter('ab').amap(fetch).substrings().acollect()
+            >>> asyncio.run(main())
+            [('a',), ('b',), ('a', 'b')]
+
+        """
+        return self._abuffer_then(more_itertools.substrings)
+
+    def substrings_indexes(self, reverse=False) -> "AIter":
+        """Asynchronous substrings_indexes_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter('ab').amap(fetch).substrings_indexes().acollect()
+            >>> asyncio.run(main())
+            [(['a'], 0, 1), (['b'], 1, 2), (['a', 'b'], 0, 2)]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.substrings_indexes(buf, reverse=reverse)
+        )
+
+    def stagger(self, offsets=(-1, 0, 1), longest=False, fillvalue=None) -> "AIter":
+        """Asynchronous stagger_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([0, 1, 2, 3]).amap(fetch).stagger().acollect()
+            >>> asyncio.run(main())
+            [(None, 0, 1), (0, 1, 2), (1, 2, 3)]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.stagger(
+                buf, offsets=offsets, longest=longest, fillvalue=fillvalue
+            )
+        )
+
+    def padded(self, fillvalue=None, n=None, next_multiple=False) -> "AIter":
+        """Asynchronous padded_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).padded(fillvalue=0, n=5).acollect()
+            >>> asyncio.run(main())
+            [1, 2, 3, 0, 0]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.padded(
+                buf, fillvalue=fillvalue, n=n, next_multiple=next_multiple
+            )
+        )
+
+    def adjacent(self, pred, distance=1) -> "AIter":
+        """Asynchronous adjacent_ (buffered; ``pred`` must be synchronous).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3, 4, 5]).amap(fetch).adjacent(lambda x: x == 3).acollect()
+            >>> asyncio.run(main())
+            [(False, 1), (True, 2), (True, 3), (True, 4), (False, 5)]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.adjacent(pred, buf, distance=distance)
+        )
+
+    def collapse(self, base_type=None, levels=None) -> "AIter":
+        """Asynchronous collapse_ (buffered): recursively flatten nested
+        (synchronous) iterables.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, [2, [3, 4]], 5]).amap(fetch).collapse().acollect()
+            >>> asyncio.run(main())
+            [1, 2, 3, 4, 5]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.collapse(buf, base_type=base_type, levels=levels)
+        )
+
+    def constrained_batches(
+        self, max_size, max_count=None, get_len=len, strict=True
+    ) -> "AIter":
+        """Asynchronous constrained_batches_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([b'abc', b'de', b'f']).amap(fetch).constrained_batches(3).acollect()
+            >>> asyncio.run(main())
+            [(b'abc',), (b'de', b'f')]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.constrained_batches(
+                buf, max_size, max_count=max_count, get_len=get_len, strict=strict
+            )
+        )
+
+    def sort_together(
+        self, iterables, key_list=(0,), key=None, reverse=False, strict=False
+    ) -> "AIter":
+        """Asynchronous sort_together_ (buffered): sort this stream together
+        with ``iterables`` (synchronous), keyed on the ``key_list`` columns.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([3, 1, 2]).amap(fetch).sort_together([['c', 'a', 'b']]).acollect()
+            >>> asyncio.run(main())
+            [(1, 2, 3), ('a', 'b', 'c')]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.sort_together(
+                [buf, *iterables],
+                key_list=key_list,
+                key=key,
+                reverse=reverse,
+                strict=strict,
+            )
+        )
+
+    def islice_extended(self, *args) -> "AIter":
+        """Asynchronous islice_extended_ (buffered): slicing with support
+        for negative indices.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(6)).amap(fetch).islice_extended(-3, None).acollect()
+            >>> asyncio.run(main())
+            [3, 4, 5]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.islice_extended(buf, *args)
+        )
+
+    def rlocate(self, pred=bool, window_size=None) -> "AIter":
+        """Asynchronous rlocate_ (buffered): indices of matches, from the
+        right.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([0, 1, 0, 1, 1]).amap(fetch).rlocate().acollect()
+            >>> asyncio.run(main())
+            [4, 3, 1]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.rlocate(buf, pred, window_size)
+        )
+
+    def replace(self, pred, substitutes, count=None, window_size=1) -> "AIter":
+        """Asynchronous replace_ (buffered): replace runs matching ``pred``
+        with ``substitutes``.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 0, 2, 0, 3]).amap(fetch).replace(lambda x: x == 0, [9]).acollect()
+            >>> asyncio.run(main())
+            [1, 9, 2, 9, 3]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.replace(
+                buf, pred, substitutes, count=count, window_size=window_size
+            )
+        )
+
+    def distinct_permutations(self, r=None) -> "AIter":
+        """Asynchronous distinct_permutations_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 1, 2]).amap(fetch).distinct_permutations().acollect()
+            >>> asyncio.run(main())
+            [(1, 1, 2), (1, 2, 1), (2, 1, 1)]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.distinct_permutations(buf, r=r)
+        )
+
+    def distinct_combinations(self, r) -> "AIter":
+        """Asynchronous distinct_combinations_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 1, 2]).amap(fetch).distinct_combinations(2).acollect()
+            >>> asyncio.run(main())
+            [(1, 1), (1, 2)]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.distinct_combinations(buf, r)
+        )
+
+    def circular_shifts(self, steps=1) -> "AIter":
+        """Asynchronous circular_shifts_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).circular_shifts().acollect()
+            >>> asyncio.run(main())
+            [(1, 2, 3), (2, 3, 1), (3, 1, 2)]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.circular_shifts(buf, steps=steps)
+        )
+
+    def partitions(self) -> "AIter":
+        """Asynchronous partitions_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).partitions().acollect()
+            >>> asyncio.run(main())
+            [[[1, 2, 3]], [[1], [2, 3]], [[1, 2], [3]], [[1], [2], [3]]]
+
+        """
+        return self._abuffer_then(more_itertools.partitions)
+
+    def set_partitions(self, k=None, min_size=None, max_size=None) -> "AIter":
+        """Asynchronous set_partitions_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).set_partitions(2).acollect()
+            >>> asyncio.run(main())
+            [[[1], [2, 3]], [[1, 2], [3]], [[2], [1, 3]]]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.set_partitions(
+                buf, k=k, min_size=min_size, max_size=max_size
+            )
+        )
+
+    def powerset(self) -> "AIter":
+        """Asynchronous powerset_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2]).amap(fetch).powerset().acollect()
+            >>> asyncio.run(main())
+            [(), (1,), (2,), (1, 2)]
+
+        """
+        return self._abuffer_then(more_itertools.powerset)
+
+    def always_reversible(self) -> "AIter":
+        """Asynchronous always_reversible_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).always_reversible().acollect()
+            >>> asyncio.run(main())
+            [3, 2, 1]
+
+        """
+        return self._abuffer_then(more_itertools.always_reversible)
+
+    def sample(self, k=1, weights=None, *, counts=None, strict=False) -> "AIter":
+        """Asynchronous sample_ (buffered): reservoir sample of ``k`` items.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     s = await Iter(range(100)).amap(fetch).sample(3).acollect()
+            ...     return len(s), set(s) <= set(range(100))
+            >>> asyncio.run(main())
+            (3, True)
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.sample(
+                buf, k=k, weights=weights, counts=counts, strict=strict
+            )
+        )
+
+    def sorted(self, key=None, reverse=False) -> "AIter":
+        """Asynchronous sorted_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([3, 1, 2]).amap(fetch).sorted().acollect()
+            >>> asyncio.run(main())
+            [1, 2, 3]
+
+        """
+        return self._abuffer_then(
+            lambda buf: sorted(buf, key=key, reverse=reverse)
+        )
+
+    def reversed(self) -> "AIter":
+        """Asynchronous reversed_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).reversed().acollect()
+            >>> asyncio.run(main())
+            [3, 2, 1]
+
+        """
+        return self._abuffer_then(lambda buf: buf[::-1])
+
+    def insert(self, glue) -> "AIter":
+        """Asynchronous insert_ (buffered): place ``glue`` between items.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).insert(0).acollect()
+            >>> asyncio.run(main())
+            [1, 0, 2, 0, 3]
+
+        """
+        return self._abuffer_then(lambda buf: insert_separator(buf, glue))
+
+    # -- Buffered multi-output combinators ------------------------------
+    #
+    # These fan the source out into several sub-iterators. Because an async
+    # sub-iterator cannot be replayed once a sibling has advanced, each sub
+    # is materialised into its own AIter.
+
+    def groupby_transform(
+        self, keyfunc=None, valuefunc=None, reducefunc=None
+    ) -> "AIter":
+        """Asynchronous groupby_transform_ (buffered). Without a
+        ``reducefunc`` each group is materialised into an AIter; with one,
+        the reduced value is yielded as-is.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     src = (Iter('aaabbc').amap(fetch)
+            ...            .groupby_transform(keyfunc=lambda x: x, reducefunc=list))
+            ...     return await src.acollect()
+            >>> asyncio.run(main())
+            [('a', ['a', 'a', 'a']), ('b', ['b', 'b']), ('c', ['c'])]
+
+        """
+        cls = type(self)
+
+        async def agen():
+            buf = [x async for x in self]
+            for k, g in more_itertools.groupby_transform(
+                buf, keyfunc=keyfunc, valuefunc=valuefunc, reducefunc=reducefunc
+            ):
+                yield (k, g if reducefunc is not None else cls(list(g)))
+
+        return cls(agen())
+
+    def distribute(self, n: int) -> "AIter":
+        """Asynchronous distribute_ (buffered): deal items round-robin into
+        ``n`` child AIters.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     children = await Iter(range(6)).amap(fetch).distribute(2).acollect()
+            ...     return [await c.acollect() for c in children]
+            >>> asyncio.run(main())
+            [[0, 2, 4], [1, 3, 5]]
+
+        """
+        cls = type(self)
+
+        async def agen():
+            buf = [x async for x in self]
+            for sub in more_itertools.distribute(n, buf):
+                yield cls(list(sub))
+
+        return cls(agen())
+
+    def divide(self, n: int) -> "AIter":
+        """Asynchronous divide_ (buffered): split into ``n`` contiguous
+        child AIters.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     children = await Iter(range(6)).amap(fetch).divide(2).acollect()
+            ...     return [await c.acollect() for c in children]
+            >>> asyncio.run(main())
+            [[0, 1, 2], [3, 4, 5]]
+
+        """
+        cls = type(self)
+
+        async def agen():
+            buf = [x async for x in self]
+            for sub in more_itertools.divide(n, buf):
+                yield cls(list(sub))
+
+        return cls(agen())
+
+    def unzip(self) -> "AIter":
+        """Asynchronous unzip_ (buffered): transpose a stream of tuples into
+        a tuple of child AIters.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     cols = await Iter([(1, 'a'), (2, 'b'), (3, 'c')]).amap(fetch).unzip().acollect()
+            ...     return [await c.acollect() for c in cols]
+            >>> asyncio.run(main())
+            [[1, 2, 3], ['a', 'b', 'c']]
+
+        """
+        cls = type(self)
+
+        async def agen():
+            buf = [x async for x in self]
+            for sub in more_itertools.unzip(buf):
+                yield cls(list(sub))
+
+        return cls(agen())
+
+    def partition(self, pred) -> "AIter":
+        """Asynchronous partition_ (buffered): yields two child AIters --
+        items for which ``pred`` (sync or async) is false, then true.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     false_, true_ = await Iter(range(6)).amap(fetch).partition(lambda x: x % 2).acollect()
+            ...     return await false_.acollect(), await true_.acollect()
+            >>> asyncio.run(main())
+            ([0, 2, 4], [1, 3, 5])
+
+        """
+        cls = type(self)
+
+        async def agen():
+            false_, true_ = [], []
+            async for v in self:
+                (true_ if await _awaited(pred(v)) else false_).append(v)
+            yield cls(false_)
+            yield cls(true_)
+
+        return cls(agen())
+
+    # -- Multi-iterable combinators -------------------------------------
+    #
+    # ``self`` is the first iterable; the ``*iterables`` arguments (sync or
+    # async) are normalised to async iterators via the AIter constructor.
+
+    def zip(self, *iterables, strict: bool = False) -> "AIter":
+        """Asynchronous zip_: pair items from this stream with ``iterables``
+        (sync or async), stopping at the shortest. ``strict=True`` raises if
+        the inputs are of unequal length.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).zip(['a', 'b', 'c']).acollect()
+            >>> asyncio.run(main())
+            [(1, 'a'), (2, 'b'), (3, 'c')]
+
+        """
+        cls = type(self)
+
+        async def agen():
+            sources = [self.__aiter__()] + [cls(it).__aiter__() for it in iterables]
+            gap = object()
+            while True:
+                row = []
+                for s in sources:
+                    try:
+                        row.append(await s.__anext__())
+                    except StopAsyncIteration:
+                        row.append(gap)
+                if all(v is gap for v in row):
+                    return
+                if any(v is gap for v in row):
+                    if strict:
+                        raise ValueError(
+                            "zip() arguments have unequal lengths (strict)"
+                        )
+                    return
+                yield tuple(row)
+
+        return cls(agen())
+
+    def zip_longest(self, *iterables, fillvalue=None) -> "AIter":
+        """Asynchronous zip_longest_: pair items from this stream with
+        ``iterables`` (sync or async), padding short inputs with
+        ``fillvalue`` until the longest is exhausted.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).zip_longest(['a', 'b'], fillvalue='?').acollect()
+            >>> asyncio.run(main())
+            [(1, 'a'), (2, 'b'), (3, '?')]
+
+        """
+        cls = type(self)
+
+        async def agen():
+            sources = [self.__aiter__()] + [cls(it).__aiter__() for it in iterables]
+            while True:
+                row = []
+                alive = False
+                for s in sources:
+                    try:
+                        row.append(await s.__anext__())
+                        alive = True
+                    except StopAsyncIteration:
+                        row.append(fillvalue)
+                if not alive:
+                    return
+                yield tuple(row)
+
+        return cls(agen())
+
+    def split_into(self, sizes: Iterable[int]) -> "AIter":
+        """Asynchronous split_into_: yield lists of the given ``sizes`` from
+        the stream. A ``None`` size takes all remaining items; a short
+        source ends the last (partial) list early.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(6)).amap(fetch).split_into([2, 3, 1]).acollect()
+            >>> asyncio.run(main())
+            [[0, 1], [2, 3, 4], [5]]
+
+        """
+        cls = type(self)
+
+        async def agen():
+            src = self.__aiter__()
+            for size in sizes:
+                if size is None:
+                    yield [x async for x in cls(src)]
+                    return
+                group = []
+                for _ in builtins.range(size):
+                    try:
+                        group.append(await src.__anext__())
+                    except StopAsyncIteration:
+                        yield group
+                        return
+                yield group
+
+        return cls(agen())
+
+    def print(self, template="{i}: {v}") -> "AIter":
+        """Asynchronous print_: a debugging pass-through that prints each
+        item (formatted with ``{i}``/``{v}``) and yields it unchanged.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(['x', 'y']).amap(fetch).print().acollect()
+            >>> asyncio.run(main())
+            0: x
+            1: y
+            ['x', 'y']
+
+        """
+        cls = type(self)
+
+        async def agen():
+            i = 0
+            async for v in self:
+                builtins.print(template.format(i=i, v=v))
+                yield v
+                i += 1
+
+        return cls(agen())
+
+    def wrap(self, ends: "Sequence[T, T]" = "()") -> "AIter":
+        """Asynchronous wrap_: bracket the stream with a start and end value
+        (each either a scalar or an iterable of items).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).wrap(('<', '>')).acollect()
+            >>> asyncio.run(main())
+            ['<', 1, 2, 3, '>']
+
+        """
+        if len(ends) != 2:  # pragma: no cover
+            raise ValueError("The ends must be a 2-length sequence")
+
+        start, end = ends
+        if not isinstance(start, Iterable):
+            start = [start]
+        if not isinstance(end, Iterable):
+            end = [end]
+
+        cls = type(self)
+
+        async def agen():
+            for v in start:
+                yield v
+            async for v in self:
+                yield v
+            for v in end:
+                yield v
+
+        return cls(agen())
+
+    # -- Buffered combinatoric selectors --------------------------------
+
+    def nth_combination(self, r, index) -> "AIter":
+        """Asynchronous nth_combination_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(5)).amap(fetch).nth_combination(3, 5).acollect()
+            >>> asyncio.run(main())
+            [0, 3, 4]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.nth_combination(buf, r, index)
+        )
+
+    def random_combination(self, r) -> "AIter":
+        """Asynchronous random_combination_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     r = await Iter(range(10)).amap(fetch).random_combination(3).acollect()
+            ...     return len(r), set(r) <= set(range(10))
+            >>> asyncio.run(main())
+            (3, True)
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.random_combination(buf, r)
+        )
+
+    def random_combination_with_replacement(self, r) -> "AIter":
+        """Asynchronous random_combination_with_replacement_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     r = await Iter(range(5)).amap(fetch).random_combination_with_replacement(3).acollect()
+            ...     return len(r), all(0 <= x < 5 for x in r)
+            >>> asyncio.run(main())
+            (3, True)
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.random_combination_with_replacement(buf, r)
+        )
+
+    def random_permutation(self, r=None) -> "AIter":
+        """Asynchronous random_permutation_ (buffered).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     p = await Iter(range(5)).amap(fetch).random_permutation().acollect()
+            ...     return sorted(p)
+            >>> asyncio.run(main())
+            [0, 1, 2, 3, 4]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.random_permutation(buf, r=r)
+        )
+
+    def unique_to_each(self) -> "AIter":
+        """Asynchronous unique_to_each_ (buffered): from a stream of
+        iterables, keep the items unique to each.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([[1, 2, 3], [2, 3, 4], [3, 4, 5]]).amap(fetch).unique_to_each().acollect()
+            >>> asyncio.run(main())
+            [[1], [], [5]]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.unique_to_each(*buf)
+        )
+
+    # -- Not (yet) supported on an async chain --------------------------
+    #
+    # These return stateful helper objects (or rely on wall-clock pulls)
+    # that pull synchronously and have no coherent async form yet. They
+    # fail loudly rather than silently mis-behaving; collect the chain
+    # first (``await ...acollect()``) and use the synchronous Iter_ method.
+
+    def _aunsupported(name):
+        def guard(self, *args, **kwargs):
+            raise NotImplementedError(
+                f"{name}() is not available on an asynchronous chain. Collect "
+                f"the chain first with `await ...acollect()` and call "
+                f"Iter(...).{name}() synchronously."
+            )
+
+        return guard
+
+    peekable = _aunsupported("peekable")
+    seekable = _aunsupported("seekable")
+    spy = _aunsupported("spy")
+    tee = _aunsupported("tee")
+    bucket = _aunsupported("bucket")
+    time_limited = _aunsupported("time_limited")
+    del _aunsupported
+
+    # -- Sinks (asynchronous; each is a coroutine to be awaited) ---------
+
+    async def acollect(self, container=list) -> "List[T]":
+        """
+        |sink|
+
+        The asynchronous counterpart to collect_. Drives the whole async
+        pipeline to completion and gathers the results into ``container``.
+        This is a coroutine, so it must be awaited.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(3)).amap(fetch).acollect()
+            >>> asyncio.run(main())
+            [0, 1, 2]
+
+        """
+        return container([x async for x in self])
+
+    async def aforeach(self, func) -> None:
+        """
+        |sink|
+
+        Drive the pipeline purely for side effects, calling ``func`` (sync
+        or async) on each item and discarding the results. Returns None.
+        The async analogue of a plain ``for`` loop over the chain.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     seen = []
+            ...     await Iter([1, 2, 3]).amap(fetch).aforeach(seen.append)
+            ...     return seen
+            >>> asyncio.run(main())
+            [1, 2, 3]
+
+        """
+        async for v in self:
+            await _awaited(func(v))
+
+    async def afirst(self, default=_marker):
+        """
+        |sink|
+
+        The asynchronous counterpart to first_. Returns the first item,
+        or ``default`` if the pipeline is empty; with no default an empty
+        pipeline raises ``ValueError``.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([10, 20, 30]).amap(fetch).afirst()
+            >>> asyncio.run(main())
+            10
+
+        """
+        async for v in self:
+            return v
+        if default is _marker:
+            raise ValueError("afirst() called on an empty async iterator")
+        return default
+
+    async def asum(self, start=0):
+        """|sink| Asynchronous sum_.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3, 4]).amap(fetch).asum()
+            >>> asyncio.run(main())
+            10
+
+        """
+        total = start
+        async for v in self:
+            total = total + v
+        return total
+
+    async def amax(self, *, key=None, default=_marker):
+        """|sink| Asynchronous max over the pipeline.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([3, 1, 4, 1, 5]).amap(fetch).amax()
+            >>> asyncio.run(main())
+            5
+
+        """
+        best = _marker
+        best_key = None
+        async for v in self:
+            k = key(v) if key is not None else v
+            if best is _marker or k > best_key:
+                best, best_key = v, k
+        if best is _marker:
+            if default is _marker:
+                raise ValueError("amax() called on an empty async iterator")
+            return default
+        return best
+
+    async def amin(self, *, key=None, default=_marker):
+        """|sink| Asynchronous min over the pipeline.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([3, 1, 4, 1, 5]).amap(fetch).amin()
+            >>> asyncio.run(main())
+            1
+
+        """
+        best = _marker
+        best_key = None
+        async for v in self:
+            k = key(v) if key is not None else v
+            if best is _marker or k < best_key:
+                best, best_key = v, k
+        if best is _marker:
+            if default is _marker:
+                raise ValueError("amin() called on an empty async iterator")
+            return default
+        return best
+
+    async def areduce(self, func, initial=_marker):
+        """|sink| Asynchronous reduce. ``func`` may be sync or async.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3, 4]).amap(fetch).areduce(lambda a, b: a * b)
+            >>> asyncio.run(main())
+            24
+
+        """
+        source = self.__aiter__()
+        if initial is _marker:
+            try:
+                acc = await source.__anext__()
+            except StopAsyncIteration:
+                raise TypeError(
+                    "areduce() of empty async iterator with no initial value"
+                ) from None
+        else:
+            acc = initial
+        async for v in self:
+            acc = await _awaited(func(acc, v))
+        return acc
+
+    async def adict(self) -> "Dict":
+        """|sink| Asynchronous dict_: consume (key, value) pairs into a dict.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([('a', 1), ('b', 2)]).amap(fetch).adict()
+            >>> asyncio.run(main())
+            {'a': 1, 'b': 2}
+
+        """
+        return {k: v async for k, v in self}
+
+    async def acount(self) -> int:
+        """|sink| Consume the pipeline and return the number of items.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(5)).amap(fetch).acount()
+            >>> asyncio.run(main())
+            5
+
+        """
+        n = 0
+        async for _ in self:
+            n += 1
+        return n
+
+    async def aany(self, pred=None) -> bool:
+        """|sink| True if any item is truthy (or satisfies ``pred``).
+        Short-circuits.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([0, 0, 3, 0]).amap(fetch).aany()
+            >>> asyncio.run(main())
+            True
+
+        """
+        async for v in self:
+            if (await _awaited(pred(v))) if pred is not None else v:
+                return True
+        return False
+
+    async def aall(self, pred=None) -> bool:
+        """|sink| True if every item is truthy (or satisfies ``pred``).
+        Short-circuits.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).aall()
+            >>> asyncio.run(main())
+            True
+
+        """
+        async for v in self:
+            ok = (await _awaited(pred(v))) if pred is not None else v
+            if not ok:
+                return False
+        return True
+
+    async def aconcat(self, glue: AnyStr = "") -> "AnyStr":
+        """|sink| Asynchronous concat_: join the items into a string.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(['a', 'b', 'c']).amap(fetch).aconcat('-')
+            >>> asyncio.run(main())
+            'a-b-c'
+
+        """
+        return glue.join([x async for x in self])
+
+    async def astarreduce(self, function, initializer=0):
+        """|sink| Asynchronous starreduce_: like areduce_ but each item is
+        star-unpacked into ``function`` (which may be sync or async).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     pairs = [(1, 2), (3, 4)]
+            ...     return await Iter(pairs).amap(fetch).astarreduce(lambda acc, a, b: acc + a * b)
+            >>> asyncio.run(main())
+            14
+
+        """
+        acc = initializer
+        async for v in self:
+            acc = await _awaited(function(acc, *v))
+        return acc
+
+    async def anth(self, n, default=None):
+        """|sink| The ``n``-th item (0-indexed), or ``default`` if the
+        pipeline has fewer than ``n + 1`` items.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter('abcde').amap(fetch).anth(2)
+            >>> asyncio.run(main())
+            'c'
+
+        """
+        i = 0
+        async for v in self:
+            if i == n:
+                return v
+            i += 1
+        return default
+
+    async def anth_or_last(self, n, default=_marker):
+        """|sink| The ``n``-th item, or the last item if the pipeline is
+        shorter. Empty with no ``default`` raises ``ValueError``.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).anth_or_last(10)
+            >>> asyncio.run(main())
+            3
+
+        """
+        last = _marker
+        i = 0
+        async for v in self:
+            last = v
+            if i == n:
+                return v
+            i += 1
+        if last is not _marker:
+            return last
+        if default is _marker:
+            raise ValueError("anth_or_last() called on an empty async iterator")
+        return default
+
+    async def alast(self, default=_marker):
+        """|sink| The last item, or ``default``. Empty with no ``default``
+        raises ``ValueError``.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).alast()
+            >>> asyncio.run(main())
+            3
+
+        """
+        last = _marker
+        async for v in self:
+            last = v
+        if last is not _marker:
+            return last
+        if default is _marker:
+            raise ValueError("alast() called on an empty async iterator")
+        return default
+
+    async def aone(self, too_short=None, too_long=None):
+        """|sink| The single item of a one-item pipeline. Raises (or the
+        supplied exception) if there are zero or more than one items.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([42]).amap(fetch).aone()
+            >>> asyncio.run(main())
+            42
+
+        """
+        src = self.__aiter__()
+        try:
+            first = await src.__anext__()
+        except StopAsyncIteration:
+            raise (
+                too_short
+                or ValueError("too few items in async iterator (expected 1)")
+            ) from None
+        try:
+            await src.__anext__()
+        except StopAsyncIteration:
+            return first
+        raise too_long or ValueError(
+            "too many items in async iterator (expected 1)"
+        )
+
+    async def aonly(self, default=None, too_long=None):
+        """|sink| The single item, ``default`` if empty, or raise (or the
+        supplied exception) if there is more than one item.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([]).amap(fetch).aonly(default='empty')
+            >>> asyncio.run(main())
+            'empty'
+
+        """
+        src = self.__aiter__()
+        try:
+            first = await src.__anext__()
+        except StopAsyncIteration:
+            return default
+        try:
+            await src.__anext__()
+        except StopAsyncIteration:
+            return first
+        raise too_long or ValueError(
+            "too many items in async iterator (expected 1)"
+        )
+
+    async def ailen(self) -> int:
+        """|sink| The number of items in the pipeline. Synonym for acount_.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(7)).amap(fetch).ailen()
+            >>> asyncio.run(main())
+            7
+
+        """
+        return await self.acount()
+
+    async def adotproduct(self, vec2: Iterable):
+        """|sink| The dot product of this pipeline with the synchronous
+        ``vec2``; stops at the shorter of the two.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3]).amap(fetch).adotproduct([4, 5, 6])
+            >>> asyncio.run(main())
+            32
+
+        """
+        it = iter(vec2)
+        total = 0
+        async for v in self:
+            try:
+                w = next(it)
+            except StopIteration:
+                break
+            total += v * w
+        return total
+
+    async def ais_sorted(self, key=None, reverse=False, strict=False) -> bool:
+        """|sink| Whether the pipeline is sorted (short-circuits).
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 2, 3]).amap(fetch).ais_sorted()
+            >>> asyncio.run(main())
+            True
+
+        """
+        prev = _marker
+        prev_key = None
+        async for v in self:
+            k = key(v) if key is not None else v
+            if prev is not _marker:
+                if reverse:
+                    ok = prev_key > k if strict else prev_key >= k
+                else:
+                    ok = prev_key < k if strict else prev_key <= k
+                if not ok:
+                    return False
+            prev, prev_key = v, k
+        return True
+
+    async def aall_unique(self, key=None) -> bool:
+        """|sink| Whether every item (or ``key(item)``) is unique.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 2, 3, 2]).amap(fetch).aall_unique()
+            >>> asyncio.run(main())
+            False
+
+        """
+        seen_set = set()
+        seen_list = []
+        async for v in self:
+            k = key(v) if key is not None else v
+            try:
+                if k in seen_set:
+                    return False
+                seen_set.add(k)
+            except TypeError:
+                if k in seen_list:
+                    return False
+                seen_list.append(k)
+        return True
+
+    async def aall_equal(self, key=None) -> bool:
+        """|sink| Whether all items (or all ``key(item)``) are equal.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([7, 7, 7]).amap(fetch).aall_equal()
+            >>> asyncio.run(main())
+            True
+
+        """
+        first = _marker
+        first_key = None
+        async for v in self:
+            k = key(v) if key is not None else v
+            if first is _marker:
+                first, first_key = v, k
+            elif k != first_key:
+                return False
+        return True
+
+    async def aminmax(self, key=None, default=_marker):
+        """|sink| The ``(min, max)`` pair in a single pass. Empty with no
+        ``default`` raises ``ValueError``.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([3, 1, 4, 1, 5]).amap(fetch).aminmax()
+            >>> asyncio.run(main())
+            (1, 5)
+
+        """
+        lo = hi = _marker
+        lo_key = hi_key = None
+        async for v in self:
+            k = key(v) if key is not None else v
+            if lo is _marker:
+                lo = hi = v
+                lo_key = hi_key = k
+            else:
+                if k < lo_key:
+                    lo, lo_key = v, k
+                if k > hi_key:
+                    hi, hi_key = v, k
+        if lo is _marker:
+            if default is _marker:
+                raise ValueError("aminmax() called on an empty async iterator")
+            return default
+        return (lo, hi)
+
+    async def aquantify(self, pred=bool) -> int:
+        """|sink| The count of items for which ``pred`` (sync or async) is
+        truthy.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(10)).amap(fetch).aquantify(lambda x: x % 2 == 0)
+            >>> asyncio.run(main())
+            5
+
+        """
+        n = 0
+        async for v in self:
+            if await _awaited(pred(v)):
+                n += 1
+        return n
+
+    async def afirst_true(self, default=None, pred=None):
+        """|sink| The first truthy item (or first satisfying ``pred``), or
+        ``default``. Short-circuits.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([0, 0, 5, 0]).amap(fetch).afirst_true()
+            >>> asyncio.run(main())
+            5
+
+        """
+        async for v in self:
+            if (await _awaited(pred(v))) if pred is not None else v:
+                return v
+        return default
+
+    async def aexactly_n(self, n, predicate=bool) -> bool:
+        """|sink| Whether exactly ``n`` items satisfy ``predicate`` (sync or
+        async). Short-circuits after the ``n + 1``-th match.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter([1, 0, 2, 0]).amap(fetch).aexactly_n(2, lambda x: x > 0)
+            >>> asyncio.run(main())
+            True
+
+        """
+        count = 0
+        async for v in self:
+            if await _awaited(predicate(v)):
+                count += 1
+                if count > n:
+                    return False
+        return count == n
+
+    async def amap_reduce(self, keyfunc, valuefunc=None, reducefunc=None) -> "Dict":
+        """|sink| Asynchronous map_reduce_: bucket items by ``keyfunc``,
+        transform each by ``valuefunc``, then optionally fold each bucket
+        with ``reducefunc``. All three callables may be sync or async.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(6)).amap(fetch).amap_reduce(lambda x: x % 2, reducefunc=sum)
+            >>> d = asyncio.run(main())
+            >>> assert d == {0: 6, 1: 9}, d
+
+        """
+        ret = collections.defaultdict(list)
+        async for v in self:
+            k = await _awaited(keyfunc(v))
+            value = await _awaited(valuefunc(v)) if valuefunc is not None else v
+            ret[k].append(value)
+        if reducefunc is not None:
+            for k in list(ret):
+                ret[k] = await _awaited(reducefunc(ret[k]))
+        ret.default_factory = None
+        return ret
+
+    async def aconsume(self, n=None):
+        """|sink| Advance the pipeline, discarding items. With ``n`` given,
+        skip ``n`` items and return ``self`` (so the chain can continue);
+        with ``n`` None, exhaust it entirely and return ``None``.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await (await Iter(range(10)).amap(fetch).aconsume(3)).acollect()
+            >>> asyncio.run(main())
+            [3, 4, 5, 6, 7, 8, 9]
+
+        """
+        if n is None:
+            async for _ in self:
+                pass
+            return None
+        src = self.__aiter__()
+        for _ in builtins.range(n):
+            try:
+                await src.__anext__()
+            except StopAsyncIteration:
+                break
+        return self
+
+    # -- I/O sinks -------------------------------------------------------
+    #
+    # These drain the async chain into a blocking destination (a file
+    # stream or a DB cursor). The stream/cursor stays synchronous -- we
+    # deliberately do *not* pull in an async-file dependency -- so writes
+    # are handed to a worker thread in batches (``batch_size``) to keep the
+    # event loop responsive without paying a thread hop per item. A DB
+    # cursor whose ``executemany``/``commit`` are themselves coroutines is
+    # awaited natively instead (see ``aexecutemany``).
+
+    async def _adrain_writelines(self, stream, batch_size):
+        """Consume the chain and feed it to ``stream.writelines`` in
+        thread-offloaded batches of ``batch_size`` items. A pending partial
+        batch is flushed even if the source errors mid-stream, so every item
+        that was consumed is persisted (matching the synchronous sink).
+        ``batch`` is cleared *before* each write, so a failing write is never
+        retried by the finally-flush."""
+        batch = []
+
+        async def flush():
+            nonlocal batch
+            if batch:
+                pending, batch = batch, []
+                await asyncio.to_thread(stream.writelines, pending)
+
+        try:
+            async for v in self:
+                batch.append(v)
+                if len(batch) >= batch_size:
+                    await flush()
+        finally:
+            await flush()
+
+    async def awrite_text_to_stream(
+        self, stream, insert_newlines=True, flush=True, batch_size=1000
+    ):
+        r"""|sink| Asynchronous write_text_to_stream_: write items to an open
+        text ``stream``, batching writes onto a worker thread. Set
+        ``insert_newlines=False`` if the items already carry newlines.
+
+        .. code-block:: python
+
+            >>> import asyncio, io
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     buf = io.StringIO()
+            ...     await Iter(['a', 'b', 'c']).amap(fetch).awrite_text_to_stream(buf)
+            ...     return buf.getvalue()
+            >>> asyncio.run(main())
+            'a\nb\nc'
+
+        """
+        src = self.intersperse("\n") if insert_newlines else self
+        await src._adrain_writelines(stream, batch_size)
+        if flush:
+            await asyncio.to_thread(stream.flush)
+
+    async def awrite_bytes_to_stream(self, stream, flush=True, batch_size=1000):
+        """|sink| Asynchronous write_bytes_to_stream_: write items to an open
+        binary ``stream``, batching writes onto a worker thread.
+
+        .. code-block:: python
+
+            >>> import asyncio, io
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     buf = io.BytesIO()
+            ...     await Iter([b'a', b'b', b'c']).amap(fetch).awrite_bytes_to_stream(buf)
+            ...     return buf.getvalue()
+            >>> asyncio.run(main())
+            b'abc'
+
+        """
+        await self._adrain_writelines(stream, batch_size)
+        if flush:
+            await asyncio.to_thread(stream.flush)
+
+    async def awrite_file(
+        self,
+        file,
+        mode="w",
+        buffering=-1,
+        encoding=None,
+        errors=None,
+        newline=None,
+        closefd=True,
+        opener=None,
+        batch_size=1000,
+    ):
+        """|sink| Asynchronous write_file_: open ``file``, write every item
+        to it (batched onto a worker thread), and close it -- even if the
+        chain errors mid-stream. Text or binary is selected by ``mode``.
+
+        .. code-block:: python
+
+            >>> import asyncio, tempfile, os
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     path = os.path.join(tempfile.mkdtemp(), 'out.txt')
+            ...     await Iter(['a', 'b', 'c']).amap(fetch).awrite_file(path)
+            ...     with open(path) as f:
+            ...         return f.read()
+            >>> asyncio.run(main())
+            'abc'
+
+        """
+        f = await asyncio.to_thread(
+            open,
+            file,
+            mode,
+            buffering,
+            encoding,
+            errors,
+            newline,
+            closefd,
+            opener,
+        )
+        try:
+            await self._adrain_writelines(f, batch_size)
+        finally:
+            await asyncio.to_thread(f.close)
+
+    async def aexecutemany(
+        self,
+        cursor: Any,
+        sql: str,
+        *,
+        batch_size: int = 1000,
+        commit: Optional[Callable[[], Any]] = None,
+        rollback: Optional[Callable[[], Any]] = None,
+    ) -> None:
+        """|sink| Asynchronous executemany_: run a DB-API ``executemany`` over
+        ``batch_size`` chunks of this chain. ``cursor.executemany`` (and the
+        optional ``commit``/``rollback``) may be sync or coroutine -- each is
+        awaited iff it returns an awaitable, so async drivers (asyncpg,
+        psycopg async, aiosqlite) work natively.
+
+        .. code-block:: python
+
+            >>> import asyncio, sqlite3
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     conn = sqlite3.connect(':memory:')
+            ...     conn.execute('CREATE TABLE t (x)')
+            ...     await (Iter(range(3)).amap(fetch)
+            ...            .map(lambda x: (x,))
+            ...            .aexecutemany(conn.cursor(), 'INSERT INTO t VALUES (?)'))
+            ...     return conn.execute('SELECT count(*) FROM t').fetchone()[0]
+            >>> asyncio.run(main())
+            3
+
+        """
+        if batch_size < 1:  # pragma: no cover
+            raise ValueError("batch_size must be at least 1")
+
+        try:
+            async for batch in self.chunked(batch_size):
+                await _awaited(cursor.executemany(sql, batch))
+            if commit is not None:
+                await _awaited(commit())
+        except Exception:
+            if rollback is not None:
+                await _awaited(rollback())
+            raise
+
+    async def asend(self, collector, close_collector_when_done=False) -> None:
+        """|sink| Asynchronous send_: drive an async-generator ``collector``
+        (one that does ``(yield)``) by ``asend``-ing each item into it. The
+        generator is primed automatically. It is left open unless
+        ``close_collector_when_done`` is set.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     seen = []
+            ...     async def sink():
+            ...         while True:
+            ...             v = yield
+            ...             seen.append(v)
+            ...     await Iter(range(3)).amap(fetch).asend(sink(), close_collector_when_done=True)
+            ...     return seen
+            >>> asyncio.run(main())
+            [0, 1, 2]
+
+        """
+        if inspect.getasyncgenstate(collector) == inspect.AGEN_CREATED:
+            await collector.asend(None)
+        async for v in self:
+            await collector.asend(v)
+        if close_collector_when_done:
+            await collector.aclose()
+
+    # -- Count-validating combinators (return an AIter) ------------------
+
+    def strictly_n(self, n, too_short=None, too_long=None) -> "AIter":
+        """Asynchronous strictly_n_ (buffered): yield the items only if
+        there are exactly ``n`` of them, else raise.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await Iter(range(3)).amap(fetch).strictly_n(3).acollect()
+            >>> asyncio.run(main())
+            [0, 1, 2]
+
+        """
+        return self._abuffer_then(
+            lambda buf: more_itertools.strictly_n(
+                buf, n, too_short=too_short, too_long=too_long
+            )
+        )
+
+    def map_reduce_it(self, keyfunc, valuefunc=None, reducefunc=None) -> "AIter":
+        """Asynchronous map_reduce_it_: like amap_reduce_ but streamed as an
+        AIter of ``(key, reduced)`` pairs rather than a dict.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     return await (Iter(range(6)).amap(fetch)
+            ...                   .map_reduce_it(lambda x: x % 2, reducefunc=sum)
+            ...                   .acollect())
+            >>> asyncio.run(main())
+            [(0, 6), (1, 9)]
+
+        """
+        cls = type(self)
+
+        async def agen():
+            d = await self.amap_reduce(keyfunc, valuefunc, reducefunc)
+            for item in d.items():
+                yield item
+
+        return cls(agen())
+
+    # -- Fan-out combinators (yield items unchanged after a side-effect) -
+
+    def into_queue(self, q) -> "AIter":
+        """Asynchronous into_queue_: put each item onto ``q`` and yield it
+        unchanged. ``q`` may be a ``queue.Queue`` or an ``asyncio.Queue``
+        (its coroutine ``put`` is awaited). Drive it with ``aconsume``.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     q = asyncio.Queue()
+            ...     await Iter(range(3)).amap(fetch).into_queue(q).aconsume()
+            ...     return [q.get_nowait() for _ in range(q.qsize())]
+            >>> asyncio.run(main())
+            [0, 1, 2]
+
+        """
+        cls = type(self)
+
+        async def agen():
+            async for v in self:
+                await _awaited(q.put(v))
+                yield v
+
+        return cls(agen())
+
+    def send_also(self, collector) -> "AIter":
+        """Asynchronous send_also_: ``asend`` each item into an
+        async-generator ``collector`` (primed automatically) while yielding
+        the items onward unchanged.
+
+        .. code-block:: python
+
+            >>> import asyncio
+            >>> async def fetch(x):
+            ...     await asyncio.sleep(0)  # yield to the event loop
+            ...     return x
+            >>> async def main():
+            ...     seen = []
+            ...     async def sink():
+            ...         while True:
+            ...             v = yield
+            ...             seen.append(v)
+            ...     out = await Iter(range(3)).amap(fetch).send_also(sink()).acollect()
+            ...     return out, seen
+            >>> asyncio.run(main())
+            ([0, 1, 2], [0, 1, 2])
+
+        """
+
+        async def prime():
+            if inspect.getasyncgenstate(collector) == inspect.AGEN_CREATED:
+                await collector.asend(None)
+
+        async def func(v):
+            await collector.asend(v)
+
+        return self.side_effect(func, before=prime)
+
+    # -- Guards: synchronous sinks cannot drive an async pipeline --------
+
+    def collect(self, container=list):
+        raise _sync_sink_error("collect", "acollect")
+
+    def sum(self):
+        raise _sync_sink_error("sum", "asum")
+
+    def first(self, default=_marker):
+        raise _sync_sink_error("first", "afirst")
+
+    def dict(self):
+        raise _sync_sink_error("dict", "adict")
+
+    def concat(self, glue: AnyStr = ""):
+        raise _sync_sink_error("concat", "aconcat")
+
+    # The remaining synchronous scalar sinks likewise cannot drive an
+    # async pipeline; each points at its ``a``-prefixed coroutine twin.
+    # (*args/**kwargs so the guard accepts each sink's real signature.)
+
+    def reduce(self, *args, **kwargs):
+        raise _sync_sink_error("reduce", "areduce")
+
+    def starreduce(self, *args, **kwargs):
+        raise _sync_sink_error("starreduce", "astarreduce")
+
+    def any(self, *args, **kwargs):
+        raise _sync_sink_error("any", "aany")
+
+    def all(self, *args, **kwargs):
+        raise _sync_sink_error("all", "aall")
+
+    def nth(self, *args, **kwargs):
+        raise _sync_sink_error("nth", "anth")
+
+    def nth_or_last(self, *args, **kwargs):
+        raise _sync_sink_error("nth_or_last", "anth_or_last")
+
+    def last(self, *args, **kwargs):
+        raise _sync_sink_error("last", "alast")
+
+    def one(self, *args, **kwargs):
+        raise _sync_sink_error("one", "aone")
+
+    def only(self, *args, **kwargs):
+        raise _sync_sink_error("only", "aonly")
+
+    def ilen(self, *args, **kwargs):
+        raise _sync_sink_error("ilen", "ailen")
+
+    def dotproduct(self, *args, **kwargs):
+        raise _sync_sink_error("dotproduct", "adotproduct")
+
+    def is_sorted(self, *args, **kwargs):
+        raise _sync_sink_error("is_sorted", "ais_sorted")
+
+    def all_unique(self, *args, **kwargs):
+        raise _sync_sink_error("all_unique", "aall_unique")
+
+    def all_equal(self, *args, **kwargs):
+        raise _sync_sink_error("all_equal", "aall_equal")
+
+    def minmax(self, *args, **kwargs):
+        raise _sync_sink_error("minmax", "aminmax")
+
+    def quantify(self, *args, **kwargs):
+        raise _sync_sink_error("quantify", "aquantify")
+
+    def first_true(self, *args, **kwargs):
+        raise _sync_sink_error("first_true", "afirst_true")
+
+    def exactly_n(self, *args, **kwargs):
+        raise _sync_sink_error("exactly_n", "aexactly_n")
+
+    def map_reduce(self, *args, **kwargs):
+        raise _sync_sink_error("map_reduce", "amap_reduce")
+
+    def consume(self, *args, **kwargs):
+        raise _sync_sink_error("consume", "aconsume")
+
+    def next(self, *args, **kwargs):
+        raise _sync_sink_error("next", "afirst")
+
+    def write_text_to_stream(self, *args, **kwargs):
+        raise _sync_sink_error("write_text_to_stream", "awrite_text_to_stream")
+
+    def write_bytes_to_stream(self, *args, **kwargs):
+        raise _sync_sink_error("write_bytes_to_stream", "awrite_bytes_to_stream")
+
+    def write_file(self, *args, **kwargs):
+        raise _sync_sink_error("write_file", "awrite_file")
+
+    def executemany(self, *args, **kwargs):
+        raise _sync_sink_error("executemany", "aexecutemany")
+
+    def send(self, *args, **kwargs):
+        raise _sync_sink_error("send", "asend")
 
 
 """
