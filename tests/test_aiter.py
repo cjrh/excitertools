@@ -129,6 +129,23 @@ def _run(coro_factory):
     return asyncio.run(coro_factory())
 
 
+def test_aiter_accepts_async_iterable_and_direct_anext():
+    class AsyncIterableOnly:
+        def __aiter__(self):
+            async def items():
+                yield 1
+                yield 2
+
+            return items()
+
+    async def go():
+        source = AIter(AsyncIterableOnly())
+        first = await anext(source)
+        return first, await source.acollect()
+
+    assert _run(go) == (1, [2])
+
+
 def test_to_async_lift_then_combinators():
     async def go():
         return await (
@@ -155,8 +172,11 @@ def test_enumerate_take_tail():
 
 def test_islice_full_form():
     async def go():
-        return await Iter(range(20)).to_async().islice(2, 12, 3).acollect()
-    assert _run(go) == [2, 5, 8, 11]
+        full = await Iter(range(20)).to_async().islice(2, 12, 3).acollect()
+        short = await Iter([1, 2]).to_async().islice(10).acollect()
+        return full, short
+
+    assert _run(go) == ([2, 5, 8, 11], [1, 2])
 
 
 def test_takewhile_dropwhile_filterfalse():
@@ -169,6 +189,9 @@ def test_takewhile_dropwhile_filterfalse():
     assert tw == [1, 2]
     assert dw == [3, 1]
     assert ff == [0, 2, 4]
+    assert _run(
+        lambda: Iter([1, 2]).to_async().takewhile(lambda _: True).acollect()
+    ) == [1, 2]
 
 
 def test_chunked_flatten_chain_prepend():
@@ -251,6 +274,29 @@ def test_aforeach_side_effect():
         await Iter(range(4)).to_async().aforeach(seen.append)
     _run(go)
     assert seen == [0, 1, 2, 3]
+
+
+def test_side_effect_chunking_and_hooks():
+    events = []
+
+    async def go():
+        passed = await Iter(range(5)).to_async().side_effect(
+            lambda chunk: events.append(tuple(chunk)),
+            chunk_size=2,
+            before=lambda: events.append("before"),
+            after=lambda: events.append("after"),
+        ).acollect()
+        exact_chunks = []
+        exact = await Iter(range(4)).to_async().side_effect(
+            exact_chunks.append, chunk_size=2
+        ).acollect()
+        return passed, exact, exact_chunks
+
+    passed, exact, exact_chunks = _run(go)
+    assert passed == list(range(5))
+    assert events == ["before", (0, 1), (2, 3), (4,), "after"]
+    assert exact == list(range(4))
+    assert exact_chunks == [[0, 1], [2, 3]]
 
 
 def test_more_sync_sink_guards():
@@ -702,6 +748,76 @@ def test_ported_combinators_match_more_itertools():
         assert got == expected, f"case {i}: {got!r} != {expected!r}"
 
 
+def test_streaming_combinator_edge_paths():
+    import pytest
+
+    def A(src):
+        return Iter(src).to_async()
+
+    async def go():
+        chunks = [
+            await chunk.acollect()
+            async for chunk in A(range(4)).ichunked(2)
+        ]
+        return {
+            "unique_unhashable": await A([[1], [1], [2]]).unique_everseen().acollect(),
+            "padnone": await A([1, 2]).padnone().take(3).acollect(),
+            "cycle_empty": await A([]).cycle().acollect(),
+            "count_cycle_empty": await A([]).count_cycle().acollect(),
+            "count_cycle": await A("ab").count_cycle(2).acollect(),
+            "run_length_empty": await A([]).run_length_encode().acollect(),
+            "groups_empty": await A([]).consecutive_groups().acollect(),
+            "locate_window": await A([0, 1, 1, 0]).locate(
+                lambda a, b: a and b, window_size=2
+            ).acollect(),
+            "difference_initial": await A([10, 11, 13, 16]).difference(
+                initial=10
+            ).acollect(),
+            "grouper_exact": await A("ABCD").grouper(2).acollect(),
+            "grouper_ignore": await A("A").grouper(
+                2, incomplete="ignore"
+            ).acollect(),
+            "chunks": chunks,
+            "groupby_empty": await A([]).groupby().acollect(),
+            "split_at_keep": await A([1, 0, 2]).split_at(
+                lambda x: x == 0, keep_separator=True
+            ).acollect(),
+            "split_before_empty": await A([]).split_before(bool).acollect(),
+            "split_after_empty": await A([]).split_after(bool).acollect(),
+            "split_when_empty": await A([]).split_when(
+                lambda a, b: False
+            ).acollect(),
+            "split_into_short": await A([0, 1, 2]).split_into(
+                [2, 3, 1]
+            ).acollect(),
+            "wrap_scalars": await A([1, 2]).wrap((0, 9)).acollect(),
+        }
+
+    assert _run(go) == {
+        "unique_unhashable": [[1], [2]],
+        "padnone": [1, 2, None],
+        "cycle_empty": [],
+        "count_cycle_empty": [],
+        "count_cycle": [(0, "a"), (0, "b"), (1, "a"), (1, "b")],
+        "run_length_empty": [],
+        "groups_empty": [],
+        "locate_window": [1],
+        "difference_initial": [1, 2, 3],
+        "grouper_exact": [("A", "B"), ("C", "D")],
+        "grouper_ignore": [],
+        "chunks": [[0, 1], [2, 3]],
+        "groupby_empty": [],
+        "split_at_keep": [[1], [0], [2]],
+        "split_before_empty": [],
+        "split_after_empty": [],
+        "split_when_empty": [],
+        "split_into_short": [[0, 1], [2]],
+        "wrap_scalars": [0, 1, 2, 9],
+    }
+    with pytest.raises(ValueError, match="not divisible"):
+        _run(lambda: A("A").grouper(2, incomplete="strict").acollect())
+
+
 def test_streaming_combinators_stay_lazy_over_infinite_source():
     # Streaming combinators must not materialise: they compose over an
     # unbounded async source and terminate under a downstream take().
@@ -743,6 +859,75 @@ def test_ported_sinks_match_semantics():
     assert _run(lambda: A([0, 0, 5, 0]).afirst_true()) == 5
     assert _run(lambda: A([1, 0, 1, 0]).aexactly_n(2)) is True
     assert _run(lambda: A([(1, 2), (3, 4)]).astarreduce(lambda t, a, b: t + a + b, 0)) == 10
+
+
+def test_ported_sink_default_and_false_paths():
+    sentinel = object()
+
+    def A(src):
+        return Iter(src).to_async()
+
+    assert _run(lambda: A([]).amax(default=sentinel)) is sentinel
+    assert _run(lambda: A([]).amin(default=sentinel)) is sentinel
+    assert _run(lambda: A([1, 2]).areduce(lambda a, b: a + b, 10)) == 13
+    assert _run(lambda: A([1, 0, 2]).aall()) is False
+    assert _run(lambda: A([10, 20, 30]).anth_or_last(1)) == 20
+    assert _run(lambda: A([1, 3]).afirst_true(
+        sentinel, lambda x: x % 2 == 0
+    )) is sentinel
+    assert _run(lambda: A([1, 1]).aexactly_n(1)) is False
+
+
+def test_ported_sink_empty_and_cardinality_paths():
+    import pytest
+
+    sentinel = object()
+
+    def A(src):
+        return Iter(src).to_async()
+
+    assert _run(lambda: A([]).anth_or_last(2, default=sentinel)) is sentinel
+    with pytest.raises(ValueError, match="empty async iterator"):
+        _run(lambda: A([]).anth_or_last(2))
+
+    assert _run(lambda: A([]).alast(default=sentinel)) is sentinel
+    with pytest.raises(ValueError, match="empty async iterator"):
+        _run(lambda: A([]).alast())
+
+    with pytest.raises(LookupError, match="short"):
+        _run(lambda: A([]).aone(too_short=LookupError("short")))
+    with pytest.raises(LookupError, match="long"):
+        _run(lambda: A([1, 2]).aone(too_long=LookupError("long")))
+
+    assert _run(lambda: A([42]).aonly()) == 42
+    with pytest.raises(LookupError, match="long"):
+        _run(lambda: A([1, 2]).aonly(too_long=LookupError("long")))
+
+    assert _run(lambda: A([]).aminmax(default=sentinel)) is sentinel
+    with pytest.raises(ValueError, match="empty async iterator"):
+        _run(lambda: A([]).aminmax())
+
+
+def test_ported_sink_comparison_and_consumption_edges():
+    def A(src):
+        return Iter(src).to_async()
+
+    assert _run(lambda: A([1, 2, 3]).adotproduct([10])) == 10
+    assert _run(lambda: A([3, 2, 1]).ais_sorted(reverse=True)) is True
+    assert _run(lambda: A([[], [1]]).aall_unique()) is True
+    assert _run(lambda: A([[], []]).aall_unique()) is False
+    assert _run(lambda: A([1, 2]).aall_equal()) is False
+
+    grouped = _run(lambda: A("aAb").amap_reduce(str.lower))
+    assert grouped == {"a": ["a", "A"], "b": ["b"]}
+    assert grouped.default_factory is None
+
+    async def consume_past_end():
+        chain = A([1, 2])
+        returned = await chain.aconsume(5)
+        return returned is chain, await returned.acollect()
+
+    assert _run(consume_past_end) == (True, [])
 
 
 def test_sync_scalar_sink_guards_point_to_async_twin():
@@ -823,6 +1008,29 @@ def test_awrite_text_and_bytes_to_stream():
                  .awrite_bytes_to_stream(f))
         assert open(bn, "rb").read() == b"aabbcc"
 
+    class RecordingStream:
+        def __init__(self):
+            self.writes = []
+            self.flush_calls = 0
+
+        def writelines(self, values):
+            self.writes.extend(values)
+
+        def flush(self):
+            self.flush_calls += 1
+
+    text = RecordingStream()
+    _run(lambda: A_(["x"]).awrite_text_to_stream(
+        text, insert_newlines=False, flush=False, batch_size=1
+    ))
+    assert text.writes == ["x"] and text.flush_calls == 0
+
+    binary = RecordingStream()
+    _run(lambda: A_([b"x"]).awrite_bytes_to_stream(
+        binary, flush=False, batch_size=1
+    ))
+    assert binary.writes == [b"x"] and binary.flush_calls == 0
+
 
 def test_awrite_file_text_bytes_and_error_persists_consumed_items():
     with tempfile.TemporaryDirectory() as td:
@@ -875,6 +1083,9 @@ def test_aexecutemany_commits_and_rolls_back():
         _run(lambda: A_([(1,)]).aexecutemany(
             FakeCursor(), "x", rollback=lambda: rolled.append(1)))
     assert rolled == [1]
+
+    with pytest.raises(ValueError, match="boom"):
+        _run(lambda: A_([(1,)]).aexecutemany(FakeCursor(), "x"))
 
 
 def test_into_queue_sync_and_async_queue():
@@ -939,6 +1150,23 @@ def test_asend_and_send_also_drive_async_generator():
 
     passed, seen = _run(go_also)
     assert passed == [0, 1, 2] and seen == [0, 1, 2]
+
+    async def go_also_preprimed():
+        seen = []
+
+        async def collector():
+            while True:
+                seen.append((yield))
+
+        sink = collector()
+        await sink.asend(None)
+        try:
+            passed = await A_([1, 2]).send_also(sink).acollect()
+            return passed, seen
+        finally:
+            await sink.aclose()
+
+    assert _run(go_also_preprimed) == ([1, 2], [1, 2])
 
 
 def test_io_sink_sync_guards_point_to_async_twin():

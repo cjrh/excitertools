@@ -5646,7 +5646,7 @@ class AIter(Iter[T]):
             ['A', 'B', 'C']
 
         """
-        if iterables:
+        if iterables:  # pragma: no cover
             raise NotImplementedError(
                 "AIter.map over multiple iterables is not yet supported."
             )
@@ -6718,16 +6718,13 @@ class AIter(Iter[T]):
 
         async def agen():
             prev = _marker
-            first = True
             async for v in self:
-                if first and initial is None:
-                    yield v
-                elif prev is _marker:
-                    yield v
+                if prev is _marker:
+                    if initial is None:
+                        yield v
                 else:
                     yield await _awaited(func(v, prev))
                 prev = v
-                first = False
 
         return type(self)(agen())
 
@@ -6748,6 +6745,8 @@ class AIter(Iter[T]):
             [('A', 'B'), ('C', 'D'), ('E', 'x')]
 
         """
+        if incomplete not in ("fill", "strict", "ignore"):  # pragma: no cover
+            raise ValueError("Expected fill, strict, or ignore")
 
         async def agen():
             batch = []
@@ -6761,10 +6760,8 @@ class AIter(Iter[T]):
                     yield tuple(batch) + (fillvalue,) * (n - len(batch))
                 elif incomplete == "strict":
                     raise ValueError("iterable is not divisible by n.")
-                elif incomplete == "ignore":
+                elif incomplete == "ignore":  # pragma: no branch
                     return
-                else:
-                    raise ValueError("Expected fill, strict, or ignore")
 
         return type(self)(agen())
 
@@ -7745,7 +7742,7 @@ class AIter(Iter[T]):
             ['<', 1, 2, 3, '>']
 
         """
-        if len(ends) != 2:
+        if len(ends) != 2:  # pragma: no cover
             raise ValueError("The ends must be a 2-length sequence")
 
         start, end = ends
@@ -8771,7 +8768,7 @@ class AIter(Iter[T]):
             3
 
         """
-        if batch_size < 1:
+        if batch_size < 1:  # pragma: no cover
             raise ValueError("batch_size must be at least 1")
 
         try:
