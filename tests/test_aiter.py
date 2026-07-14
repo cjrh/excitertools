@@ -748,6 +748,14 @@ def test_ported_combinators_match_more_itertools():
         assert got == expected, f"case {i}: {got!r} != {expected!r}"
 
 
+def test_padnone_switches_to_padding_after_source_exhaustion():
+    async def go():
+        padded = Iter([1, 2]).to_async().padnone()
+        return [await anext(padded) for _ in range(4)]
+
+    assert _run(go) == [1, 2, None, None]
+
+
 def test_streaming_combinator_edge_paths():
     import pytest
 
@@ -761,7 +769,6 @@ def test_streaming_combinator_edge_paths():
         ]
         return {
             "unique_unhashable": await A([[1], [1], [2]]).unique_everseen().acollect(),
-            "padnone": await A([1, 2]).padnone().take(3).acollect(),
             "cycle_empty": await A([]).cycle().acollect(),
             "count_cycle_empty": await A([]).count_cycle().acollect(),
             "count_cycle": await A("ab").count_cycle(2).acollect(),
@@ -795,7 +802,6 @@ def test_streaming_combinator_edge_paths():
 
     assert _run(go) == {
         "unique_unhashable": [[1], [2]],
-        "padnone": [1, 2, None],
         "cycle_empty": [],
         "count_cycle_empty": [],
         "count_cycle": [(0, "a"), (0, "b"), (1, "a"), (1, "b")],

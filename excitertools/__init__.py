@@ -6380,8 +6380,12 @@ class AIter(Iter[T]):
         """
 
         async def agen():
-            async for v in self:
-                yield v
+            source = self.__aiter__()
+            while True:
+                try:
+                    yield await anext(source)
+                except StopAsyncIteration:
+                    break
             while True:
                 yield None
 
